@@ -1,6 +1,0 @@
-{
-  "name": "Từ Tâm Phục",
-  "description": "Cửa hàng Pháp Phục & Đồ Lam cao cấp, mang đến vẻ đẹp hoan hỷ, an nhiên và thanh tịnh.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
