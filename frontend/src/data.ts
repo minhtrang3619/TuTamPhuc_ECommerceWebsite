@@ -5,7 +5,6 @@ export const CATEGORIES = [
   'Đồ lam nữ',
   'Áo tràng',
   'Pháp Phục',
-  'Túi vải',
 ];
 
 export const COLORS = [
@@ -231,51 +230,8 @@ export const PRODUCTS: Product[] = [
       details_desc: 'Nhánh sen thêu tay đính chỉ kim ngân tinh khố từ làng thêu truyền thống.'
     }
   },
-  {
-    id: 'tui-vai-linen-theu-sen',
-    name: 'Túi Vải Linen Thêu Sen',
-    price: 350000,
-    category: 'Túi vải',
-    badge: 'Ưa chuộng',
-    colors: [
-      { name: 'Trắng ngà', hex: '#F5F5F5' },
-      { name: 'Nâu nhạt', hex: '#EADDD7' }
-    ],
-    sizes: ['S'],
-    images: [
-      'https://images.unsplash.com/photo-1622560480605-d83c853bc5c3?auto=format&fit=crop&w=600&q=80',
-      'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80'
-    ],
-    description: 'Túi vải thêu sen mềm mại, làm từ chất liệu tơ linen organic kết hợp sợi bông dệt thô dai chắc chắn. Thiết kế quai cầm dài vừa vặn, vô cùng thích hợp đựng đồ dùng cá nhân một cách tiện lợi.',
-    quote: 'Thiết kế mộc mạc, tiện dụng cho các nhu cầu sử dụng hằng ngày.',
-    details: {
-      material: 'Organic Linen tơ thô dệt',
-      craftsmanship: 'Thêu sen thủ công truyền thống',
-      details_desc: 'Kích thước đáy rộng và có ngăn khoá kéo phụ đựng đồ tiện lợi.'
-    }
-  },
-  {
-    id: 'tui-vai-tho-tu-tam',
-    name: 'Túi Vải Thô Từ Tâm',
-    price: 280000,
-    category: 'Túi vải',
-    colors: [
-      { name: 'Nâu đất', hex: '#5D4037' },
-      { name: 'Xanh rêu', hex: '#8D9B91' }
-    ],
-    sizes: ['S'],
-    images: [
-      'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80',
-      'https://images.unsplash.com/photo-1590736969955-71cc94801759?auto=format&fit=crop&w=600&q=80'
-    ],
-    description: 'Chiếc túi đựng từ đũi vải thô mộc nhuộm thảo mộc tự nhiên thơm ngọt. Sợi dệt dẻo dai chống chịu nhiệt ẩm tốt, mang phong vị mộc mạc tinh tế, mang lại cảm giác dễ chịu và thân thiện.',
-    quote: 'Đựng trọn những vật dụng cần thiết, đồng hành cùng bạn trên mọi nẻo đường.',
-    details: {
-      material: 'Đũi dệt thô mộc 100%',
-      craftsmanship: 'Khâu viền chắc chắn bền bỉ',
-      details_desc: 'Thiết kế nút cài tre gỗ tự nhiên mộc mạc và hoài niệm.'
-    }
-  },
+
+
   {
     id: 'bo-lam-nam-tinh-tai',
     name: 'Bộ Lam Nam Tĩnh Tại',
@@ -340,27 +296,7 @@ export const PRODUCTS: Product[] = [
       details_desc: 'Thiết kế cổ áo đứng 3 phân đứng dáng, tà rộng rãi bay bổng.'
     }
   },
-  {
-    id: 'tui-tinh-tam-khau-tay',
-    name: 'Túi Tĩnh Tâm Khâu Tay',
-    price: 420000,
-    category: 'Túi vải',
-    colors: [
-      { name: 'Nâu đất', hex: '#5D4037' },
-      { name: 'Nâu nhạt', hex: '#EADDD7' }
-    ],
-    sizes: ['S'],
-    images: [
-      'https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=600&q=80'
-    ],
-    description: 'Túi xách linen khâu viền tay mộc mạc, thêu chữ Tĩnh thanh thoát. Đường may chịu lực chắc chắn, ngăn trong lót vải tơ tằm mềm mại.',
-    quote: 'Gói trọn bình an, đồng hành qua những thăng trầm cuộc sống.',
-    details: {
-      material: 'Vải bố đũi thô tự nhiên',
-      craftsmanship: 'Khâu tay viền nổi chỉ gai',
-      details_desc: 'Kích thước vừa vặn đựng sách, bình giữ nhiệt và đồ cá nhân nhỏ.'
-    }
-  },
+
   {
     id: 'bo-lam-cat-tuong-nu',
     name: 'Bộ Lam Cát Tường Nữ',

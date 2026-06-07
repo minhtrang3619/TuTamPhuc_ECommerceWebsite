@@ -63,18 +63,18 @@ export default function CheckoutModal() {
 
   const selectedShippingCost = shippingCosts[shippingMethod].price;
 
-  const promoDiscount = promoVoucher === 'TUTAMVIP15' 
-    ? Math.round(subTotal * 0.15) 
-    : promoVoucher === 'ANNHIEN100' 
-      ? 100000 
-      : promoVoucher === 'GIEOVUI50' 
-        ? 50000 
+  const promoDiscount = promoVoucher === 'TUTAMVIP15'
+    ? Math.round(subTotal * 0.15)
+    : promoVoucher === 'ANNHIEN100'
+      ? 100000
+      : promoVoucher === 'GIEOVUI50'
+        ? 50000
         : 0;
 
-  const shipDiscount = shipVoucher === 'FREESHIP' 
-    ? Math.min(selectedShippingCost, 30000) 
-    : shipVoucher === 'SHIPANNHIEN' 
-      ? Math.min(selectedShippingCost, 15000) 
+  const shipDiscount = shipVoucher === 'FREESHIP'
+    ? Math.min(selectedShippingCost, 30000)
+    : shipVoucher === 'SHIPANNHIEN'
+      ? Math.min(selectedShippingCost, 15000)
       : 0;
 
   const actualShippingFee = Math.max(0, selectedShippingCost - shipDiscount);
@@ -109,14 +109,14 @@ export default function CheckoutModal() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    
+
     // Generate unique order code
     const orderCode = `TTP-ORDER-${Math.floor(100000 + Math.random() * 900000)}`;
-    
+
     // Clear cart and close checkout modal
     clearCart();
     closeCheckout();
-    
+
     // Redirect to Order Success page
     navigate(`/order-success?code=${orderCode}`);
   };
@@ -163,7 +163,7 @@ export default function CheckoutModal() {
             <div className="overflow-y-auto flex-1">
               {!isSuccess ? (
                 <div className="grid grid-cols-1 md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-[#d4c3be]/30">
-                  
+
                   {/* Left: Shipper Form */}
                   <form onSubmit={handleSubmit} className="md:col-span-7 p-6 md:p-8 space-y-4 font-sans">
                     <span className="block text-xs uppercase tracking-widest font-extrabold text-primary mb-4 border-b border-[#eeeeee] pb-2">
@@ -356,9 +356,8 @@ export default function CheckoutModal() {
                               type="button"
                               key={key}
                               onClick={() => setShippingMethod(key)}
-                              className={`flex-1 py-2 text-center text-[10px] uppercase font-bold tracking-wider rounded-xs transition-all cursor-pointer ${
-                                isSelected ? 'bg-primary text-white shadow-xs' : 'text-on-surface-variant hover:text-primary bg-transparent border-0'
-                              }`}
+                              className={`flex-1 py-2 text-center text-[10px] uppercase font-bold tracking-wider rounded-xs transition-all cursor-pointer ${isSelected ? 'bg-primary text-white shadow-xs' : 'text-on-surface-variant hover:text-primary bg-transparent border-0'
+                                }`}
                             >
                               {key === 'standard' ? 'Nhanh' : key === 'express' ? 'Hỏa tốc' : 'Tiết kiệm'} ({formatPrice(method.price)})
                             </button>
@@ -376,18 +375,16 @@ export default function CheckoutModal() {
                         <button
                           type="button"
                           onClick={() => setForm(prev => ({ ...prev, paymentMethod: 'cod' }))}
-                          className={`flex-1 py-2 text-center text-[10px] uppercase font-bold tracking-wider rounded-xs transition-all cursor-pointer ${
-                            form.paymentMethod === 'cod' ? 'bg-primary text-white shadow-xs' : 'text-on-surface-variant hover:text-primary bg-transparent border-0'
-                          }`}
+                          className={`flex-1 py-2 text-center text-[10px] uppercase font-bold tracking-wider rounded-xs transition-all cursor-pointer ${form.paymentMethod === 'cod' ? 'bg-primary text-white shadow-xs' : 'text-on-surface-variant hover:text-primary bg-transparent border-0'
+                            }`}
                         >
                           COD (Khi nhận hàng)
                         </button>
                         <button
                           type="button"
                           onClick={() => setForm(prev => ({ ...prev, paymentMethod: 'bank_transfer' }))}
-                          className={`flex-1 py-2 text-center text-[10px] uppercase font-bold tracking-wider rounded-xs transition-all cursor-pointer ${
-                            form.paymentMethod === 'bank_transfer' ? 'bg-primary text-white shadow-xs' : 'text-on-surface-variant hover:text-primary bg-transparent border-0'
-                          }`}
+                          className={`flex-1 py-2 text-center text-[10px] uppercase font-bold tracking-wider rounded-xs transition-all cursor-pointer ${form.paymentMethod === 'bank_transfer' ? 'bg-primary text-white shadow-xs' : 'text-on-surface-variant hover:text-primary bg-transparent border-0'
+                            }`}
                         >
                           Chuyển khoản
                         </button>
@@ -445,7 +442,7 @@ export default function CheckoutModal() {
                           <span>Áp dụng khuyến mãi</span>
                           {showPromoSection ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                         </button>
-                        
+
                         {showPromoSection && (
                           <div className="p-4 space-y-4 border-t border-[#d4c3be]/30 bg-[#faf6f0]/30">
                             {/* Promo Voucher */}
@@ -506,9 +503,9 @@ export default function CheckoutModal() {
                             <span className="font-mono">- {formatPrice(shipDiscount)}</span>
                           </div>
                         )}
-                        
+
                         <div className="w-full h-px bg-[#eeeeee] my-2" />
-                        
+
                         <div className="flex justify-between text-base text-primary font-bold">
                           <span>Tổng thanh toán</span>
                           <span className="font-mono text-lg text-primary">{formatPrice(finalTotal)}</span>
@@ -551,9 +548,9 @@ export default function CheckoutModal() {
                   </motion.div>
                   <span className="text-[10px] uppercase tracking-[0.25em] text-[#5d4037] font-semibold mb-2">Đặt hàng thành công</span>
                   <h3 className="font-serif text-2xl font-bold text-primary mb-3">Đặt Hàng Thành Công</h3>
-                  
+
                   <p className="text-xs text-on-surface-variant leading-relaxed mb-6">
-                    Mã đơn hàng của quý khách là <span className="font-mono font-bold text-primary text-sm">#TTP-ORDER-{Math.floor(100000 + Math.random() * 900000)}</span>. 
+                    Mã đơn hàng của quý khách là <span className="font-mono font-bold text-primary text-sm">#TTP-ORDER-{Math.floor(100000 + Math.random() * 900000)}</span>.
                     Chúng tôi sẽ nhanh chóng chuẩn bị sản phẩm phẳng phiu, đóng gói chu đáo và giao tới địa chỉ của quý khách.
                   </p>
 

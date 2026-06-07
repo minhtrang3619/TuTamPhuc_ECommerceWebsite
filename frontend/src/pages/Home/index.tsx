@@ -104,10 +104,10 @@ export default function HomePage() {
             Hành trình nhân ái xuyên suốt
           </span>
           <h2 className="font-serif text-2xl md:text-3.5xl text-primary font-bold mb-6 tracking-wide leading-tight">
-            Gieo Mầm Từ Tâm • Trích 10% Lợi Nhuận
+            Gieo Mầm Từ Tâm • Trích 5% Giá Bán
           </h2>
           <p className="font-sans text-xs md:text-sm text-[#5d4037] leading-relaxed max-w-2xl opacity-90 mb-8 px-2 md:px-0">
-            Từ Tâm Phục cam kết trích <strong>10% lợi nhuận</strong> từ mỗi đơn hàng được bán ra để quyên vào công quỹ của các chùa và tu viện. Nguồn quỹ này sẽ trực tiếp giúp đỡ những người già neo đơn không nơi nương tựa, và các em nhỏ mồ côi đang được nhà chùa cưu mang, chăm sóc dưới bóng Phật đài.
+            Từ Tâm Phục cam kết trích <strong>5% từ giá bán của sản phẩm</strong> từ mỗi đơn hàng được bán ra để quyên vào công quỹ của các chùa và tu viện. Nguồn quỹ này sẽ trực tiếp giúp đỡ những người già neo đơn không nơi nương tựa, và các em nhỏ mồ côi đang được nhà chùa cưu mang, chăm sóc dưới bóng Phật đài.
           </p>
           <div className="w-16 h-0.5 bg-[#d4c3be] mb-6"></div>
           <p className="font-serif italic text-xs text-on-surface-variant max-w-xl px-4">

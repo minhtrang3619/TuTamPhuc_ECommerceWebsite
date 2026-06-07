@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
@@ -47,18 +47,9 @@ export default function OrderSuccessPage() {
     }
   }
 
-  // Calculate 10% profit donation (estimated)
-  const calculateCharityDonation = (total: number) => {
-    return Math.round(total * 0.1)
-  }
-
-  if (isLoading) {
-    return (
-      <div className="min-h-[80vh] flex flex-col items-center justify-center bg-brand-bg font-sans">
-        <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin mb-4"></div>
-        <p className="text-sm text-on-surface-variant font-medium">Đang tải thông tin đơn hàng...</p>
-      </div>
-    )
+  // Calculate 5% product price donation
+  const calculateCharityDonation = (subtotal: number) => {
+    return Math.round(subtotal * 0.05)
   }
 
   // Fallback mock order if orderCode is empty or API error (for demo purposes)
@@ -93,11 +84,40 @@ export default function OrderSuccessPage() {
     total: 610000,
   }
 
-  const currentOrder = isError || !order ? mockOrder : order
+  const baseOrder = isError || !order ? mockOrder : order
+
+  const [simulatedPaymentStatus, setSimulatedPaymentStatus] = useState<'pending' | 'paid'>('pending')
+  const [showSimulatedBanner, setShowSimulatedBanner] = useState(false)
+
+  useEffect(() => {
+    if (baseOrder.payment_method === 'bank_transfer' && baseOrder.payment_status === 'pending') {
+      setSimulatedPaymentStatus('pending')
+      setShowSimulatedBanner(false)
+      const timer = setTimeout(() => {
+        setSimulatedPaymentStatus('paid')
+        setShowSimulatedBanner(true)
+      }, 7000) // Tự động giả lập thanh toán thành công sau 7 giây
+      return () => clearTimeout(timer)
+    }
+  }, [baseOrder.order_code])
+
+  if (isLoading) {
+    return (
+      <div className="min-h-[80vh] flex flex-col items-center justify-center bg-brand-bg font-sans">
+        <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin mb-4"></div>
+        <p className="text-sm text-on-surface-variant font-medium">Đang tải thông tin đơn hàng...</p>
+      </div>
+    )
+  }
+
+  const currentOrder = {
+    ...baseOrder,
+    payment_status: baseOrder.payment_status === 'pending' && simulatedPaymentStatus === 'paid' ? 'paid' : baseOrder.payment_status
+  }
 
   const isPendingQR = currentOrder.payment_method === 'bank_transfer' && currentOrder.payment_status === 'pending';
   // Use a demo bank info (MBBank)
-  const bankId = 'MB'; 
+  const bankId = 'MB';
   const accountNo = '000000000000'; // Replace with real account
   const accountName = 'TU TAM PHUC';
   const qrUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-compact2.png?amount=${currentOrder.total}&addInfo=${currentOrder.order_code}&accountName=${encodeURIComponent(accountName)}`;
@@ -105,6 +125,24 @@ export default function OrderSuccessPage() {
   return (
     <div className="min-h-screen bg-[#faf8f5] py-16 font-sans selection:bg-primary-fixed-dim selection:text-primary">
       <div className="max-w-3xl mx-auto px-margin-mobile">
+        {showSimulatedBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8 p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-sm shadow-xs flex items-center justify-between font-sans"
+          >
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              <span><strong>[Giả lập]</strong> Ngân hàng đã xác nhận giao dịch chuyển khoản thành công cho đơn hàng <strong>{currentOrder.order_code}</strong>.</span>
+            </div>
+            <button 
+              onClick={() => setShowSimulatedBanner(false)}
+              className="text-emerald-700 hover:text-emerald-900 font-bold bg-transparent border-0 cursor-pointer text-[10px] uppercase font-sans tracking-wider"
+            >
+              Đóng
+            </button>
+          </motion.div>
+        )}
 
         {/* Dynamic Title Header based on Payment Status */}
         <header className="text-center mb-12">
@@ -164,11 +202,11 @@ export default function OrderSuccessPage() {
             >
               <h2 className="text-lg font-serif font-bold text-primary mb-2">Thanh Toán Đơn Hàng</h2>
               <p className="text-xs text-[#5d4037] mb-6 max-w-md mx-auto">
-                Quý khách vui lòng mở ứng dụng ngân hàng và quét mã QR bên dưới để thanh toán. 
-                Hệ thống sẽ tự động ghi nhận sau khi giao dịch thành công. 
+                Quý khách vui lòng mở ứng dụng ngân hàng và quét mã QR bên dưới để thanh toán.
+                Hệ thống sẽ tự động ghi nhận sau khi giao dịch thành công.
                 <strong className="block mt-1 text-red-600">Lưu ý: Đơn hàng sẽ tự động hủy nếu không được thanh toán trong 24h.</strong>
               </p>
-              
+
               <div className="flex justify-center mb-6">
                 <div className="p-3 border border-[#ece0dc] rounded-md inline-block bg-white shadow-sm">
                   <img src={qrUrl} alt="QR Code Thanh Toán" className="w-64 h-64 object-contain" />
@@ -197,10 +235,10 @@ export default function OrderSuccessPage() {
               <Sprout size={16} className="fill-primary text-primary" />
             </span>
             <h2 className="font-serif text-lg font-bold text-primary mb-2">
-              Gieo Mầm Từ Tâm {formatPrice(calculateCharityDonation(currentOrder.total))}
+              Gieo Mầm Từ Tâm {formatPrice(calculateCharityDonation(currentOrder.subtotal))}
             </h2>
             <p className="text-xs text-[#5d4037] leading-relaxed max-w-xl mx-auto opacity-90">
-              Cảm ơn bạn đã cùng Từ Tâm Phục gieo duyên lành. Đơn hàng này của bạn đã trích 10% lợi nhuận để đóng góp vào quỹ hỗ trợ các cụ già neo đơn và trẻ em mồ côi đang được cưu mang tại các chùa & tu viện Việt Nam.
+              Cảm ơn bạn đã cùng Từ Tâm Phục gieo duyên lành. Đơn hàng này của bạn đã trích 5% từ giá bán của sản phẩm để đóng góp vào quỹ hỗ trợ các cụ già neo đơn và trẻ em mồ côi đang được cưu mang tại các chùa & tu viện Việt Nam.
             </p>
           </motion.section>
 
@@ -264,11 +302,10 @@ export default function OrderSuccessPage() {
                   </p>
                   <p className="flex justify-between">
                     <span className="opacity-75">Thanh toán:</span>
-                    <span className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded-sm border ${
-                      currentOrder.payment_status === 'paid' 
-                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200' 
+                    <span className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded-sm border ${currentOrder.payment_status === 'paid'
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
                         : 'bg-red-50 text-red-700 border-red-200'
-                    }`}>
+                      }`}>
                       {currentOrder.payment_status === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán'}
                     </span>
                   </p>

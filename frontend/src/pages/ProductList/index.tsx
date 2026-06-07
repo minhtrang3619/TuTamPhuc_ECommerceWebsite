@@ -33,12 +33,8 @@ export default function ProductListPage() {
     if (activeCategorySlug) {
       if (activeCategorySlug === 'do-lam') {
         setSelectedCategories(['Đồ lam nam', 'Đồ lam nữ']);
-      } else if (activeCategorySlug === 'phap-phuc') {
-        setSelectedCategories(['Pháp Phục']);
       } else if (activeCategorySlug === 'ao-trang') {
         setSelectedCategories(['Áo tràng']);
-      } else if (activeCategorySlug === 'tui-vai') {
-        setSelectedCategories(['Túi vải']);
       }
       setCurrentPage(1);
     } else {

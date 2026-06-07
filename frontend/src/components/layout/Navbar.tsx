@@ -11,7 +11,6 @@ const navLinks = [
   { label: 'Đồ Lam', href: '/san-pham?category=do-lam' },
   { label: 'Pháp Phục', href: '/san-pham?category=phap-phuc' },
   { label: 'Áo Tràng', href: '/san-pham?category=ao-trang' },
-  { label: 'Túi Vải', href: '/san-pham?category=tui-vai' },
   { label: 'Blog', href: '/blog' },
 ]
 

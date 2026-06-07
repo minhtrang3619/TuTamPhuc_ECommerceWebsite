@@ -1,6 +1,6 @@
 # Từ Tâm Phục - E-Commerce Website
 
-> Website thương mại điện tử chuyên bán đồ lam, pháp phục, áo tràng, túi vải.
+> Website thương mại điện tử chuyên bán đồ lam, pháp phục, áo tràng.
 
 ## Tech Stack
 

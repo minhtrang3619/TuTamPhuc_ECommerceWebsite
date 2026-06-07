@@ -29,12 +29,17 @@ const AdminProducts = lazy(() => import('@/pages/admin/Products'))
 const AdminOrders = lazy(() => import('@/pages/admin/Orders'))
 const AdminStaff = lazy(() => import('@/pages/admin/Staff'))
 const AdminCustomers = lazy(() => import('@/pages/admin/Customers'))
-const AdminCategories = lazy(() => import('@/pages/admin/Categories'))
+
 const AdminBlog = lazy(() => import('@/pages/admin/Blog'))
 const AdminReports = lazy(() => import('@/pages/admin/Reports'))
 const AdminSettings = lazy(() => import('@/pages/admin/Settings'))
 const AdminPromotions = lazy(() => import('@/pages/admin/Promotions'));
-const AdminCustomerCare = lazy(() => import('@/pages/admin/CustomerCare'))
+
+const AdminCustomerStats = lazy(() => import('@/pages/admin/CustomerCare/Stats'))
+const AdminCustomerChat = lazy(() => import('@/pages/admin/CustomerCare/Chat'))
+const AdminCustomerReviews = lazy(() => import('@/pages/admin/CustomerCare/Reviews'))
+const AdminCustomerSupport = lazy(() => import('@/pages/admin/CustomerCare/Support'))
+
 
 export function AppRoutes() {
   return (
@@ -73,11 +78,16 @@ export function AppRoutes() {
             <Route path="/admin/don-hang" element={<AdminOrders />} />
             <Route path="/admin/nhan-su" element={<AdminStaff />} />
             <Route path="/admin/khach-hang" element={<AdminCustomers />} />
-            <Route path="/admin/danh-muc" element={<AdminCategories />} />
+
             <Route path="/admin/blog" element={<AdminBlog />} />
             <Route path="/admin/bao-cao" element={<AdminReports />} />
             <Route path="/admin/cai-dat" element={<AdminSettings />} />
             <Route path="/admin/khuyen-mai" element={<AdminPromotions />} />
+
+            <Route path="/admin/cskh-thong-ke" element={<AdminCustomerStats />} />
+            <Route path="/admin/cskh-tin-nhan" element={<AdminCustomerChat />} />
+            <Route path="/admin/cskh-danh-gia" element={<AdminCustomerReviews />} />
+            <Route path="/admin/cskh-ho-tro" element={<AdminCustomerSupport />} />
           </Route>
         </Route>
 

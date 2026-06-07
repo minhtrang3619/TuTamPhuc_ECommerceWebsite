@@ -22,6 +22,8 @@ import {
   ArrowLeft
 } from 'lucide-react'
 
+import AdminCategories from '../Categories'
+
 interface ProductItem {
   id: string
   name: string
@@ -35,6 +37,7 @@ interface ProductItem {
 }
 
 export default function AdminProducts() {
+  const [activeTab, setActiveTab] = useState<'products' | 'categories'>('products')
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('Tất cả bộ sưu tập')
   const [sellerFilter, setSellerFilter] = useState('Tất cả người bán')
@@ -705,7 +708,27 @@ export default function AdminProducts() {
   // DEFAULT RENDER: List of products table view
   return (
     <div className="page-transition space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Page Header */}
+      {/* Tab Navigation */}
+      <div className="flex items-center gap-6 border-b border-outline-variant/30 mb-2">
+        <button 
+          className={`py-3 font-label-md text-sm transition-colors border-b-2 ${activeTab === 'products' ? 'border-primary text-primary font-bold' : 'border-transparent text-on-surface-variant hover:text-primary'}`}
+          onClick={() => setActiveTab('products')}
+        >
+          Sản phẩm & Kho
+        </button>
+        <button 
+          className={`py-3 font-label-md text-sm transition-colors border-b-2 ${activeTab === 'categories' ? 'border-primary text-primary font-bold' : 'border-transparent text-on-surface-variant hover:text-primary'}`}
+          onClick={() => setActiveTab('categories')}
+        >
+          Danh mục
+        </button>
+      </div>
+
+      {activeTab === 'categories' ? (
+        <AdminCategories />
+      ) : (
+        <div className="space-y-8">
+          {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <h2 className="font-headline-md text-headline-md text-primary mb-2">Quản lý sản phẩm</h2>
@@ -922,6 +945,8 @@ export default function AdminProducts() {
               </button>
             </div>
           </div>
+        </div>
+      )}
         </div>
       )}
     </div>

@@ -10,6 +10,7 @@ import {
   Sparkles,
   Check
 } from 'lucide-react'
+import { useAuthStore } from '@/store'
 
 interface OrderItem {
   id: string
@@ -24,6 +25,10 @@ interface OrderItem {
 }
 
 export default function AdminOrders() {
+  const { user } = useAuthStore()
+  const role = user?.role?.toLowerCase() || 'admin'
+  const isCSKH = role === 'customer_service'
+
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState('Tất cả')
 
@@ -355,7 +360,8 @@ export default function AdminOrders() {
                 <select 
                   value={editPaymentStatus}
                   onChange={(e) => setEditPaymentStatus(e.target.value)}
-                  className="w-full bg-surface-container-low border border-outline-variant/30 rounded px-3 py-2 text-sm text-primary focus:ring-1 focus:ring-primary/20 cursor-pointer"
+                  disabled={isCSKH}
+                  className="w-full bg-surface-container-low border border-outline-variant/30 rounded px-3 py-2 text-sm text-primary focus:ring-1 focus:ring-primary/20 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   <option value="Đã thanh toán">Đã thanh toán</option>
                   <option value="Chờ xác nhận">Chờ xác nhận</option>
@@ -368,7 +374,8 @@ export default function AdminOrders() {
                 <select 
                   value={editShippingStatus}
                   onChange={(e) => setEditShippingStatus(e.target.value)}
-                  className="w-full bg-surface-container-low border border-outline-variant/30 rounded px-3 py-2 text-sm text-primary focus:ring-1 focus:ring-primary/20 cursor-pointer"
+                  disabled={isCSKH}
+                  className="w-full bg-surface-container-low border border-outline-variant/30 rounded px-3 py-2 text-sm text-primary focus:ring-1 focus:ring-primary/20 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   <option value="Đã giao">Đã giao</option>
                   <option value="Đang chuẩn bị">Đang chuẩn bị</option>
@@ -380,18 +387,29 @@ export default function AdminOrders() {
 
             {/* Action Buttons */}
             <div className="flex justify-end gap-3">
-              <button 
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 border border-outline-variant/50 rounded font-label-md text-xs text-on-surface-variant hover:bg-surface-container-low transition-colors"
-              >
-                Hủy bỏ
-              </button>
-              <button 
-                onClick={handleSaveOrder}
-                className="px-5 py-2 bg-primary text-white rounded font-label-md text-xs hover:bg-on-primary-fixed-variant transition-colors"
-              >
-                Xác nhận thay đổi
-              </button>
+              {isCSKH ? (
+                <button 
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-5 py-2 bg-primary text-white rounded font-label-md text-xs hover:bg-opacity-90 transition-colors"
+                >
+                  Đóng
+                </button>
+              ) : (
+                <>
+                  <button 
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2 border border-outline-variant/50 rounded font-label-md text-xs text-on-surface-variant hover:bg-surface-container-low transition-colors"
+                  >
+                    Hủy bỏ
+                  </button>
+                  <button 
+                    onClick={handleSaveOrder}
+                    className="px-5 py-2 bg-primary text-white rounded font-label-md text-xs hover:bg-on-primary-fixed-variant transition-colors"
+                  >
+                    Xác nhận thay đổi
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -461,13 +479,15 @@ export default function AdminOrders() {
       )}
 
       {/* Floating Action Button */}
-      <button 
-        onClick={() => setIsAddModalOpen(true)}
-        className="fixed bottom-10 right-10 w-14 h-14 bg-primary text-white rounded-full shadow-lg flex items-center justify-center hover:scale-105 transition-all border border-white/10 z-50"
-        title="Tạo đơn hàng thủ công"
-      >
-        <Plus size={24} />
-      </button>
+      {!isCSKH && (
+        <button 
+          onClick={() => setIsAddModalOpen(true)}
+          className="fixed bottom-10 right-10 w-14 h-14 bg-primary text-white rounded-full shadow-lg flex items-center justify-center hover:scale-105 transition-all border border-white/10 z-50"
+          title="Tạo đơn hàng thủ công"
+        >
+          <Plus size={24} />
+        </button>
+      )}
     </div>
   )
 }

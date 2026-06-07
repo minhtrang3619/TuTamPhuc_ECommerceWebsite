@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ChevronRight, Leaf, Sparkles } from 'lucide-react';
+import { ChevronRight, Leaf, Sparkles, Heart, MessageSquare } from 'lucide-react';
 
 
 import { PRODUCTS } from '../../data';
@@ -19,6 +19,20 @@ export default function ProductDetailPage() {
   const [activeDetailColor, setActiveDetailColor] = useState<{ name: string; hex: string } | null>(null);
   const [activeDetailSize, setActiveDetailSize] = useState<string>('M');
   const [isSizeGuideOpen, setIsSizeGuideOpen] = useState<boolean>(false);
+  const [isFavorite, setIsFavorite] = useState<boolean>(false);
+
+  const toggleFavorite = () => {
+    setIsFavorite(!isFavorite);
+    if (!isFavorite) {
+      showToast('Đã thêm sản phẩm vào danh mục yêu thích!', 'success');
+    } else {
+      showToast('Đã xóa sản phẩm khỏi danh mục yêu thích.', 'info');
+    }
+  };
+
+  const handleConsult = () => {
+    showToast('Yêu cầu tư vấn đã được gửi! Nhân viên CSKH sẽ kết nối với bạn qua chat trong giây lát.', 'info');
+  };
 
   // Toast alert state
   const [toast, setToast] = useState<{ message: string; isVisible: boolean; type?: 'success' | 'info' }>({
@@ -218,12 +232,34 @@ export default function ProductDetailPage() {
 
             {/* Action buttons */}
             <div className="space-y-3 font-sans">
-              <button
-                onClick={handleAddToCart}
-                className="w-full py-4 border border-primary text-primary font-bold text-xs uppercase tracking-widest hover:bg-primary/5 transition-all flex justify-center items-center gap-2 rounded-xs shadow-xs cursor-pointer bg-transparent"
-              >
-                Thêm vào giỏ hàng
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleAddToCart}
+                  className="flex-1 py-4 border border-primary text-primary font-bold text-xs uppercase tracking-widest hover:bg-primary/5 transition-all flex justify-center items-center gap-2 rounded-xs shadow-xs cursor-pointer bg-transparent"
+                >
+                  Thêm vào giỏ hàng
+                </button>
+
+                <button
+                  onClick={handleConsult}
+                  className="px-6 py-4 border border-[#d4c3be] text-[#5d4037] font-bold text-xs uppercase tracking-widest hover:bg-[#5d4037]/5 transition-all flex justify-center items-center gap-2 rounded-xs shadow-xs cursor-pointer bg-transparent"
+                >
+                  <MessageSquare size={16} />
+                  Tư vấn
+                </button>
+
+                <button
+                  onClick={toggleFavorite}
+                  className={`px-4 py-4 border rounded-xs transition-all cursor-pointer bg-transparent flex items-center justify-center ${
+                    isFavorite 
+                      ? 'border-red-200 text-red-500 bg-red-50/50' 
+                      : 'border-[#d4c3be] text-[#5d4037] hover:border-red-400 hover:text-red-500'
+                  }`}
+                  title={isFavorite ? 'Đã thích' : 'Thêm vào yêu thích'}
+                >
+                  <Heart size={16} className={isFavorite ? 'fill-current' : ''} />
+                </button>
+              </div>
 
               <button
                 onClick={handleBuyNow}
@@ -238,7 +274,7 @@ export default function ProductDetailPage() {
               <Leaf className="text-primary shrink-0 mt-0.5" size={18} />
               <div>
                 <span className="block font-bold text-primary mb-0.5">Gieo Mầm Từ Tâm</span>
-                <span>Từ Tâm Phục trích <strong>10% lợi nhuận</strong> của đơn hàng này quyên tặng công quỹ các chùa và tu viện để chăm sóc các em nhỏ mồ côi và cụ già neo đơn.</span>
+                <span>Từ Tâm Phục trích <strong>5% giá bán của sản phẩm</strong> này quyên tặng công quỹ các chùa và tu viện để chăm sóc các em nhỏ mồ côi và cụ già neo đơn.</span>
               </div>
             </div>
 
