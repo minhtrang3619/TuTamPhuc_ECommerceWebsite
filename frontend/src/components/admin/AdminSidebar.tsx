@@ -1,0 +1,132 @@
+import { Link, useLocation } from 'react-router-dom'
+import { useAuthStore } from '@/store'
+import { 
+  LayoutDashboard, 
+  ShoppingBag, 
+  Package, 
+  Users, 
+  MessageSquare, 
+  Settings, 
+  Star,
+  FileText,
+  LogOut,
+  Layers,
+  Tag
+} from 'lucide-react'
+
+export function AdminSidebar() {
+  const { user, logout } = useAuthStore()
+  const location = useLocation()
+  
+  const role = user?.role?.toLowerCase() || 'admin' // Fallback for safety
+
+  const allMenuItems = [
+    {
+      title: 'Tổng quan tài chính',
+      path: '/admin/dashboard',
+      icon: LayoutDashboard,
+      roles: ['admin']
+    },
+    {
+      title: 'Thống kê hàng hóa',
+      path: '/admin/dashboard',
+      icon: LayoutDashboard,
+      roles: ['shop_staff']
+    },
+    {
+      title: 'Quản lý Đơn hàng',
+      path: '/admin/don-hang',
+      icon: ShoppingBag,
+      roles: ['admin', 'staff', 'shop_staff', 'customer_service']
+    },
+    {
+      title: 'Sản phẩm & Kho',
+      path: '/admin/san-pham',
+      icon: Package,
+      roles: ['admin', 'staff', 'shop_staff']
+    },
+    {
+      title: 'Quản lý Danh mục',
+      path: '/admin/danh-muc',
+      icon: Layers,
+      roles: ['admin', 'staff', 'shop_staff']
+    },
+    {
+      title: 'CSKH - Khách hàng',
+      path: '/admin/customer-care',
+      icon: MessageSquare,
+      roles: ['admin', 'staff', 'shop_staff', 'customer_service']
+    },
+    {
+      title: 'Báo cáo chuyên sâu',
+      path: '/admin/bao-cao',
+      icon: FileText,
+      roles: ['admin']
+    },
+    {
+      title: 'Quản lý Nhân sự',
+      path: '/admin/nhan-su',
+      icon: Users,
+      roles: ['admin']
+    },
+    {
+      title: 'Quản lý Khách hàng',
+      path: '/admin/khach-hang',
+      icon: Users,
+      roles: ['admin']
+    },
+    {
+      title: 'Cài đặt hệ thống',
+      path: '/admin/cai-dat',
+      icon: Settings,
+      roles: ['admin']
+    }
+  ]
+
+  const menuItems = allMenuItems.filter(item => item.roles.includes(role))
+
+  return (
+    <aside className="w-64 bg-surface border-r border-outline-variant/30 flex flex-col flex-shrink-0 transition-all min-h-screen">
+      <div className="p-6 border-b border-outline-variant/30">
+        <h2 className="text-xl font-serif font-bold text-primary tracking-wider">TỪ TÂM PHỤC</h2>
+        <div className="mt-2 inline-block px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium uppercase tracking-wider">
+          {role === 'admin' ? 'Chủ cửa hàng' : role === 'shop_staff' ? 'NV Cửa hàng' : 'CSKH'}
+        </div>
+      </div>
+      
+      <div className="flex-1 overflow-y-auto py-4">
+        <nav className="space-y-1 px-3">
+          {menuItems.map((item) => {
+            const Icon = item.icon
+            const isActive = location.pathname.startsWith(item.path)
+            
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  isActive 
+                    ? 'bg-primary/10 text-primary' 
+                    : 'text-on-surface-variant hover:bg-surface-variant/50 hover:text-on-surface'
+                }`}
+              >
+                <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+                {item.title}
+              </Link>
+            )
+          })}
+        </nav>
+      </div>
+
+      <div className="p-4 border-t border-outline-variant/30">
+        <button 
+          onClick={logout}
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-error hover:bg-error/10 transition-colors"
+        >
+          <LogOut size={18} />
+          Đăng xuất
+        </button>
+      </div>
+    </aside>
+  )
+}

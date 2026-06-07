@@ -1,0 +1,200 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 40 30% 97%;
+    --foreground: 30 15% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 30 15% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 30 15% 15%;
+
+    --primary: 33 68% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 125 26% 41%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 40 15% 92%;
+    --muted-foreground: 30 10% 45%;
+
+    --accent: 14 67% 57%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 40 20% 88%;
+    --input: 40 20% 88%;
+    --ring: 33 68% 50%;
+
+    --radius: 0.5rem;
+
+    --chart-1: 33 68% 50%;
+    --chart-2: 125 26% 41%;
+    --chart-3: 14 67% 57%;
+    --chart-4: 200 60% 50%;
+    --chart-5: 270 50% 60%;
+  }
+
+  .dark {
+    --background: 30 15% 8%;
+    --foreground: 40 20% 92%;
+
+    --card: 30 12% 12%;
+    --card-foreground: 40 20% 92%;
+
+    --popover: 30 12% 12%;
+    --popover-foreground: 40 20% 92%;
+
+    --primary: 33 68% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 125 26% 45%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 30 10% 18%;
+    --muted-foreground: 30 10% 55%;
+
+    --accent: 14 67% 57%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 30 10% 22%;
+    --input: 30 10% 22%;
+    --ring: 33 68% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif font-semibold;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-muted;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-primary/40 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-primary/70;
+  }
+
+  /* Focus styles */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2;
+  }
+}
+
+@layer components {
+  /* Shimmer skeleton animation */
+  .skeleton {
+    @apply animate-shimmer bg-gradient-to-r from-muted via-muted/50 to-muted bg-[length:200%_100%];
+  }
+
+  /* Page transition wrapper */
+  .page-transition {
+    @apply animate-fade-in;
+  }
+
+  /* Container with max width */
+  .page-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Section spacing */
+  .section-padding {
+    @apply py-12 md:py-20;
+  }
+
+  /* Product card hover effect */
+  .product-card {
+    @apply bg-card rounded-xl overflow-hidden shadow-card transition-all duration-300 hover:shadow-card-hover hover:-translate-y-1;
+  }
+
+  /* Badge styles */
+  .badge-new {
+    @apply bg-secondary text-white text-xs font-medium px-2 py-0.5 rounded-full;
+  }
+
+  .badge-sale {
+    @apply bg-accent text-white text-xs font-medium px-2 py-0.5 rounded-full;
+  }
+
+  /* Input styles */
+  .input-field {
+    @apply w-full px-4 py-2.5 rounded-lg border border-input bg-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors;
+  }
+}
+
+@layer utilities {
+  /* Text gradient */
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
+  }
+
+  /* Gold gradient background */
+  .bg-gold-gradient {
+    @apply bg-gradient-to-r from-primary-fixed to-primary-fixed-dim;
+  }
+
+  /* Glass morphism */
+  .glass {
+    @apply bg-white/80 backdrop-blur-md border border-white/20;
+  }
+
+  .glass-dark {
+    @apply bg-black/40 backdrop-blur-md border border-white/10;
+  }
+
+  /* Line clamp utilities */
+  .line-clamp-1 { -webkit-line-clamp: 1; }
+  .line-clamp-2 { -webkit-line-clamp: 2; }
+  .line-clamp-3 { -webkit-line-clamp: 3; }
+
+  /* Admin layout default font overrides */
+  .font-sans h1, 
+  .font-sans h2, 
+  .font-sans h3, 
+  .font-sans h4, 
+  .font-sans h5, 
+  .font-sans h6 {
+    font-family: 'Montserrat', 'Inter', sans-serif;
+  }
+
+  .font-sans .font-serif,
+  .font-sans [class*="font-serif"],
+  .font-sans [class*="font-headline-"],
+  .font-sans [class*="font-display-"] {
+    font-family: 'Playfair Display', 'Georgia', serif;
+  }
+}

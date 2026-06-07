@@ -1,0 +1,263 @@
+import { useState } from 'react'
+import { 
+  Search, 
+  ChevronRight,
+  Ban,
+  UserCheck,
+  ChevronLeft,
+  ChevronRight as ChevronRightIcon,
+  X
+} from 'lucide-react'
+
+interface CustomerItem {
+  name: string
+  email: string
+  role: string // Customer Tier
+  date: string
+  status: string
+  img: string
+}
+
+export default function AdminCustomers() {
+  const [searchTerm, setSearchTerm] = useState('')
+  const [customers, setCustomers] = useState<CustomerItem[]>([
+    { name: "Minh Thu Tran", email: "minhthu@zenmail.vn", role: "Thành viên Vàng", date: "12/01/2024", status: "Hoạt động", img: "https://avatar.vercel.sh/minh" },
+    { name: "Hoang Nguyen", email: "hoang.n@lotus.com", role: "Tiêu chuẩn", date: "05/02/2024", status: "Hoạt động", img: "https://avatar.vercel.sh/hoang" },
+    { name: "Le Anh Vu", email: "vule@minimalist.vn", role: "Cao cấp", date: "22/03/2024", status: "Ngưng hoạt động", img: "https://avatar.vercel.sh/vu" },
+    { name: "Diep My", email: "diepmy@cloud.vn", role: "Tiêu chuẩn", date: "01/04/2024", status: "Hoạt động", img: "https://avatar.vercel.sh/diep" },
+    { name: "Tuan Anh", email: "tuan.admin@ttphuc.vn", role: "Tiêu chuẩn", date: "15/04/2024", status: "Hoạt động", img: "https://avatar.vercel.sh/tuan" }
+  ])
+
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerItem | null>(null)
+  const [tempTier, setTempTier] = useState('')
+
+  const toggleStatus = (name: string) => {
+    setCustomers(prev => prev.map(c => {
+      if (c.name === name) {
+        return { ...c, status: c.status === 'Hoạt động' ? 'Ngưng hoạt động' : 'Hoạt động' }
+      }
+      return c
+    }))
+  }
+
+  const handleOpenEdit = (customer: CustomerItem) => {
+    setSelectedCustomer(customer)
+    setTempTier(customer.role)
+    setIsModalOpen(true)
+  }
+
+  const handleSaveTier = () => {
+    if (selectedCustomer) {
+      setCustomers(prev => prev.map(c => {
+        if (c.name === selectedCustomer.name) {
+          return { ...c, role: tempTier }
+        }
+        return c
+      }))
+      setIsModalOpen(false)
+      setSelectedCustomer(null)
+    }
+  }
+
+  const filteredCustomers = customers.filter(c => 
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.role.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  return (
+    <div className="page-transition space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* Breadcrumbs & Header */}
+      <div>
+        <h2 className="font-headline-md text-headline-md text-primary mb-2">Quản lý khách hàng</h2>
+        <div className="flex items-center gap-2 font-caption text-caption text-on-surface-variant text-xs">
+          <span>Hệ thống</span>
+          <ChevronRight size={14} className="text-on-surface-variant/40" />
+          <span className="text-primary font-medium">Khách hàng</span>
+        </div>
+      </div>
+
+      {/* Search Input */}
+      <div className="flex items-center gap-4 bg-surface-container-low px-4 py-2 rounded-full border border-outline-variant/30 w-full md:w-96 transition-all focus-within:ring-1 focus-within:ring-primary/20">
+        <Search size={18} className="text-on-surface-variant opacity-60" />
+        <input 
+          type="text" 
+          placeholder="Tìm kiếm khách hàng..." 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="bg-transparent border-none focus:ring-0 w-full font-label-md text-label-md placeholder:text-on-surface-variant/50 p-0"
+        />
+      </div>
+
+      {/* Table Container */}
+      <div className="bg-surface-container-lowest shadow-[0_32px_64px_-12px_rgba(93,64,55,0.06)] rounded-xl overflow-hidden border border-outline-variant/10">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-surface-container-low/50">
+                <th className="px-8 py-5 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[11px]">Thông tin khách hàng</th>
+                <th className="px-8 py-5 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[11px]">Hạng thành viên</th>
+                <th className="px-8 py-5 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[11px]">Ngày tham gia</th>
+                <th className="px-8 py-5 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[11px]">Trạng thái</th>
+                <th className="px-8 py-5 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[11px] text-right">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-outline-variant/10">
+              {filteredCustomers.map((user, idx) => {
+                const isAct = user.status === 'Hoạt động'
+                return (
+                  <tr key={idx} className="hover:bg-surface-container-low/30 transition-colors group">
+                    <td className="px-8 py-4">
+                      <div className="flex items-center gap-3">
+                        <img 
+                          src={user.img} 
+                          alt={user.name} 
+                          className="w-10 h-10 rounded-full bg-secondary-container"
+                        />
+                        <div>
+                          <p className="font-body-md text-on-surface font-medium group-hover:text-primary transition-colors">{user.name}</p>
+                          <p className="font-caption text-on-surface-variant opacity-70 text-xs">{user.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-8 py-4">
+                      <span className="font-label-md text-on-surface-variant text-sm">{user.role}</span>
+                    </td>
+                    <td className="px-8 py-4">
+                      <span className="font-caption text-on-surface-variant text-xs">{user.date}</span>
+                    </td>
+                    <td className="px-8 py-4">
+                      <span className={`px-3 py-1 rounded-full font-label-md text-[11px] ${
+                        isAct ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                      }`}>
+                        {user.status}
+                      </span>
+                    </td>
+                    <td className="px-8 py-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <button 
+                          onClick={() => handleOpenEdit(user)}
+                          className="font-label-md text-label-md text-primary border border-primary/20 px-3 py-1 hover:bg-primary hover:text-white transition-all rounded-sm text-xs"
+                        >
+                          Chỉnh sửa
+                        </button>
+                        <button 
+                          onClick={() => toggleStatus(user.name)}
+                          className="font-label-md text-label-md text-on-surface-variant hover:text-red-600 transition-all p-1"
+                          title={isAct ? "Chặn khách hàng" : "Mở chặn khách hàng"}
+                        >
+                          {isAct ? <Ban size={18} /> : <UserCheck size={18} className="text-green-600" />}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+              {filteredCustomers.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-8 py-12 text-center text-on-surface-variant/60 font-body-md">
+                    Không tìm thấy khách hàng nào.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        {/* Pagination */}
+        <div className="px-8 py-6 flex justify-between items-center border-t border-outline-variant/10">
+          <p className="font-caption text-caption text-on-surface-variant text-xs">
+            Hiển thị 1 đến {filteredCustomers.length} trong số {filteredCustomers.length} khách hàng
+          </p>
+          <div className="flex gap-2">
+            <button className="p-2 border border-outline-variant rounded hover:bg-surface-container-low transition-colors">
+              <ChevronLeft size={16} />
+            </button>
+            <button className="p-2 border border-outline-variant rounded bg-primary text-white font-label-md px-3 text-xs">1</button>
+            <button className="p-2 border border-outline-variant rounded hover:bg-surface-container-low transition-colors">
+              <ChevronRightIcon size={16} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Edit Confirmation Modal */}
+      {isModalOpen && selectedCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl max-w-md w-full shadow-2xl p-6 relative animate-in slide-in-from-bottom-8 duration-500">
+            <button 
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-4 right-4 text-on-surface-variant hover:text-primary transition-colors p-1"
+            >
+              <X size={20} />
+            </button>
+            <h3 className="font-headline-sm text-headline-sm text-primary mb-4">Chỉnh sửa thông tin khách hàng</h3>
+            
+            {/* Simple UI Info Card */}
+            <div className="bg-surface-container-low p-4 rounded-lg mb-6 flex items-center gap-3 border border-outline-variant/10">
+              <img 
+                src={selectedCustomer.img} 
+                alt={selectedCustomer.name} 
+                className="w-12 h-12 rounded-full"
+              />
+              <div>
+                <p className="font-body-md text-on-surface font-semibold">{selectedCustomer.name}</p>
+                <p className="font-caption text-on-surface-variant text-xs">{selectedCustomer.email}</p>
+              </div>
+            </div>
+
+            {/* Inputs / Confirmation Fields */}
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="text-[11px] uppercase tracking-wider text-on-surface-variant opacity-75 font-semibold block mb-1">Hạng thành viên</label>
+                <select 
+                  value={tempTier}
+                  onChange={(e) => setTempTier(e.target.value)}
+                  className="w-full bg-surface-container-low border border-outline-variant/30 rounded px-3 py-2 text-sm text-primary focus:ring-1 focus:ring-primary/20 cursor-pointer"
+                >
+                  <option value="Thành viên Vàng">Thành viên Vàng</option>
+                  <option value="Cao cấp">Cao cấp</option>
+                  <option value="Tiêu chuẩn">Tiêu chuẩn</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="px-4 py-2 border border-outline-variant/50 rounded font-label-md text-xs text-on-surface-variant hover:bg-surface-container-low transition-colors"
+              >
+                Hủy bỏ
+              </button>
+              <button 
+                onClick={handleSaveTier}
+                className="px-5 py-2 bg-primary text-white rounded font-label-md text-xs hover:bg-on-primary-fixed-variant transition-colors"
+              >
+                Xác nhận thay đổi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ambient Atmospheric Visual */}
+      <div className="mt-20 flex flex-col lg:flex-row items-center justify-between gap-12 opacity-80">
+        <div className="w-full lg:w-1/2">
+          <img 
+            alt="Zen Meditation Hall" 
+            className="w-full h-64 object-cover rounded-xl grayscale-[0.2]" 
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDXTR72mS_tpYaUzngptRVjEUZgqtyRYEudz2Y4vddpWGZFG-U7ADCdjMD8AKaFqF-jdR1biH3_nw2CnPaCMa1IRuRjJUPh9Oq8Ks5LnyzSWYq5Lss2dut-ZZkDKLfUrp8ULPnmT42aw_eETQTCE2K3L63cB5-Ljkg5ihzU1N3kjE8_sP_KBkytjZicEcZIZeXplCh7AyK90q_WgnHoC0wdx4ivBbBeiQIMEqK7H8J0oDlmGi5In6WTHZABXqguPiTuv3YRDHW1l0tf"
+          />
+        </div>
+        <div className="w-full lg:w-1/2 lg:pr-12">
+          <h3 className="font-headline-sm text-headline-sm text-primary mb-4">Gieo duyên cộng đồng</h3>
+          <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed text-sm">
+            Tại Từ Tâm Phục, chúng tôi coi mỗi người dùng là một người bạn đồng hành trên hành trình tâm linh. Việc quản lý nền tảng của chúng tôi được dẫn dắt bởi sự tỉnh thức và rõ ràng, đảm bảo mọi tương tác đều nhẹ nhàng như tơ lụa chúng tôi dệt nên.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
