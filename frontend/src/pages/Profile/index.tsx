@@ -1,25 +1,25 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { 
-  User as UserIcon, 
-  ShoppingBag, 
-  MapPin, 
-  Lock, 
-  LogOut, 
-  Camera, 
-  Save, 
-  CheckCircle, 
-  Clock, 
-  Plus, 
-  Trash2, 
-  Eye, 
-  EyeOff, 
+import {
+  User as UserIcon,
+  ShoppingBag,
+  MapPin,
+  Lock,
+  LogOut,
+  Camera,
+  Save,
+  CheckCircle,
+  Clock,
+  Plus,
+  Trash2,
+  Eye,
+  EyeOff,
   ShieldAlert,
   Sparkles,
-  ChevronRight,
   ExternalLink,
-  Ticket
+  Ticket,
+  Heart
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { PRODUCTS } from '../../data';
@@ -257,12 +257,14 @@ const MOCK_VOUCHERS: Voucher[] = [
   }
 ];
 
+const MOCK_FAVORITES = PRODUCTS.slice(0, 3);
+
 export default function ProfilePage() {
   const { user, isAuthenticated, updateUser, logout } = useAuthStore();
   const navigate = useNavigate();
 
   // Selected sub-tab
-  const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'addresses' | 'offers'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'favorites' | 'addresses' | 'offers'>('profile');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   // Order status sub-filters
@@ -342,7 +344,7 @@ export default function ProfilePage() {
 
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Update profile details
     updateUser({
       full_name: fullName,
@@ -350,7 +352,7 @@ export default function ProfilePage() {
       phone,
       avatar: avatarUrl
     });
-    
+
     // Check password fields
     if (currentPassword || newPassword || confirmPassword) {
       if (!currentPassword || !newPassword || !confirmPassword) {
@@ -453,7 +455,7 @@ export default function ProfilePage() {
   if (!isAuthenticated && !user) {
     return (
       <main className="min-h-screen bg-[#fcfaf7] pt-32 pb-24 flex items-center justify-center font-sans">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="max-w-md w-full bg-white border border-[#d4c3be]/40 p-8 rounded-lg text-center shadow-lg mx-4"
@@ -464,13 +466,13 @@ export default function ProfilePage() {
             Chào mừng quý khách đến với Từ Tâm Phục. Vui lòng đăng nhập hoặc tạo tài khoản mới để quản lý đơn đặt hàng và địa chỉ giao nhận của mình.
           </p>
           <div className="flex gap-4 justify-center">
-            <Link 
+            <Link
               to="/login"
               className="px-6 py-3 bg-primary text-white font-semibold text-xs tracking-wider uppercase rounded-xs hover:bg-[#2c160e] transition-colors"
             >
               Đăng nhập
             </Link>
-            <Link 
+            <Link
               to="/register"
               className="px-6 py-3 border border-[#d4c3be] text-on-surface font-semibold text-xs tracking-wider uppercase rounded-xs hover:bg-[#ece0dc]/30 transition-colors"
             >
@@ -485,7 +487,7 @@ export default function ProfilePage() {
   return (
     <main className="min-h-screen bg-[#fcfaf7] pt-32 pb-24 font-sans text-xs md:text-sm text-on-surface">
       <div className="max-w-7xl mx-auto px-6 md:px-16 w-full">
-        
+
         {/* Title */}
         <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[#eeeeee] pb-6">
           <div>
@@ -503,99 +505,112 @@ export default function ProfilePage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
-          
+
           {/* Left panel menu cards */}
-          <div className="lg:col-span-1 flex flex-col gap-6">
+          <div className="lg:col-span-1 flex flex-col gap-6 sticky top-32">
             {/* Short Profile Header */}
-            <div className="bg-white border border-[#d4c3be]/40 rounded-sm p-6 flex flex-col items-center text-center shadow-xs">
-              <div className="relative group mb-3">
-                <img 
+            <div className="flex items-center gap-4 mb-4">
+              <div className="relative group w-16 h-16 rounded-full overflow-hidden bg-surface-container border border-outline-variant shadow-xs">
+                <img
                   alt={user?.full_name}
                   src={avatarUrl}
-                  className="w-20 h-20 rounded-full object-cover border border-[#d4c3be]/50"
+                  className="w-full h-full object-cover"
                 />
-                <button 
+                <button
                   onClick={() => {
                     const newUrl = prompt('Nhập đường dẫn URL ảnh đại diện mới của bạn:', avatarUrl);
                     if (newUrl) setAvatarUrl(newUrl);
                   }}
-                  className="absolute bottom-0 right-0 p-1.5 bg-primary text-white rounded-full hover:scale-105 transition-transform cursor-pointer"
+                  className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity duration-300 cursor-pointer border-none"
                   title="Thay ảnh đại diện"
                 >
-                  <Camera size={12} />
+                  <Camera size={14} />
                 </button>
               </div>
-              <h3 className="font-serif text-base font-bold text-primary">{user?.full_name}</h3>
-              <span className="text-[10px] bg-[#ece0dc]/60 text-primary font-semibold px-2 py-0.5 rounded-full mt-1.5 border border-[#d4c3be]/20">
-                Thành viên Từ Tâm
-              </span>
+              <div>
+                <p className="font-headline-sm text-headline-sm text-primary leading-tight">{user?.full_name}</p>
+                <p className="font-caption text-caption text-on-secondary-fixed-variant">Khách hàng thành viên</p>
+              </div>
             </div>
 
             {/* Selection tabs */}
-            <div className="bg-white border border-[#d4c3be]/40 rounded-sm overflow-hidden shadow-xs">
-              <button 
+            <nav className="flex flex-col gap-6 pl-2">
+              <button
                 onClick={() => setActiveTab('profile')}
-                className={`w-full text-left px-5 py-3.5 flex items-center justify-between border-b border-[#eeeeee] transition-all font-semibold ${
-                  activeTab === 'profile' ? 'bg-[#ece0dc]/30 text-primary border-l-4 border-l-primary pl-4' : 'hover:bg-[#fcfaf7]'
+                className={`flex items-center gap-3 text-left transition-all duration-500 font-label-md text-label-md tracking-normal bg-transparent border-none cursor-pointer ${
+                  activeTab === 'profile'
+                    ? 'text-primary font-bold'
+                    : 'text-on-secondary-fixed-variant hover:text-primary'
                 }`}
               >
-                <span className="flex items-center gap-2.5">
-                  <UserIcon size={15} /> Thông tin cá nhân
-                </span>
-                <ChevronRight size={14} className="opacity-45" />
+                <UserIcon size={20} />
+                <span>Thông tin cá nhân</span>
               </button>
-              
-              <button 
-                onClick={() => setActiveTab('orders')}
-                className={`w-full text-left px-5 py-3.5 flex items-center justify-between border-b border-[#eeeeee] transition-all font-semibold ${
-                  activeTab === 'orders' ? 'bg-[#ece0dc]/30 text-primary border-l-4 border-l-primary pl-4' : 'hover:bg-[#fcfaf7]'
-                }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <ShoppingBag size={15} /> Lịch sử đơn hàng
-                </span>
-                <ChevronRight size={14} className="opacity-45" />
-              </button>
-              
-              <button 
-                onClick={() => setActiveTab('addresses')}
-                className={`w-full text-left px-5 py-3.5 flex items-center justify-between border-b border-[#eeeeee] transition-all font-semibold ${
-                  activeTab === 'addresses' ? 'bg-[#ece0dc]/30 text-primary border-l-4 border-l-primary pl-4' : 'hover:bg-[#fcfaf7]'
-                }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <MapPin size={15} /> Sổ địa chỉ nhận hàng
-                </span>
-                <ChevronRight size={14} className="opacity-45" />
-              </button>
-              
-              <button 
-                onClick={() => setActiveTab('offers')}
-                className={`w-full text-left px-5 py-3.5 flex items-center justify-between border-b border-[#eeeeee] transition-all font-semibold ${
-                  activeTab === 'offers' ? 'bg-[#ece0dc]/30 text-primary border-l-4 border-l-primary pl-4' : 'hover:bg-[#fcfaf7]'
-                }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <Ticket size={15} /> Kho ưu đãi của tôi
-                </span>
-                <ChevronRight size={14} className="opacity-45" />
-              </button>
-              
-              {/* Security tab is now integrated into personal info */}
 
-              <button 
-                onClick={handleLogout}
-                className="w-full text-left px-5 py-4 flex items-center gap-2.5 text-error hover:bg-error/5 transition-all font-semibold border-none cursor-pointer bg-transparent"
+              <button
+                onClick={() => setActiveTab('orders')}
+                className={`flex items-center gap-3 text-left transition-all duration-500 font-label-md text-label-md tracking-normal bg-transparent border-none cursor-pointer ${
+                  activeTab === 'orders'
+                    ? 'text-primary font-bold'
+                    : 'text-on-secondary-fixed-variant hover:text-primary'
+                }`}
               >
-                <LogOut size={15} /> Đăng xuất tài khoản
+                <ShoppingBag size={20} />
+                <span>Đơn hàng của tôi</span>
               </button>
-            </div>
+
+              <button
+                onClick={() => setActiveTab('favorites')}
+                className={`flex items-center gap-3 text-left transition-all duration-500 font-label-md text-label-md tracking-normal bg-transparent border-none cursor-pointer ${
+                  activeTab === 'favorites'
+                    ? 'text-primary font-bold'
+                    : 'text-on-secondary-fixed-variant hover:text-primary'
+                }`}
+              >
+                <Heart size={20} />
+                <span>Sản phẩm yêu thích</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('addresses')}
+                className={`flex items-center gap-3 text-left transition-all duration-500 font-label-md text-label-md tracking-normal bg-transparent border-none cursor-pointer ${
+                  activeTab === 'addresses'
+                    ? 'text-primary font-bold'
+                    : 'text-on-secondary-fixed-variant hover:text-primary'
+                }`}
+              >
+                <MapPin size={20} />
+                <span>Địa chỉ</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('offers')}
+                className={`flex items-center gap-3 text-left transition-all duration-500 font-label-md text-label-md tracking-normal bg-transparent border-none cursor-pointer ${
+                  activeTab === 'offers'
+                    ? 'text-primary font-bold'
+                    : 'text-on-secondary-fixed-variant hover:text-primary'
+                }`}
+              >
+                <Ticket size={20} />
+                <span>Kho ưu đãi</span>
+              </button>
+
+              <div className="h-[1px] bg-outline-variant/30 my-2" />
+
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-3 text-left transition-all duration-500 font-label-md text-label-md tracking-normal text-on-secondary-fixed-variant hover:text-error bg-transparent border-none cursor-pointer"
+              >
+                <LogOut size={20} />
+                <span>Đăng xuất</span>
+              </button>
+            </nav>
           </div>
 
           {/* Right main panel display details */}
           <div className="lg:col-span-3">
-            <div className="bg-white border border-[#d4c3be]/40 rounded-sm p-6 md:p-8 min-h-[420px] shadow-xs relative">
-              
+            <div className="min-h-[420px] relative w-full lg:pl-8">
+
               {/* Tab 1: Profile Editing / Viewing */}
               {activeTab === 'profile' && (
                 <motion.div
@@ -603,14 +618,14 @@ export default function ProfilePage() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <div className="flex justify-between items-center mb-6 border-b border-[#eeeeee] pb-2">
+                  <div className="flex justify-between items-center mb-10 border-b border-[#eeeeee] pb-4">
                     <h2 className="font-serif text-lg font-bold text-primary uppercase tracking-wide flex items-center gap-2">
                       <Sparkles size={16} /> Thông Tin Cá Nhân
                     </h2>
                     {!isEditingProfile && (
                       <button
                         onClick={() => setIsEditingProfile(true)}
-                        className="px-4 py-2 border border-primary text-primary hover:bg-[#ece0dc]/40 font-semibold text-xs tracking-wider uppercase transition-colors flex items-center gap-1.5 rounded-xs cursor-pointer bg-transparent"
+                        className="px-6 py-2.5 border border-primary text-primary hover:bg-[#ece0dc]/40 font-semibold text-xs tracking-wider uppercase transition-colors flex items-center gap-1.5 cursor-pointer bg-transparent"
                       >
                         <Save size={13} /> Thay đổi thông tin
                       </button>
@@ -625,39 +640,39 @@ export default function ProfilePage() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
                         transition={{ duration: 0.2 }}
-                        className="space-y-6"
+                        className="space-y-8"
                       >
                         {/* Personal Details Cards */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                          <div className="p-4 border border-[#d4c3be]/30 bg-[#fcfaf7] rounded-sm space-y-1">
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant">Họ và tên</span>
-                            <p className="font-serif font-bold text-[#442a22] text-sm">{fullName}</p>
-                          </div>
-                          
-                          <div className="p-4 border border-[#d4c3be]/30 bg-[#fcfaf7] rounded-sm space-y-1">
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant">Số điện thoại</span>
-                            <p className="font-semibold text-on-surface text-sm">{phone}</p>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                          <div className="border-b border-[#d4c3be]/30 py-2 space-y-1">
+                            <span className="block font-caption text-caption text-on-secondary-fixed-variant uppercase tracking-widest">Họ và tên</span>
+                            <p className="font-body-lg text-body-lg text-primary">{fullName}</p>
                           </div>
 
-                          <div className="p-4 border border-[#d4c3be]/30 bg-[#fcfaf7] rounded-sm space-y-1">
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant">Địa chỉ Email</span>
-                            <p className="font-semibold text-on-surface text-sm">{email}</p>
+                          <div className="border-b border-[#d4c3be]/30 py-2 space-y-1">
+                            <span className="block font-caption text-caption text-on-secondary-fixed-variant uppercase tracking-widest">Số điện thoại</span>
+                            <p className="font-body-lg text-body-lg text-primary">{phone}</p>
+                          </div>
+
+                          <div className="border-b border-[#d4c3be]/30 py-2 space-y-1">
+                            <span className="block font-caption text-caption text-on-secondary-fixed-variant uppercase tracking-widest">Địa chỉ Email</span>
+                            <p className="font-body-lg text-body-lg text-primary">{email}</p>
                           </div>
                         </div>
 
                         {/* Shipping Address Read-only block */}
-                        <div className="p-5 border border-[#d4c3be]/30 rounded-sm space-y-3.5 bg-white">
-                          <div className="flex items-center gap-2 text-primary">
+                        <div className="space-y-4 pt-4">
+                          <div className="flex items-center gap-2 text-primary border-b border-[#d4c3be]/30 pb-2">
                             <MapPin size={16} />
                             <h3 className="font-serif font-bold text-sm uppercase tracking-wider">Địa chỉ giao hàng hiện tại</h3>
                           </div>
-                          
-                          <p className="text-xs text-on-surface font-semibold leading-relaxed bg-[#fcfaf7] p-3.5 border border-[#eeeeee] rounded-xs">
+
+                          <p className="text-sm text-on-surface font-semibold leading-relaxed py-1">
                             {shippingAddress}
                           </p>
 
                           {/* Map Widget (Read-Only Preview) */}
-                          <div className="border border-[#eeeeee] rounded-xs overflow-hidden h-[180px] bg-[#e5e3df]">
+                          <div className="border border-[#eeeeee] rounded-xs overflow-hidden h-[180px] bg-[#e5e3df] max-w-2xl">
                             <iframe
                               title="Google Map ReadOnly Preview"
                               src={`https://maps.google.com/maps?q=${encodeURIComponent(shippingAddress)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
@@ -668,12 +683,12 @@ export default function ProfilePage() {
                         </div>
 
                         {/* Security Details Card */}
-                        <div className="p-5 border border-[#d4c3be]/30 bg-[#fcfaf7] rounded-sm flex items-center justify-between">
+                        <div className="border-t border-[#d4c3be]/30 pt-6 flex items-center justify-between max-w-2xl">
                           <div className="space-y-1">
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant">Mật khẩu tài khoản</span>
+                            <span className="block font-caption text-caption text-on-secondary-fixed-variant uppercase tracking-widest">Mật khẩu tài khoản</span>
                             <p className="font-mono text-[#442a22] text-sm">••••••••••••</p>
                           </div>
-                          <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2.5 py-1 rounded-full uppercase tracking-wider border border-emerald-100 flex items-center gap-1">
+                          <span className="text-[10px] bg-emerald-50/50 text-emerald-700 font-bold px-3 py-1 rounded-full uppercase tracking-wider border border-emerald-100 flex items-center gap-1">
                             <Lock size={10} /> Đã bảo vệ
                           </span>
                         </div>
@@ -685,7 +700,7 @@ export default function ProfilePage() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
                         transition={{ duration: 0.2 }}
-                        className="bg-[#fcfaf7] border border-[#d4c3be]/40 rounded-sm p-6 space-y-6"
+                        className="space-y-8"
                       >
                         <div className="flex justify-between items-center border-b border-[#eeeeee] pb-3">
                           <h3 className="font-serif font-bold text-primary text-sm uppercase">Cập nhật thông tin chi tiết</h3>
@@ -698,58 +713,58 @@ export default function ProfilePage() {
                           </button>
                         </div>
 
-                        <form onSubmit={handleUpdateProfile} className="space-y-6">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <form onSubmit={handleUpdateProfile} className="space-y-8 max-w-2xl">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div>
-                              <label className="block text-[11px] uppercase tracking-widest font-semibold text-primary mb-2">Họ và tên</label>
-                              <input 
+                              <label className="block font-caption text-caption text-on-secondary-fixed-variant uppercase tracking-widest mb-1.5">Họ và tên</label>
+                              <input
                                 type="text"
                                 value={fullName}
                                 onChange={(e) => setFullName(e.target.value)}
-                                className="w-full px-3.5 py-2.5 border border-[#d4c3be] rounded-sm focus:border-primary focus:ring-0 text-xs md:text-sm bg-white"
+                                className="input-line font-body-md text-body-md"
                                 required
                               />
                             </div>
                             <div>
-                              <label className="block text-[11px] uppercase tracking-widest font-semibold text-primary mb-2">Số điện thoại</label>
-                              <input 
+                              <label className="block font-caption text-caption text-on-secondary-fixed-variant uppercase tracking-widest mb-1.5">Số điện thoại</label>
+                              <input
                                 type="tel"
                                 value={phone}
                                 onChange={(e) => setPhone(e.target.value)}
-                                className="w-full px-3.5 py-2.5 border border-[#d4c3be] rounded-sm focus:border-primary focus:ring-0 text-xs md:text-sm bg-white"
+                                className="input-line font-body-md text-body-md"
                                 required
                               />
                             </div>
                           </div>
 
                           <div>
-                            <label className="block text-[11px] uppercase tracking-widest font-semibold text-primary mb-2">Địa chỉ Email</label>
-                            <input 
+                            <label className="block font-caption text-caption text-on-secondary-fixed-variant uppercase tracking-widest mb-1.5">Địa chỉ Email</label>
+                            <input
                               type="email"
                               value={email}
                               onChange={(e) => setEmail(e.target.value)}
-                              className="w-full px-3.5 py-2.5 border border-[#d4c3be] rounded-sm focus:border-primary focus:ring-0 text-xs md:text-sm bg-white"
+                              className="input-line font-body-md text-body-md"
                               required
                             />
                           </div>
 
                           {/* Địa chỉ giao hàng & Google Map */}
-                          <div className="w-full h-px bg-[#eeeeee] my-6" />
-                          
+                          <div className="w-full h-[1px] bg-[#eeeeee] my-6" />
+
                           <div className="space-y-4">
                             <h3 className="font-serif text-sm font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
                               <MapPin size={15} /> Địa Chỉ Giao Hàng & Định Vị Bản Đồ
                             </h3>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
                               <div className="md:col-span-2">
-                                <label className="block text-[11px] uppercase tracking-widest font-semibold text-primary mb-2">Địa chỉ nhận hàng</label>
-                                <input 
+                                <label className="block font-caption text-caption text-on-secondary-fixed-variant uppercase tracking-widest mb-1.5">Địa chỉ nhận hàng</label>
+                                <input
                                   type="text"
                                   value={shippingAddress}
                                   onChange={(e) => setShippingAddress(e.target.value)}
                                   placeholder="Nhập địa chỉ cụ thể của bạn..."
-                                  className="w-full px-3.5 py-2.5 border border-[#d4c3be] rounded-sm focus:border-primary focus:ring-0 text-xs md:text-sm bg-white"
+                                  className="input-line font-body-md text-body-md"
                                   required
                                 />
                               </div>
@@ -758,7 +773,7 @@ export default function ProfilePage() {
                                   type="button"
                                   onClick={handleLocateUser}
                                   disabled={isLoadingLocation}
-                                  className="w-full py-2.5 border border-primary text-primary hover:bg-primary/5 font-semibold text-xs tracking-wider uppercase rounded-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 h-[38px] bg-transparent"
+                                  className="w-full py-2 border border-primary text-primary hover:bg-primary/5 font-semibold text-xs tracking-wider uppercase flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 h-[38px] bg-transparent"
                                 >
                                   <Sparkles size={13} className={isLoadingLocation ? "animate-spin" : ""} />
                                   {isLoadingLocation ? 'Đang định vị...' : 'Định vị GPS'}
@@ -767,7 +782,7 @@ export default function ProfilePage() {
                             </div>
 
                             {/* Interactive Google Map Mockup / Iframe */}
-                            <div className="border border-[#d4c3be]/60 rounded-sm overflow-hidden bg-white shadow-xs">
+                            <div className="border border-[#d4c3be]/60 overflow-hidden bg-white shadow-xs">
                               {/* Map Header Search */}
                               <div className="bg-[#fcfaf7] px-4 py-2 border-b border-[#d4c3be]/40 flex gap-2 items-center">
                                 <span className="text-[10px] uppercase font-bold text-primary">Google Map Preview:</span>
@@ -782,14 +797,14 @@ export default function ProfilePage() {
                                       if (mapSearch) setShippingAddress(mapSearch);
                                     }
                                   }}
-                                  className="flex-1 px-3 py-1 border border-[#d4c3be]/80 rounded-sm text-xs focus:outline-none focus:border-primary bg-white h-7"
+                                  className="flex-1 input-line font-caption text-caption h-7 py-1"
                                 />
                                 <button
                                   type="button"
                                   onClick={() => {
                                     if (mapSearch) setShippingAddress(mapSearch);
                                   }}
-                                  className="px-3 py-1 bg-primary text-white font-semibold text-[10px] uppercase tracking-wider rounded-sm hover:bg-[#2c160e] h-7 border-none cursor-pointer"
+                                  className="px-3 py-1 bg-primary text-white font-semibold text-[10px] uppercase tracking-wider hover:bg-[#2c160e] h-7 border-none cursor-pointer"
                                 >
                                   Tìm
                                 </button>
@@ -812,20 +827,20 @@ export default function ProfilePage() {
                                     Vui lòng nhập địa chỉ để xem bản đồ định vị
                                   </div>
                                 )}
-                                
+
                                 {/* Map zoom controls widget */}
                                 <div className="absolute bottom-3 right-3 flex flex-col gap-1 z-10">
                                   <button
                                     type="button"
                                     onClick={() => setMapZoom(prev => Math.min(20, prev + 1))}
-                                    className="w-7 h-7 bg-white text-on-surface font-bold rounded-sm border border-[#d4c3be]/80 shadow-sm flex items-center justify-center hover:bg-surface-container hover:scale-105 active:scale-95 text-sm cursor-pointer"
+                                    className="w-7 h-7 bg-white text-on-surface font-bold border border-[#d4c3be]/80 shadow-sm flex items-center justify-center hover:bg-surface-container hover:scale-105 active:scale-95 text-sm cursor-pointer"
                                   >
                                     +
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => setMapZoom(prev => Math.max(1, prev - 1))}
-                                    className="w-7 h-7 bg-white text-on-surface font-bold rounded-sm border border-[#d4c3be]/80 shadow-sm flex items-center justify-center hover:bg-surface-container hover:scale-105 active:scale-95 text-sm cursor-pointer"
+                                    className="w-7 h-7 bg-white text-on-surface font-bold border border-[#d4c3be]/80 shadow-sm flex items-center justify-center hover:bg-surface-container hover:scale-105 active:scale-95 text-sm cursor-pointer"
                                   >
                                     -
                                   </button>
@@ -835,27 +850,27 @@ export default function ProfilePage() {
                           </div>
 
                           {/* Đổi mật khẩu section */}
-                          <div className="w-full h-px bg-[#eeeeee] my-6" />
-                          
+                          <div className="w-full h-[1px] bg-[#eeeeee] my-6" />
+
                           <div className="space-y-4">
                             <h3 className="font-serif text-sm font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
                               <Lock size={15} /> Thiết Lập Bảo Mật & Đổi Mật Khẩu
                             </h3>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                               <div className="relative">
-                                <label className="block text-[11px] uppercase tracking-widest font-semibold text-primary mb-2">Mật khẩu hiện tại</label>
+                                <label className="block font-caption text-caption text-on-secondary-fixed-variant uppercase tracking-widest mb-1.5">Mật khẩu hiện tại</label>
                                 <div className="relative">
-                                  <input 
+                                  <input
                                     type={showCurrentPw ? 'text' : 'password'}
                                     value={currentPassword}
                                     onChange={(e) => setCurrentPassword(e.target.value)}
-                                    className="w-full px-3.5 py-2.5 border border-[#d4c3be] rounded-sm focus:border-primary text-xs md:text-sm bg-white"
+                                    className="input-line font-body-md text-body-md pr-10"
                                   />
                                   <button
                                     type="button"
                                     onClick={() => setShowCurrentPw(!showCurrentPw)}
-                                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors bg-transparent border-none cursor-pointer"
+                                    className="absolute right-0 bottom-2 text-on-surface-variant hover:text-primary transition-colors bg-transparent border-none cursor-pointer"
                                   >
                                     {showCurrentPw ? <EyeOff size={16} /> : <Eye size={16} />}
                                   </button>
@@ -863,18 +878,18 @@ export default function ProfilePage() {
                               </div>
 
                               <div className="relative">
-                                <label className="block text-[11px] uppercase tracking-widest font-semibold text-primary mb-2">Mật khẩu mới</label>
+                                <label className="block font-caption text-caption text-on-secondary-fixed-variant uppercase tracking-widest mb-1.5">Mật khẩu mới</label>
                                 <div className="relative">
-                                  <input 
+                                  <input
                                     type={showNewPw ? 'text' : 'password'}
                                     value={newPassword}
                                     onChange={(e) => setNewPassword(e.target.value)}
-                                    className="w-full px-3.5 py-2.5 border border-[#d4c3be] rounded-sm focus:border-primary text-xs md:text-sm bg-white"
+                                    className="input-line font-body-md text-body-md pr-10"
                                   />
                                   <button
                                     type="button"
                                     onClick={() => setShowNewPw(!showNewPw)}
-                                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors bg-transparent border-none cursor-pointer"
+                                    className="absolute right-0 bottom-2 text-on-surface-variant hover:text-primary transition-colors bg-transparent border-none cursor-pointer"
                                   >
                                     {showNewPw ? <EyeOff size={16} /> : <Eye size={16} />}
                                   </button>
@@ -883,12 +898,12 @@ export default function ProfilePage() {
                             </div>
 
                             <div className="w-full">
-                              <label className="block text-[11px] uppercase tracking-widest font-semibold text-primary mb-2">Xác nhận mật khẩu mới</label>
-                              <input 
+                              <label className="block font-caption text-caption text-on-secondary-fixed-variant uppercase tracking-widest mb-1.5">Xác nhận mật khẩu mới</label>
+                              <input
                                 type="password"
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
-                                className="w-full px-3.5 py-2.5 border border-[#d4c3be] rounded-sm focus:border-primary text-xs md:text-sm bg-white"
+                                className="input-line font-body-md text-body-md"
                               />
                             </div>
                           </div>
@@ -897,13 +912,13 @@ export default function ProfilePage() {
                             <button
                               type="button"
                               onClick={() => setIsEditingProfile(false)}
-                              className="px-6 py-3 border border-[#eeeeee] hover:bg-[#eeeeee]/40 text-on-surface font-semibold text-xs tracking-wider uppercase rounded-xs transition-colors cursor-pointer bg-transparent"
+                              className="px-8 py-3 border border-outline-variant hover:bg-[#ece0dc]/20 text-on-secondary-fixed-variant font-semibold text-xs tracking-wider uppercase transition-colors cursor-pointer bg-transparent"
                             >
                               Hủy
                             </button>
                             <button
                               type="submit"
-                              className="px-6 py-3 bg-primary text-white font-semibold text-xs tracking-wider uppercase rounded-xs hover:bg-[#2c160e] transition-colors flex items-center gap-2 cursor-pointer border-none"
+                              className="px-8 py-3 border border-primary text-primary hover:bg-primary/5 font-semibold text-xs tracking-wider uppercase transition-colors flex items-center gap-2 cursor-pointer bg-transparent"
                             >
                               <Save size={13} /> Lưu thông tin mới
                             </button>
@@ -913,7 +928,76 @@ export default function ProfilePage() {
                     )}
                   </AnimatePresence>
                 </motion.div>
-              )} 
+              )}
+
+              {/* Tab 1.2: Favorites (Sản phẩm yêu thích) */}
+              {activeTab === 'favorites' && (
+                <motion.div
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <div className="flex justify-between items-center mb-10 border-b border-[#eeeeee] pb-4">
+                    <h2 className="font-serif text-lg font-bold text-primary uppercase tracking-wide flex items-center gap-2">
+                      <Heart size={16} /> Sản phẩm yêu thích
+                    </h2>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    {MOCK_FAVORITES.map((product) => (
+                      <div key={product.id} className="group relative bg-[#fcfaf7] border border-[#d4c3be]/40 overflow-hidden rounded-sm transition-all duration-300 hover:shadow-md flex flex-col h-full justify-between">
+                        {/* Product Image */}
+                        <div className="aspect-[3/4] overflow-hidden bg-white relative">
+                          <img
+                            src={product.images[0]}
+                            alt={product.name}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                          {/* Heart Icon Button (Active Favorite) */}
+                          <button
+                            type="button"
+                            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center text-error border-none cursor-pointer hover:scale-110 transition-transform"
+                            onClick={() => showToast('Đã xóa khỏi danh sách yêu thích', 'info')}
+                          >
+                            <Heart size={16} fill="currentColor" />
+                          </button>
+                        </div>
+
+                        {/* Product Details */}
+                        <div className="p-4 flex flex-col justify-between flex-1">
+                          <div>
+                            <p className="text-[10px] text-on-secondary-fixed-variant uppercase tracking-widest font-semibold mb-1">
+                              {product.category}
+                            </p>
+                            <Link to={`/san-pham/${product.id}`} className="font-serif font-bold text-sm text-[#442a22] hover:text-primary transition-colors block line-clamp-1">
+                              {product.name}
+                            </Link>
+                          </div>
+                          
+                          <div className="mt-3 flex items-center justify-between border-t border-[#eeeeee] pt-2">
+                            <span className="font-serif font-bold text-primary text-xs">
+                              {formatPrice(product.price)}
+                            </span>
+                            <Link
+                              to={`/san-pham/${product.id}`}
+                              className="text-[10px] uppercase font-extrabold tracking-wider text-primary hover:text-primary-container transition-colors"
+                            >
+                              Mua ngay
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {MOCK_FAVORITES.length === 0 && (
+                      <div className="col-span-3 py-16 flex flex-col items-center justify-center text-on-surface-variant/60 gap-2 border border-dashed border-[#d4c3be]/50 rounded-sm w-full">
+                        <Heart size={28} className="opacity-40" />
+                        <p className="text-xs font-medium">Chưa có sản phẩm yêu thích nào.</p>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
 
               {/* Tab 1.5: Offers / Vouchers */}
               {activeTab === 'offers' && (
@@ -944,16 +1028,14 @@ export default function ProfilePage() {
                           key={subTab.key}
                           type="button"
                           onClick={() => setVoucherFilter(subTab.key as any)}
-                          className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
-                            isActive 
-                              ? 'border-primary text-primary' 
+                          className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${isActive
+                              ? 'border-primary text-primary'
                               : 'border-transparent text-on-surface-variant hover:text-primary'
-                          }`}
+                            }`}
                         >
                           {subTab.label}
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                            isActive ? 'bg-primary text-white' : 'bg-[#eeeeee] text-on-surface-variant'
-                          }`}>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${isActive ? 'bg-primary text-white' : 'bg-[#eeeeee] text-on-surface-variant'
+                            }`}>
                             {count}
                           </span>
                         </button>
@@ -974,11 +1056,10 @@ export default function ProfilePage() {
                           key={typeFilter.key}
                           type="button"
                           onClick={() => setVoucherTypeFilter(typeFilter.key as any)}
-                          className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded-full transition-all border cursor-pointer whitespace-nowrap ${
-                            isActive 
-                              ? 'bg-primary text-white border-primary' 
+                          className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded-full transition-all border cursor-pointer whitespace-nowrap ${isActive
+                              ? 'bg-primary text-white border-primary'
                               : 'bg-transparent text-on-surface-variant border-[#d4c3be]/40 hover:border-primary hover:text-primary'
-                          }`}
+                            }`}
                         >
                           {typeFilter.label}
                         </button>
@@ -990,26 +1071,24 @@ export default function ProfilePage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {filteredVouchers.length > 0 ? (
                       filteredVouchers.map((voucher) => (
-                        <div 
+                        <div
                           key={voucher.id}
-                          className={`flex border rounded-sm overflow-hidden bg-white relative transition-all ${
-                            voucher.status === 'active' 
-                              ? 'border-[#d4c3be]/60 shadow-xs hover:shadow-md' 
+                          className={`flex border rounded-sm overflow-hidden bg-white relative transition-all ${voucher.status === 'active'
+                              ? 'border-[#d4c3be]/60 shadow-xs hover:shadow-md'
                               : 'border-[#eeeeee] opacity-65'
-                          }`}
+                            }`}
                         >
                           {/* Left Ticket Stub */}
-                          <div className={`w-28 flex flex-col items-center justify-center text-white px-3 relative ${
-                            voucher.status === 'active' 
-                              ? 'bg-gradient-to-br from-primary to-[#503126]' 
+                          <div className={`w-28 flex flex-col items-center justify-center text-white px-3 relative ${voucher.status === 'active'
+                              ? 'bg-gradient-to-br from-primary to-[#503126]'
                               : 'bg-neutral-400'
-                          }`}>
+                            }`}>
                             <div className="absolute top-0 bottom-0 left-0 w-1 flex flex-col justify-around py-1">
                               {[...Array(6)].map((_, i) => (
                                 <div key={i} className="w-1 h-1 rounded-full bg-white opacity-40" />
                               ))}
                             </div>
-                            
+
                             <div className="text-center">
                               <span className="text-[10px] uppercase font-bold tracking-wider opacity-90">
                                 {voucher.discountType === 'percentage' ? 'Giảm' : 'Giảm ngay'}
@@ -1027,14 +1106,13 @@ export default function ProfilePage() {
                           <div className="flex-1 p-4 flex flex-col justify-between space-y-2 bg-[#fcfaf7]">
                             <div className="space-y-1">
                               <div className="flex items-center gap-1.5">
-                                <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-xs ${
-                                  voucher.type === 'exclusive' 
-                                    ? 'bg-amber-50 text-amber-700 border border-amber-200' 
+                                <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-xs ${voucher.type === 'exclusive'
+                                    ? 'bg-amber-50 text-amber-700 border border-amber-200'
                                     : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                }`}>
+                                  }`}>
                                   {voucher.type === 'exclusive' ? 'Độc quyền' : 'Thân thiết'}
                                 </span>
-                                
+
                                 {voucher.status === 'used' && (
                                   <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-xs bg-gray-100 text-gray-500 border border-gray-200">
                                     Đã sử dụng
@@ -1046,7 +1124,7 @@ export default function ProfilePage() {
                                   </span>
                                 )}
                               </div>
-                              
+
                               <h4 className="font-serif text-xs font-bold text-[#442a22] leading-tight">
                                 {voucher.title}
                               </h4>
@@ -1059,7 +1137,7 @@ export default function ProfilePage() {
                               <span className="text-on-surface-variant font-medium">
                                 HSD: {voucher.expiryDate}
                               </span>
-                              
+
                               {voucher.status === 'active' ? (
                                 <button
                                   type="button"
@@ -1078,7 +1156,7 @@ export default function ProfilePage() {
                               )}
                             </div>
                           </div>
-                          
+
                           {/* Ticket cutout effect decoration */}
                           <div className="absolute top-1/2 -translate-y-1/2 left-[110px] w-2 h-4 rounded-r-full bg-white border-y border-r border-[#d4c3be]/40" />
                           <div className="absolute top-1/2 -translate-y-1/2 right-[-1px] w-2 h-4 rounded-l-full bg-white border-y border-l border-[#d4c3be]/40" />
@@ -1092,7 +1170,7 @@ export default function ProfilePage() {
                     )}
                   </div>
                 </motion.div>
-              )} 
+              )}
 
               {/* Tab 2: Orders List */}
               {activeTab === 'orders' && (
@@ -1104,7 +1182,7 @@ export default function ProfilePage() {
                   <h2 className="font-serif text-lg font-bold text-primary mb-6 border-b border-[#eeeeee] pb-2 uppercase tracking-wide">
                     Lịch Sử Mua Hàng
                   </h2>
-                  
+
                   <div className="flex border-b border-[#eeeeee] mb-6 overflow-x-auto scrollbar-none gap-2 md:gap-4 whitespace-nowrap pb-1">
                     {[
                       { key: 'all', label: 'Tất cả' },
@@ -1115,8 +1193,8 @@ export default function ProfilePage() {
                       { key: 'returned', label: 'Trả hàng' },
                       { key: 'cancelled', label: 'Đã hủy' }
                     ].map((filter) => {
-                      const count = filter.key === 'all' 
-                        ? MOCK_ORDERS.length 
+                      const count = filter.key === 'all'
+                        ? MOCK_ORDERS.length
                         : MOCK_ORDERS.filter(o => o.status === filter.key).length;
                       const isActive = orderFilter === filter.key;
                       return (
@@ -1124,28 +1202,26 @@ export default function ProfilePage() {
                           key={filter.key}
                           type="button"
                           onClick={() => setOrderFilter(filter.key as any)}
-                          className={`pb-3 px-1.5 border-b-2 text-xs md:text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer bg-transparent border-none ${
-                            isActive 
-                              ? 'border-primary text-primary' 
+                          className={`pb-3 px-1.5 border-b-2 text-xs md:text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer bg-transparent border-none ${isActive
+                              ? 'border-primary text-primary'
                               : 'border-transparent text-on-surface-variant hover:text-primary'
-                          }`}
+                            }`}
                         >
                           {filter.label}
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
-                            isActive 
-                              ? 'bg-primary text-white' 
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${isActive
+                              ? 'bg-primary text-white'
                               : 'bg-[#ece0dc]/70 text-primary'
-                          }`}>
+                            }`}>
                             {count}
                           </span>
                         </button>
                       );
                     })}
                   </div>
-                  
+
                   <div className="space-y-6">
                     {MOCK_ORDERS.filter(order => orderFilter === 'all' ? true : order.status === orderFilter).map((order) => (
-                      <div 
+                      <div
                         key={order.id}
                         className="border border-[#d4c3be]/40 rounded-sm overflow-hidden"
                       >
@@ -1182,7 +1258,7 @@ export default function ProfilePage() {
                         <div className="p-4 space-y-4">
                           {order.items.map((item, idx) => (
                             <div key={idx} className="flex gap-4 items-start">
-                              <img 
+                              <img
                                 alt={item.product.name}
                                 src={item.product.images[0]}
                                 className="w-12 h-15 object-cover rounded-xs border border-[#d4c3be]/30"
@@ -1224,7 +1300,7 @@ export default function ProfilePage() {
                         </div>
                       </div>
                     ))}
-                    
+
                     {MOCK_ORDERS.filter(order => orderFilter === 'all' ? true : order.status === orderFilter).length === 0 && (
                       <div className="text-center py-12 text-on-surface-variant/80 bg-[#fcfaf7] border border-[#d4c3be]/20 rounded-sm">
                         Không có đơn hàng nào trong mục này.
@@ -1258,69 +1334,69 @@ export default function ProfilePage() {
                   {/* Add address dialog inline */}
                   <AnimatePresence>
                     {showAddressForm && (
-                      <motion.div 
+                      <motion.div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="bg-[#fcfaf7] border border-[#d4c3be]/40 rounded-sm p-5 mb-8"
+                        className="bg-[#fcfaf7] border border-[#d4c3be]/40 p-5 mb-8"
                       >
                         <h3 className="font-serif font-bold text-primary text-sm mb-4">Địa chỉ giao hàng mới</h3>
-                        <form onSubmit={handleAddAddress} className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <form onSubmit={handleAddAddress} className="space-y-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                              <label className="block text-[10px] uppercase font-semibold text-primary mb-1">Tên người nhận</label>
-                              <input 
+                              <label className="block font-caption text-caption text-on-secondary-fixed-variant uppercase tracking-widest mb-1.5">Tên người nhận</label>
+                              <input
                                 type="text"
                                 value={newAddrName}
                                 onChange={(e) => setNewAddrName(e.target.value)}
-                                className="w-full px-3 py-2 border border-[#d4c3be] rounded-sm text-xs focus:border-primary"
+                                className="input-line text-xs font-body-md text-body-md py-1.5"
                                 placeholder="Họ và tên"
                                 required
                               />
                             </div>
                             <div>
-                              <label className="block text-[10px] uppercase font-semibold text-primary mb-1">Số điện thoại</label>
-                              <input 
+                              <label className="block font-caption text-caption text-on-secondary-fixed-variant uppercase tracking-widest mb-1.5">Số điện thoại</label>
+                              <input
                                 type="tel"
                                 value={newAddrPhone}
                                 onChange={(e) => setNewAddrPhone(e.target.value)}
-                                className="w-full px-3 py-2 border border-[#d4c3be] rounded-sm text-xs focus:border-primary"
+                                className="input-line text-xs font-body-md text-body-md py-1.5"
                                 placeholder="098..."
                                 required
                               />
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div>
-                              <label className="block text-[10px] uppercase font-semibold text-primary mb-1">Tỉnh / Thành phố</label>
-                              <input 
+                              <label className="block font-caption text-caption text-on-secondary-fixed-variant uppercase tracking-widest mb-1.5">Tỉnh / Thành phố</label>
+                              <input
                                 type="text"
                                 value={newAddrProvince}
                                 onChange={(e) => setNewAddrProvince(e.target.value)}
-                                className="w-full px-3 py-2 border border-[#d4c3be] rounded-sm text-xs focus:border-primary"
+                                className="input-line text-xs font-body-md text-body-md py-1.5"
                                 placeholder="Ví dụ: TP. Hồ Chí Minh"
                                 required
                               />
                             </div>
                             <div>
-                              <label className="block text-[10px] uppercase font-semibold text-primary mb-1">Quận / Huyện</label>
-                              <input 
+                              <label className="block font-caption text-caption text-on-secondary-fixed-variant uppercase tracking-widest mb-1.5">Quận / Huyện</label>
+                              <input
                                 type="text"
                                 value={newAddrDistrict}
                                 onChange={(e) => setNewAddrDistrict(e.target.value)}
-                                className="w-full px-3 py-2 border border-[#d4c3be] rounded-sm text-xs focus:border-primary"
+                                className="input-line text-xs font-body-md text-body-md py-1.5"
                                 placeholder="Ví dụ: Quận 1"
                                 required
                               />
                             </div>
                             <div>
-                              <label className="block text-[10px] uppercase font-semibold text-primary mb-1">Phường / Xã</label>
-                              <input 
+                              <label className="block font-caption text-caption text-on-secondary-fixed-variant uppercase tracking-widest mb-1.5">Phường / Xã</label>
+                              <input
                                 type="text"
                                 value={newAddrWard}
                                 onChange={(e) => setNewAddrWard(e.target.value)}
-                                className="w-full px-3 py-2 border border-[#d4c3be] rounded-sm text-xs focus:border-primary"
+                                className="input-line text-xs font-body-md text-body-md py-1.5"
                                 placeholder="Ví dụ: Phường Bến Nghé"
                                 required
                               />
@@ -1328,28 +1404,28 @@ export default function ProfilePage() {
                           </div>
 
                           <div>
-                            <label className="block text-[10px] uppercase font-semibold text-primary mb-1">Số nhà, tên đường</label>
-                            <input 
+                            <label className="block font-caption text-caption text-on-secondary-fixed-variant uppercase tracking-widest mb-1.5">Số nhà, tên đường</label>
+                            <input
                               type="text"
                               value={newAddrStreet}
                               onChange={(e) => setNewAddrStreet(e.target.value)}
-                              className="w-full px-3 py-2 border border-[#d4c3be] rounded-sm text-xs focus:border-primary"
+                              className="input-line text-xs font-body-md text-body-md py-1.5"
                               placeholder="Ví dụ: 12 Lê Lợi"
                               required
                             />
                           </div>
 
-                          <div className="flex gap-3 justify-end pt-2">
-                            <button 
+                          <div className="flex gap-4 justify-end pt-2">
+                            <button
                               type="button"
                               onClick={() => setShowAddressForm(false)}
-                              className="px-4 py-2 border border-[#eeeeee] text-on-surface hover:bg-[#eeeeee]/40 font-semibold text-xs uppercase tracking-wider rounded-xs bg-transparent cursor-pointer"
+                              className="px-6 py-2 border border-outline-variant hover:bg-[#ece0dc]/20 text-on-secondary-fixed-variant font-semibold text-xs tracking-wider uppercase transition-colors cursor-pointer bg-transparent"
                             >
                               Hủy
                             </button>
-                            <button 
+                            <button
                               type="submit"
-                              className="px-5 py-2 bg-primary text-white font-semibold text-xs uppercase tracking-wider rounded-xs hover:bg-[#2c160e] transition-colors cursor-pointer border-none"
+                              className="px-6 py-2 border border-primary text-primary hover:bg-primary/5 font-semibold text-xs tracking-wider uppercase transition-colors cursor-pointer bg-transparent"
                             >
                               Thêm địa chỉ
                             </button>
@@ -1362,11 +1438,10 @@ export default function ProfilePage() {
                   {/* List of current addresses */}
                   <div className="space-y-4">
                     {addresses.map((addr) => (
-                      <div 
+                      <div
                         key={addr.id}
-                        className={`p-5 border rounded-sm flex items-start justify-between gap-4 transition-all ${
-                          addr.isDefault ? 'border-primary bg-[#ece0dc]/10' : 'border-[#d4c3be]/40 bg-white'
-                        }`}
+                        className={`p-5 border rounded-sm flex items-start justify-between gap-4 transition-all ${addr.isDefault ? 'border-primary bg-[#ece0dc]/10' : 'border-[#d4c3be]/40 bg-white'
+                          }`}
                       >
                         <div className="space-y-1.5">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -1423,7 +1498,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Floating toast alerts */}
-      <Toast 
+      <Toast
         message={toast.message}
         isVisible={toast.isVisible}
         type={toast.type}

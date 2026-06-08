@@ -64,6 +64,12 @@ export function AdminSidebar() {
       roles: ['admin']
     },
     {
+      title: 'Báo cáo chuyên sâu',
+      path: '/admin/bao-cao',
+      icon: FileText,
+      roles: ['admin']
+    },
+    {
       title: 'Thống kê hàng hóa',
       path: '/admin/dashboard',
       icon: LayoutDashboard,
@@ -82,39 +88,15 @@ export function AdminSidebar() {
       roles: ['admin', 'staff', 'shop_staff']
     },
     {
-      title: 'Quản lý Nhân sự',
-      path: '/admin/nhan-su',
-      icon: Users,
-      roles: ['admin']
-    },
-    {
       title: 'Quản lý Khách hàng',
       path: '/admin/khach-hang',
       icon: Users,
       roles: ['admin']
     },
     {
-      title: 'Thống kê CSKH',
-      path: '/admin/cskh-thong-ke',
-      icon: FileText,
-      roles: ['admin']
-    },
-    {
-      title: 'Tin nhắn CSKH',
-      path: '/admin/cskh-tin-nhan',
-      icon: MessageSquare,
-      roles: ['admin']
-    },
-    {
-      title: 'Đánh giá CSKH',
-      path: '/admin/cskh-danh-gia',
-      icon: Star,
-      roles: ['admin']
-    },
-    {
-      title: 'Báo cáo chuyên sâu',
-      path: '/admin/bao-cao',
-      icon: FileText,
+      title: 'Quản lý Nhân sự',
+      path: '/admin/nhan-su',
+      icon: Users,
       roles: ['admin']
     },
     {

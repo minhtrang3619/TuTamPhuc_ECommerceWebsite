@@ -111,7 +111,7 @@ export default function Sidebar({
                 title={color.name}
               >
                 <span
-                  className="w-5.5 h-5.5 rounded-full block border border-[rgba(0,0,0,0.03)]"
+                  className="w-5 h-5 rounded-full block border border-[rgba(0,0,0,0.03)]"
                   style={{ backgroundColor: color.hex }}
                 />
                 
