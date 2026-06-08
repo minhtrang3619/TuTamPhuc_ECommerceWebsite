@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { MapPin, Navigation, Map as MapIcon, RotateCcw, Truck, Clock } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Navigation, Map as MapIcon, Truck, Clock } from 'lucide-react';
 
 interface Location {
   lat: number;
@@ -138,17 +138,21 @@ export default function MapDistance({
         setMapLoaded(false);
       };
       document.head.appendChild(script);
-    } else if (window.google && window.google.maps) {
-      initMap();
+    } else {
+      const win = window as any;
+      if (win.google && win.google.maps) {
+        initMap();
+      }
     }
   }, [apiKey]);
 
   // Render Google Map
   useEffect(() => {
-    if (!mapLoaded || !mapRef.current || !window.google || !customerLoc) return;
+    const win = window as any;
+    if (!mapLoaded || !mapRef.current || !win.google || !customerLoc) return;
 
     try {
-      const { maps } = window.google;
+      const { maps } = win.google;
       
       // Clean previous markers
       markersRef.current.forEach(m => m.setMap(null));
@@ -224,7 +228,7 @@ export default function MapDistance({
       markersRef.current.push(storeMarker);
 
       // Draw path line
-      const pathLine = new maps.Polyline({
+      new maps.Polyline({
         path: [
           { lat: customerLoc.lat, lng: customerLoc.lng },
           { lat: nearestStore.lat, lng: nearestStore.lng }
@@ -254,9 +258,10 @@ export default function MapDistance({
 
     const delayDebounceFn = setTimeout(() => {
       // If Google Maps Geocoding is available
-      if (window.google && window.google.maps) {
-        const geocoder = new window.google.maps.Geocoder();
-        geocoder.geocode({ address: customerAddress }, (results, status) => {
+      const win = window as any;
+      if (win.google && win.google.maps) {
+        const geocoder = new win.google.maps.Geocoder();
+        geocoder.geocode({ address: customerAddress }, (results: any, status: any) => {
           if (status === 'OK' && results && results[0]) {
             const loc = results[0].geometry.location;
             const newLoc = {

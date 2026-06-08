@@ -6,9 +6,7 @@ import {
   Edit3, 
   Calendar, 
   Search, 
-  X, 
-  Check, 
-  AlertCircle
+  X
 } from 'lucide-react'
 
 interface PromotionItem {

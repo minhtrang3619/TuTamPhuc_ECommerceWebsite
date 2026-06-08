@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   Plus, 
   Search, 
@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 
 import AdminCategories from '../Categories'
+import apiClient from '@/services/apiClient'
 
 interface ProductItem {
   id: string
@@ -43,41 +44,47 @@ export default function AdminProducts() {
   const [sellerFilter, setSellerFilter] = useState('Tất cả người bán')
   const [statusFilter, setStatusFilter] = useState('Mọi trạng thái')
 
-  const [products, setProducts] = useState<ProductItem[]>([
-    {
-      id: '1',
-      name: 'Áo tràng Đay Thiền',
-      sku: 'TTP-LMR-001',
-      category: 'Đồ lam đi chùa',
-      price: 2450000,
-      stock: 42,
-      seller: 'Từ Tâm Chính',
-      status: 'Đang bán',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCoN-bFmYs_4Pou635qnLS4buY4mQKx8avkQwiBnjE0MwTqvdyiwKCu6jUyLwtVA_ZfrjDhH8OeUggZ53HFGmyQisSBYlPfS5NGXuRVO_pIn8t3RlN6Uohv0j9XqwHEQdLaDArg7CzxVTcwpCAV-iOUO236FuvB4u5dI7nU6RbBNWaym5M8ECoLYQL1lCAaKStoNOhRzzEkYgEpOKTSJVFf6RqrwsdARQn6Iq0LJcKA4UevZyqHJmymu2vADk4NZzFUzTw7Rt-lfTNp'
-    },
-    {
-      id: '2',
-      name: 'Khăn lụa Họa Sen',
-      sku: 'TTP-LSS-012',
-      category: 'Lụa lễ hội',
-      price: 1890000,
-      stock: 5,
-      seller: 'Hiệp hội Lụa Hà Nội',
-      status: 'Đang bán',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDneoXIXbKT3TfrqxZXwXdseAOpfLGmlQL13pB75UljHEJltFKlkzRLdpbJn8KfFrx50K5bOp9PbCe1MfYsWn9tZHZymh0I8-BDv6kkleXSfhIlQClEZf-DA0cfiDomRq_142YmwZg9AKDnqblDAeZe8at5rQSYkuUlujpPwmhRlPH1LaisWBfDXSqzTaup7f_riX-tDZYwDpr1gEw-1Izywb9yJQtJhlpXG6I2ljwi9j7Vj7ROt8xFWvpDUYlhlJj-YcmVACzXM2DV'
-    },
-    {
-      id: '3',
-      name: 'Bộ đồ mặc nhà Màu Than',
-      sku: 'TTP-CLS-044',
-      category: 'Đồ mặc nhà đay',
-      price: 3200000,
-      stock: 0,
-      seller: 'Từ Tâm Chính',
-      status: 'Đã lưu trữ',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAskqfsfhY136-p94FjQbbr5c8rZRwPUdt3yl8mrEfExIPWuHTnUudPHJl76keKojRMuaq8b36DK9iNS23-mlHvMvq-pTbgKqIYqCOoZcf17Zwx_NoWXipnk7lX-sJh5uVZ1qpU1gMGpZkB7nPkaXihb3HPfAH0YBUfZg8hJpHB4-YllfPV077RxsZvOZZzHvHw_XTkzM7QEMyr5sM8JJV2baqBc4MULfgwowVgmD8DXdDJdQNVqG4vKwBrfE-QZ7o5ouUG3-IPP4dy'
+  const [products, setProducts] = useState<ProductItem[]>([])
+  const [dbCategories, setDbCategories] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true)
+      const res = await apiClient.get('/products?page_size=100')
+      const items = res.data?.items || []
+      const mapped = items.map((p: any) => ({
+        id: String(p.id),
+        name: p.name,
+        sku: p.sku || '',
+        category: p.category?.name || 'Chưa phân loại',
+        price: p.price,
+        stock: p.stock,
+        seller: 'Từ Tâm Chính',
+        status: p.status === 'active' ? 'Đang bán' : 'Đã lưu trữ',
+        image: p.images?.[0]?.url || 'https://lh3.googleusercontent.com/aida-public/AB6AXuCoN-bFmYs_4Pou635qnLS4buY4mQKx8avkQwiBnjE0MwTqvdyiwKCu6jUyLwtVA_ZfrjDhH8OeUggZ53HFGmyQisSBYlPfS5NGXuRVO_pIn8t3RlN6Uohv0j9XqwHEQdLaDArg7CzxVTcwpCAV-iOUO236FuvB4u5dI7nU6RbBNWaym5M8ECoLYQL1lCAaKStoNOhRzzEkYgEpOKTSJVFf6RqrwsdARQn6Iq0LJcKA4UevZyqHJmymu2vADk4NZzFUzTw7Rt-lfTNp'
+      }))
+      setProducts(mapped)
+    } catch (err) {
+      console.error('Lỗi khi tải sản phẩm:', err)
+    } finally {
+      setLoading(false)
     }
-  ])
+  }
+
+  const fetchCategories = async () => {
+    try {
+      const res = await apiClient.get('/categories')
+      setDbCategories(res.data || [])
+    } catch (err) {
+      console.error('Lỗi khi tải danh mục:', err)
+    }
+  }
+
+  useEffect(() => {
+    fetchProducts()
+    fetchCategories()
+  }, [])
 
   // Form Open State (Reuses isAddModalOpen but renders full page)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
@@ -294,26 +301,67 @@ export default function AdminProducts() {
       return acc + (v.sizes.S + v.sizes.M + v.sizes.L + v.sizes.XL)
     }, 0)
 
-    const finalProduct: ProductItem = {
-      id: formData.id || `${products.length + 1}`,
+    // Find category ID matching formData.category name
+    let catId = dbCategories.find(c => c.name.toLowerCase() === formData.category.toLowerCase())?.id
+    if (!catId && dbCategories.length > 0) {
+      catId = dbCategories[0].id
+    }
+    if (!catId) {
+      catId = 1
+    }
+
+    const slug = formData.name.toLowerCase()
+      .replace(/ /g, '-')
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9-]/g, '')
+
+    const apiVariants: any[] = []
+    formData.variants.forEach(v => {
+      // Add color variant
+      apiVariants.push({
+        name: "Màu",
+        value: v.colorName,
+        additional_price: 0.0,
+        stock: v.sizes.S + v.sizes.M + v.sizes.L + v.sizes.XL
+      })
+      // Add size variants
+      if (v.sizes.S > 0) apiVariants.push({ name: "Kích cỡ", value: "S", stock: v.sizes.S })
+      if (v.sizes.M > 0) apiVariants.push({ name: "Kích cỡ", value: "M", stock: v.sizes.M })
+      if (v.sizes.L > 0) apiVariants.push({ name: "Kích cỡ", value: "L", stock: v.sizes.L })
+      if (v.sizes.XL > 0) apiVariants.push({ name: "Kích cỡ", value: "XL", stock: v.sizes.XL })
+    })
+
+    const payload = {
       name: formData.name,
-      sku: formData.sku,
-      category: formData.category,
+      slug: slug,
+      description: formData.description,
+      short_description: formData.material,
       price: formData.price,
+      sku: formData.sku,
       stock: totalStockFromVariants,
-      seller: 'Từ Tâm Chính',
-      status: 'Đang bán',
-      image: formData.image || 'https://lh3.googleusercontent.com/aida-public/AB6AXuCoN-bFmYs_4Pou635qnLS4buY4mQKx8avkQwiBnjE0MwTqvdyiwKCu6jUyLwtVA_ZfrjDhH8OeUggZ53HFGmyQisSBYlPfS5NGXuRVO_pIn8t3RlN6Uohv0j9XqwHEQdLaDArg7CzxVTcwpCAV-iOUO236FuvB4u5dI7nU6RbBNWaym5M8ECoLYQL1lCAaKStoNOhRzzEkYgEpOKTSJVFf6RqrwsdARQn6Iq0LJcKA4UevZyqHJmymu2vADk4NZzFUzTw7Rt-lfTNp'
+      status: 'active',
+      category_id: catId,
+      tags: [formData.material],
+      weight: 350,
+      is_featured: false,
+      variants: apiVariants
     }
 
-    if (formData.id) {
-      setProducts(prev => prev.map(p => p.id === formData.id ? finalProduct : p))
-    } else {
-      setProducts(prev => [finalProduct, ...prev])
-    }
+    const saveRequest = formData.id
+      ? apiClient.put(`/products/${formData.id}`, payload)
+      : apiClient.post('/products', payload)
 
-    setIsAddModalOpen(false)
-    setSelectedProduct(null)
+    saveRequest
+      .then(() => {
+        setIsAddModalOpen(false)
+        setSelectedProduct(null)
+        fetchProducts()
+      })
+      .catch(err => {
+        console.error('Lỗi khi lưu sản phẩm:', err)
+        alert('Có lỗi xảy ra khi lưu sản phẩm. Vui lòng thử lại.')
+      })
   }
 
   const handleOpenDelete = (p: ProductItem) => {
@@ -323,9 +371,16 @@ export default function AdminProducts() {
 
   const confirmDeleteProduct = () => {
     if (productToDelete) {
-      setProducts(prev => prev.filter(p => p.id !== productToDelete.id))
-      setIsDeleteModalOpen(false)
-      setProductToDelete(null)
+      apiClient.delete(`/products/${productToDelete.id}`)
+        .then(() => {
+          setIsDeleteModalOpen(false)
+          setProductToDelete(null)
+          fetchProducts()
+        })
+        .catch(err => {
+          console.error('Lỗi khi xóa sản phẩm:', err)
+          alert('Có lỗi xảy ra khi xóa sản phẩm.')
+        })
     }
   }
 
@@ -393,10 +448,9 @@ export default function AdminProducts() {
                     onChange={(e) => setFormData({...formData, category: e.target.value})}
                     className="w-full border-0 border-b border-outline-variant bg-transparent focus:ring-0 focus:border-primary py-2 font-body-md text-sm appearance-none cursor-pointer"
                   >
-                    <option value="Đồ lam đi chùa">Đồ lam đi chùa</option>
-                    <option value="Đồ mặc nhà đay">Đồ mặc nhà đay</option>
-                    <option value="Lụa lễ hội">Lụa lễ hội</option>
-                    <option value="Thiền mỗi ngày">Thiền mỗi ngày</option>
+                    {dbCategories.map(c => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -767,10 +821,9 @@ export default function AdminProducts() {
             className="bg-transparent border-none p-0 focus:ring-0 text-sm font-medium text-primary cursor-pointer w-full"
           >
             <option>Tất cả bộ sưu tập</option>
-            <option>Đồ lam đi chùa</option>
-            <option>Đồ mặc nhà đay</option>
-            <option>Lụa lễ hội</option>
-            <option>Thiền mỗi ngày</option>
+            {dbCategories.map(c => (
+              <option key={c.id} value={c.name}>{c.name}</option>
+            ))}
           </select>
         </div>
 
@@ -873,11 +926,13 @@ export default function AdminProducts() {
                     </td>
                     <td className="px-6 py-6 text-right">
                       <div className="flex justify-end gap-1">
+
                         <button 
                           onClick={() => handleOpenEdit(product)}
                           className="p-2 hover:bg-white rounded-full transition-all text-on-surface-variant hover:text-primary"
+                          title="Chỉnh sửa chi tiết"
                         >
-                          <Plus size={16} className="rotate-45 text-on-surface-variant hover:text-primary transition-transform duration-300" title="Chỉnh sửa chi tiết" />
+                          <Plus size={16} className="rotate-45 text-on-surface-variant hover:text-primary transition-transform duration-300" />
                         </button>
                         <button 
                           onClick={() => handleOpenDelete(product)}
@@ -890,7 +945,13 @@ export default function AdminProducts() {
                   </tr>
                 )
               })}
-              {filteredProducts.length === 0 && (
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center text-on-surface-variant/60 font-body-md animate-pulse">
+                    Đang tải danh sách sản phẩm...
+                  </td>
+                </tr>
+              ) : filteredProducts.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-on-surface-variant/60 font-body-md">
                     Không tìm thấy sản phẩm nào.

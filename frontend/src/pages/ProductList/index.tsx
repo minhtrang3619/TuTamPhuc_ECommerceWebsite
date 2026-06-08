@@ -10,12 +10,34 @@ import ProductCard from '../../components/ui/ProductCard';
 import QuickViewModal from '../../components/ui/QuickViewModal';
 import Toast from '../../components/ui/Toast';
 import { useMockCartStore } from '../../store/mockCartStore';
+import apiClient from '@/services/apiClient';
+import { mapApiProductToMockProduct } from '@/utils/productMapper';
 
 export default function ProductListPage() {
   const navigate = useNavigate();
   const { slug } = useParams();
   const [searchParams] = useSearchParams();
   const { addItem, openCheckout } = useMockCartStore();
+
+  const [dbProducts, setDbProducts] = useState<Product[]>(PRODUCTS);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiClient.get('/products?page_size=100')
+      .then(res => {
+        const items = res.data?.items || [];
+        const mapped = items.map((p: any) => mapApiProductToMockProduct(p));
+        if (mapped.length > 0) {
+          setDbProducts(mapped);
+        }
+      })
+      .catch(err => {
+        console.error("Lỗi khi tải sản phẩm từ API:", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
 
   // Active filter state
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -55,7 +77,7 @@ export default function ProductListPage() {
 
   // Filter and sort products list
   const filteredProducts = useMemo(() => {
-    return PRODUCTS.filter((product) => {
+    return dbProducts.filter((product) => {
       // 1. Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
@@ -205,7 +227,11 @@ export default function ProductListPage() {
             </div>
 
             {/* Grid items block */}
-            {paginatedProducts.length === 0 ? (
+            {loading ? (
+              <div className="py-24 text-center border border-dashed border-[#d4c3be]/40 bg-white rounded-xs p-10 flex flex-col items-center justify-center">
+                <h4 className="font-serif text-base font-semibold text-primary mb-2 animate-pulse">Đang tải danh sách sản phẩm...</h4>
+              </div>
+            ) : paginatedProducts.length === 0 ? (
               <div className="py-24 text-center border border-dashed border-[#d4c3be]/40 bg-white rounded-xs p-10 flex flex-col items-center justify-center">
                 <h4 className="font-serif text-base font-semibold text-primary mb-2">Không tìm thấy sản phẩm</h4>
                 <p className="text-xs text-on-surface-variant max-w-sm leading-relaxed">

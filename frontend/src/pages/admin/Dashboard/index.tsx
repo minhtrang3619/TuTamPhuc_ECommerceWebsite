@@ -9,13 +9,7 @@ import {
   ArrowRight,
   ChevronDown,
   Layers,
-  AlertTriangle,
-  Clock,
-  Truck,
-  Lightbulb,
-  Sparkles,
-  Package,
-  Plus
+  AlertTriangle
 } from 'lucide-react'
 import { useAuthStore } from '@/store'
 

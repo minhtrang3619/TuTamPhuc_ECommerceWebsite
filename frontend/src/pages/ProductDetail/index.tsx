@@ -3,18 +3,39 @@ import { motion } from 'framer-motion';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ChevronRight, Leaf, Sparkles, Heart, MessageSquare } from 'lucide-react';
 
-
 import { PRODUCTS } from '../../data';
 import { useMockCartStore } from '../../store/mockCartStore';
 import { formatPrice } from '../../components/ui/ProductCard';
 import Toast from '../../components/ui/Toast';
+import apiClient from '@/services/apiClient';
+import { mapApiProductToMockProduct } from '@/utils/productMapper';
 
 export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { addItem, openCart, openCheckout } = useMockCartStore();
 
-  const product = PRODUCTS.find((p) => p.id === slug) || PRODUCTS[0];
+  const fallbackProduct = PRODUCTS.find((p) => p.id === slug) || PRODUCTS[0];
+  const [product, setProduct] = useState<any>(fallbackProduct);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!slug) return;
+    apiClient.get(`/products/${slug}`)
+      .then(res => {
+        if (res.data) {
+          const mapped = mapApiProductToMockProduct(res.data);
+          setProduct(mapped);
+          setActiveDetailColor(mapped.colors[0] || null);
+        }
+      })
+      .catch(err => {
+        console.error("Lỗi khi tải chi tiết sản phẩm từ API:", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [slug]);
 
   const [activeDetailColor, setActiveDetailColor] = useState<{ name: string; hex: string } | null>(null);
   const [activeDetailSize, setActiveDetailSize] = useState<string>('M');
@@ -52,6 +73,14 @@ export default function ProductDetailPage() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [product]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#fcfaf7] py-24 text-center">
+        <h2 className="font-serif text-xl font-bold text-primary animate-pulse">Đang tải chi tiết sản phẩm...</h2>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -177,7 +206,7 @@ export default function ProductDetailPage() {
                   Màu sắc: <span className="text-on-surface font-normal">{activeDetailColor?.name}</span>
                 </span>
                 <div className="flex space-x-3">
-                  {product.colors.map((color) => {
+                  {product.colors.map((color: { name: string; hex: string }) => {
                     const isSelected = activeDetailColor?.hex === color.hex;
                     return (
                       <button
@@ -210,7 +239,7 @@ export default function ProductDetailPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-2.5">
-                  {product.sizes.map((size) => {
+                  {product.sizes.map((size: string) => {
                     const isSelected = activeDetailSize === size;
                     return (
                       <button
