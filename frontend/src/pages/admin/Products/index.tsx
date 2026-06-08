@@ -332,6 +332,28 @@ export default function AdminProducts() {
       if (v.sizes.XL > 0) apiVariants.push({ name: "Kích cỡ", value: "XL", stock: v.sizes.XL })
     })
 
+    const apiImages: any[] = []
+    if (formData.image) {
+      apiImages.push({
+        url: formData.image,
+        alt: formData.name,
+        is_primary: true,
+        sort_order: 0
+      })
+    }
+    if (formData.galleryImages && formData.galleryImages.length > 0) {
+      formData.galleryImages.forEach((imgUrl, index) => {
+        if (imgUrl && imgUrl !== formData.image) {
+          apiImages.push({
+            url: imgUrl,
+            alt: formData.name,
+            is_primary: false,
+            sort_order: index + 1
+          })
+        }
+      })
+    }
+
     const payload = {
       name: formData.name,
       slug: slug,
@@ -345,7 +367,8 @@ export default function AdminProducts() {
       tags: [formData.material],
       weight: 350,
       is_featured: false,
-      variants: apiVariants
+      variants: apiVariants,
+      images: apiImages
     }
 
     const saveRequest = formData.id

@@ -15,7 +15,23 @@ export default function ProductDetailPage() {
   const navigate = useNavigate();
   const { addItem, openCart, openCheckout } = useMockCartStore();
 
-  const fallbackProduct = PRODUCTS.find((p) => p.id === slug) || PRODUCTS[0];
+  const dummyProduct = {
+    id: '',
+    name: 'Sản phẩm',
+    price: 0,
+    colors: [],
+    sizes: [],
+    images: ['https://lh3.googleusercontent.com/aida-public/AB6AXuCoN-bFmYs_4Pou635qnLS4buY4mQKx8avkQwiBnjE0MwTqvdyiwKCu6jUyLwtVA_ZfrjDhH8OeUggZ53HFGmyQisSBYlPfS5NGXuRVO_pIn8t3RlN6Uohv0j9XqwHEQdLaDArg7CzxVTcwpCAV-iOUO236FuvB4u5dI7nU6RbBNWaym5M8ECoLYQL1lCAaKStoNOhRzzEkYgEpOKTSJVFf6RqrwsdARQn6Iq0LJcKA4UevZyqHJmymu2vADk4NZzFUzTw7Rt-lfTNp'],
+    description: '',
+    quote: '',
+    details: {
+      material: '',
+      craftsmanship: '',
+      details_desc: ''
+    }
+  };
+
+  const fallbackProduct = PRODUCTS.find((p) => p.id === slug) || PRODUCTS[0] || dummyProduct;
   const [product, setProduct] = useState<any>(fallbackProduct);
   const [loading, setLoading] = useState(true);
 

@@ -30,6 +30,13 @@ class ProductVariantCreate(BaseSchema):
     sku: Optional[str] = None
 
 
+class ProductImageCreate(BaseSchema):
+    url: str
+    alt: Optional[str] = None
+    is_primary: bool = False
+    sort_order: int = 0
+
+
 class ProductCreate(BaseSchema):
     name: str
     slug: str
@@ -45,6 +52,7 @@ class ProductCreate(BaseSchema):
     weight: Optional[float] = None
     is_featured: bool = False
     variants: Optional[List[ProductVariantCreate]] = None
+    images: Optional[List[ProductImageCreate]] = None
 
 
 class ProductUpdate(BaseSchema):
@@ -61,6 +69,8 @@ class ProductUpdate(BaseSchema):
     tags: Optional[List[str]] = None
     weight: Optional[float] = None
     is_featured: Optional[bool] = None
+    variants: Optional[List[ProductVariantCreate]] = None
+    images: Optional[List[ProductImageCreate]] = None
 
 
 class ProductResponse(BaseSchema):

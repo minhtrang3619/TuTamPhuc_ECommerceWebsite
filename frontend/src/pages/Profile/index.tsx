@@ -26,6 +26,41 @@ import { PRODUCTS } from '../../data';
 import { formatPrice } from '../../components/ui/ProductCard';
 import Toast from '../../components/ui/Toast';
 
+// Fallback products if the mock data in PRODUCTS is empty
+const FALLBACK_PRODUCTS = [
+  {
+    id: 'bo-lam-tinh-tam',
+    name: 'Bộ Lam Tĩnh Tâm',
+    price: 1150000,
+    colors: [{ name: 'Nâu nhạt', hex: '#EADDD7' }, { name: 'Xanh rêu', hex: '#8D9B91' }, { name: 'Trắng ngà', hex: '#F5F5F5' }],
+    sizes: ['S', 'M', 'L', 'XL'],
+    images: ['https://lh3.googleusercontent.com/aida-public/AB6AXuD-i99PGuf24vO5kvxg326vEO7jUuUSLTDT1n1BFFVtkuE9CvzkafJf5hh_pcEax4jWWbA8r5usOW5XIpFoUHtnaRrkonr9-wyhvaXIZK6gTYY6CwI6RCABXDpyPxu0ioSb3YLij-kW940L0YDvEkFYvH3GPQ06avEx77w5QDj7YABPaI4R3UM1Xq76cZrNv2lXRxpAwWH_yy5LNgTcDPgOz-i4opUNNMKLgL6ksKfzWsqjN1LDhNOIe3L2WFbcei39HxceMvxge9Ov'],
+    category: 'Đồ lam nữ'
+  },
+  {
+    id: 'ao-trang-an-nhien',
+    name: 'Áo Tràng An Nhiên',
+    price: 1650000,
+    colors: [{ name: 'Trắng ngà', hex: '#F5F5F5' }, { name: 'Nâu nhạt', hex: '#EADDD7' }],
+    sizes: ['S', 'M', 'L', 'XL'],
+    images: ['https://lh3.googleusercontent.com/aida-public/AB6AXuCGIQZtJgyZL64jeOPXO-SBpVFLOh0hYPaX7T0TbIBnGZFeEyCd2BE8qwij6MFz-KiZs5rHFzFeojkyMTE8awGCPHNB8XVo8wLZooMeMaA4EL2LAMIiOFVP9e9iRBJjBbqSLyOgjxKNzIxr2vg6yf0rTYB_AkPFYhn6DV1zrXQlIsT8Gu1d-iD0IH4fAUJz0540gtOqTmsN9zhmCp-p3YerGiSkBzT0R2IvN5RvRXrVLP01l3la8ccg81L59kyplvWe3FFnVzPivbP5'],
+    category: 'Áo tràng'
+  },
+  {
+    id: 'bo-cu-si-thien-mon',
+    name: 'Bộ Cư Sĩ Thiền Môn',
+    price: 1450000,
+    colors: [{ name: 'Nâu đất', hex: '#5D4037' }, { name: 'Nâu nhạt', hex: '#EADDD7' }],
+    sizes: ['S', 'M', 'L', 'XL'],
+    images: ['https://lh3.googleusercontent.com/aida-public/AB6AXuAnO1Maxeutb-jssEy8FeSFc2z-2xSMGU60H2jUoy58UiARCv_XaPIGNVETe7etHxfzi1baFOLFF1EoOAl0Hw9qyLkkZ8Wo975bLX-MYkY3WwV9tcb7rObSCjcYBJc3ivi6ITGBoRegW0HEKBjw4ZLMzWLgprYYxvNZaqCuiV4E_nyRIMN7Jb_gtXjxDQpywYFWCL_TQs5KsVy4GrScJUsbZaFLDgRfZik96lm4yd591Tp531H80VQdxlP4CZuCZMuyyeco2LDPRHdf'],
+    category: 'Pháp Phục'
+  }
+];
+
+const getProduct = (index: number) => {
+  return PRODUCTS[index] || FALLBACK_PRODUCTS[index] || FALLBACK_PRODUCTS[0];
+};
+
 // Mock orders using actual product references for realistic images
 const MOCK_ORDERS = [
   {
@@ -37,23 +72,23 @@ const MOCK_ORDERS = [
     paymentStatus: 'Đã thanh toán',
     items: [
       {
-        product: PRODUCTS[0], // Pháp Phục Linen Tự Nhiên
-        color: PRODUCTS[0].colors[0],
+        product: getProduct(0), // Pháp Phục Linen Tự Nhiên
+        color: getProduct(0).colors[0],
         size: 'M',
         quantity: 1,
-        price: PRODUCTS[0].price
+        price: getProduct(0).price
       },
       {
-        product: PRODUCTS[2] || PRODUCTS[0], // Khăn Lụa Thêu Sen
-        color: (PRODUCTS[2] || PRODUCTS[0]).colors[0],
+        product: getProduct(2), // Khăn Lụa Thêu Sen
+        color: getProduct(2).colors[0],
         size: 'S',
         quantity: 2,
-        price: (PRODUCTS[2] || PRODUCTS[0]).price
+        price: getProduct(2).price
       }
     ],
     shippingFee: 30000,
     discount: 50000,
-    total: PRODUCTS[0].price + ((PRODUCTS[2] || PRODUCTS[0]).price * 2) + 30000 - 50000
+    total: getProduct(0).price + (getProduct(2).price * 2) + 30000 - 50000
   },
   {
     id: 'ORD-10928',
@@ -64,16 +99,16 @@ const MOCK_ORDERS = [
     paymentStatus: 'Chưa thanh toán',
     items: [
       {
-        product: PRODUCTS[1] || PRODUCTS[0], // Áo Dài Cách Tân Silk Trắng
-        color: (PRODUCTS[1] || PRODUCTS[0]).colors[0],
+        product: getProduct(1), // Áo Dài Cách Tân Silk Trắng
+        color: getProduct(1).colors[0],
         size: 'L',
         quantity: 1,
-        price: (PRODUCTS[1] || PRODUCTS[0]).price
+        price: getProduct(1).price
       }
     ],
     shippingFee: 30000,
     discount: 0,
-    total: (PRODUCTS[1] || PRODUCTS[0]).price + 30000
+    total: getProduct(1).price + 30000
   },
   {
     id: 'ORD-55412',
@@ -84,16 +119,16 @@ const MOCK_ORDERS = [
     paymentStatus: 'Chưa thanh toán',
     items: [
       {
-        product: PRODUCTS[2] || PRODUCTS[0],
-        color: (PRODUCTS[2] || PRODUCTS[0]).colors[0],
+        product: getProduct(2),
+        color: getProduct(2).colors[0],
         size: 'M',
         quantity: 1,
-        price: (PRODUCTS[2] || PRODUCTS[0]).price
+        price: getProduct(2).price
       }
     ],
     shippingFee: 30000,
     discount: 0,
-    total: (PRODUCTS[2] || PRODUCTS[0]).price + 30000
+    total: getProduct(2).price + 30000
   },
   {
     id: 'ORD-98271',
@@ -104,16 +139,16 @@ const MOCK_ORDERS = [
     paymentStatus: 'Đã thanh toán',
     items: [
       {
-        product: PRODUCTS[0],
-        color: PRODUCTS[0].colors[1] || PRODUCTS[0].colors[0],
+        product: getProduct(0),
+        color: getProduct(0).colors[1] || getProduct(0).colors[0],
         size: 'XL',
         quantity: 1,
-        price: PRODUCTS[0].price
+        price: getProduct(0).price
       }
     ],
     shippingFee: 15000,
     discount: 15000,
-    total: PRODUCTS[0].price + 15000 - 15000
+    total: getProduct(0).price + 15000 - 15000
   },
   {
     id: 'ORD-88123',
@@ -124,16 +159,16 @@ const MOCK_ORDERS = [
     paymentStatus: 'Đã hoàn tiền',
     items: [
       {
-        product: PRODUCTS[1] || PRODUCTS[0],
-        color: (PRODUCTS[1] || PRODUCTS[0]).colors[0],
+        product: getProduct(1),
+        color: getProduct(1).colors[0],
         size: 'S',
         quantity: 1,
-        price: (PRODUCTS[1] || PRODUCTS[0]).price
+        price: getProduct(1).price
       }
     ],
     shippingFee: 30000,
     discount: 0,
-    total: (PRODUCTS[1] || PRODUCTS[0]).price + 30000
+    total: getProduct(1).price + 30000
   },
   {
     id: 'ORD-44102',
@@ -144,16 +179,16 @@ const MOCK_ORDERS = [
     paymentStatus: 'Đã hoàn tiền',
     items: [
       {
-        product: PRODUCTS[2] || PRODUCTS[0],
-        color: (PRODUCTS[2] || PRODUCTS[0]).colors[0],
+        product: getProduct(2),
+        color: getProduct(2).colors[0],
         size: 'L',
         quantity: 1,
-        price: (PRODUCTS[2] || PRODUCTS[0]).price
+        price: getProduct(2).price
       }
     ],
     shippingFee: 30000,
     discount: 0,
-    total: (PRODUCTS[2] || PRODUCTS[0]).price + 30000
+    total: getProduct(2).price + 30000
   }
 ];
 

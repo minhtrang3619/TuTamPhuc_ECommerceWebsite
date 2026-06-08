@@ -70,7 +70,8 @@ class ProductService:
                 detail="Slug đã tồn tại",
             )
         variants_data = data.variants or []
-        product_dict = data.model_dump(exclude={"variants"})
+        images_data = data.images or []
+        product_dict = data.model_dump(exclude={"variants", "images"})
         product = Product(**product_dict)
         self.db.add(product)
         self.db.flush()
@@ -78,6 +79,10 @@ class ProductService:
         for v in variants_data:
             variant = ProductVariant(product_id=product.id, **v.model_dump())
             self.db.add(variant)
+
+        for img in images_data:
+            product_image = ProductImage(product_id=product.id, **img.model_dump())
+            self.db.add(product_image)
 
         self.db.commit()
         self.db.refresh(product)
@@ -87,8 +92,25 @@ class ProductService:
         product = self.repo.get(product_id)
         if not product:
             raise HTTPException(status_code=404, detail="Sản phẩm không tồn tại")
-        for field, value in data.model_dump(exclude_none=True).items():
+        
+        # Update images if provided
+        if data.images is not None:
+            self.db.query(ProductImage).filter(ProductImage.product_id == product_id).delete()
+            for img in data.images:
+                product_image = ProductImage(product_id=product_id, **img.model_dump())
+                self.db.add(product_image)
+
+        # Update variants if provided
+        if data.variants is not None:
+            self.db.query(ProductVariant).filter(ProductVariant.product_id == product_id).delete()
+            for v in data.variants:
+                variant = ProductVariant(product_id=product_id, **v.model_dump())
+                self.db.add(variant)
+
+        # Update other fields
+        for field, value in data.model_dump(exclude={"variants", "images"}, exclude_none=True).items():
             setattr(product, field, value)
+            
         return self.repo.update(product)
 
     def delete(self, product_id: int) -> None:
