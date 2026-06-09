@@ -9,7 +9,7 @@ from app.core.config import settings
 
 
 class UploadService:
-    ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
+    ALLOWED_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"}
     MAX_SIZE = settings.MAX_FILE_SIZE
 
     async def upload_image(self, file: UploadFile, folder: str = "products") -> str:

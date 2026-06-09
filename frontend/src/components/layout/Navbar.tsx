@@ -1,10 +1,12 @@
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { ShoppingCart, Heart, User, Menu, Search, X } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useMockCartStore } from '@/store/mockCartStore'
 import { useAuthStore } from '@/store/authStore'
+import { useWishlistStore } from '@/store/wishlistStore'
 import { cn } from '@/lib/utils'
+import { Marquee } from '@/components/ui/Marquee'
 
 const navLinks = [
   { label: 'Trang Chủ', href: '/' },
@@ -18,11 +20,30 @@ export function Navbar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const { isAuthenticated, user } = useAuthStore()
   const { cart, openCart } = useMockCartStore()
+  const { items: wishlistItems, fetchWishlist } = useWishlistStore()
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0)
   const location = useLocation()
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchWishlist()
+    }
+  }, [isAuthenticated, fetchWishlist])
+
+  const marqueeItems = [
+    "Miễn phí vận chuyển cho đơn hàng từ 1.000.000đ",
+    "•",
+    "Gieo Mầm Từ Tâm — Trích 5% giá trị mỗi đơn hàng làm quỹ thiện nguyện",
+    "•",
+    "Pháp phục thiết kế cao cấp, chắt lọc tinh hoa văn hóa truyền thống",
+    "•",
+    "Hỗ trợ tư vấn kích cỡ & chất liệu 24/7 với Trợ lý AI thông minh",
+    "•"
+  ]
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-surface/80 backdrop-blur-xl border-b border-outline-variant shadow-[0_32px_64px_-12px_rgba(68,42,34,0.06)] transition-all duration-300">
+      <Marquee items={marqueeItems} speed="normal" className="bg-primary text-on-primary text-[10px] py-1 border-none justify-around" />
       <nav className="flex justify-between items-center px-margin-mobile md:px-margin-desktop h-20 max-w-container-max mx-auto w-full">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 py-1">
@@ -36,10 +57,12 @@ export function Navbar() {
           {navLinks.map(link => {
             const isActive = link.href === '/'
               ? location.pathname === '/'
-              : location.pathname === '/san-pham' && (
-                  (link.href.includes('category=') && location.search === `?${link.href.split('?')[1]}`) ||
-                  (!link.href.includes('category=') && !location.search)
-                );
+              : link.href.startsWith('/san-pham')
+                ? location.pathname === '/san-pham' && (
+                    (link.href.includes('category=') && location.search === `?${link.href.split('?')[1]}`) ||
+                    (!link.href.includes('category=') && !location.search)
+                  )
+                : location.pathname.startsWith(link.href);
             return (
               <li key={link.label}>
                 <NavLink
@@ -69,10 +92,15 @@ export function Navbar() {
 
           <Link
             to="/yeu-thich"
-            className="p-2 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors duration-300"
+            className="relative p-2 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors duration-300"
             aria-label="Yêu thích"
           >
             <Heart className="w-5 h-5" />
+            {isAuthenticated && wishlistItems.length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                {wishlistItems.length}
+              </span>
+            )}
           </Link>
 
           <button
@@ -130,10 +158,12 @@ export function Navbar() {
               {navLinks.map(link => {
                 const isActive = link.href === '/'
                   ? location.pathname === '/'
-                  : location.pathname === '/san-pham' && (
-                      (link.href.includes('category=') && location.search === `?${link.href.split('?')[1]}`) ||
-                      (!link.href.includes('category=') && !location.search)
-                    );
+                  : link.href.startsWith('/san-pham')
+                    ? location.pathname === '/san-pham' && (
+                        (link.href.includes('category=') && location.search === `?${link.href.split('?')[1]}`) ||
+                        (!link.href.includes('category=') && !location.search)
+                      )
+                    : location.pathname.startsWith(link.href);
                 return (
                   <li key={link.href}>
                     <NavLink

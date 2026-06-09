@@ -1,6 +1,16 @@
 import type { Product as ApiProduct } from '@/types'
 
+export const getImageUrl = (url: string) => {
+  if (!url) return 'https://lh3.googleusercontent.com/aida-public/AB6AXuCoN-bFmYs_4Pou635qnLS4buY4mQKx8avkQwiBnjE0MwTqvdyiwKCu6jUyLwtVA_ZfrjDhH8OeUggZ53HFGmyQisSBYlPfS5NGXuRVO_pIn8t3RlN6Uohv0j9XqwHEQdLaDArg7CzxVTcwpCAV-iOUO236FuvB4u5dI7nU6RbBNWaym5M8ECoLYQL1lCAaKStoNOhRzzEkYgEpOKTSJVFf6RqrwsdARQn6Iq0LJcKA4UevZyqHJmymu2vADk4NZzFUzTw7Rt-lfTNp'
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:')) {
+    return url
+  }
+  const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+  return `${BASE_URL.replace(/\/$/, '')}/${url.replace(/^\//, '')}`
+}
+
 export interface MockProduct {
+  dbId?: number
   id: string
   name: string
   price: number
@@ -24,6 +34,10 @@ export function mapApiProductToMockProduct(p: ApiProduct): MockProduct {
   const colors = p.variants
     ?.filter((v: any) => v.name === "Màu")
     .map((v: any) => {
+      const parts = v.value.split('|')
+      if (parts.length === 2) {
+        return { name: parts[0], hex: parts[1] }
+      }
       const colorMap: Record<string, string> = {
         "Nâu nhạt": "#EADDD7",
         "Nâu đất": "#5D4037",
@@ -45,9 +59,10 @@ export function mapApiProductToMockProduct(p: ApiProduct): MockProduct {
     
   const uniqueSizes = Array.from(new Set(sizes))
 
-  const images = p.images?.map((img: any) => img.url) || []
+  const images = p.images?.map((img: any) => getImageUrl(img.url)) || []
 
   return {
+    dbId: p.id,
     id: p.slug,
     name: p.name,
     price: p.price,

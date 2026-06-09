@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { ChevronRight, Leaf, Sparkles, Heart, MessageSquare } from 'lucide-react';
 
 import { PRODUCTS } from '../../data';
 import { useMockCartStore } from '../../store/mockCartStore';
+import { useAuthStore } from '@/store/authStore';
+import { useWishlistStore } from '@/store/wishlistStore';
 import { formatPrice } from '../../components/ui/ProductCard';
 import Toast from '../../components/ui/Toast';
 import apiClient from '@/services/apiClient';
@@ -13,9 +15,13 @@ import { mapApiProductToMockProduct } from '@/utils/productMapper';
 export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { addItem, openCart, openCheckout } = useMockCartStore();
+  const { isAuthenticated } = useAuthStore();
+  const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlistStore();
 
   const dummyProduct = {
+    dbId: undefined as number | undefined,
     id: '',
     name: 'Sản phẩm',
     price: 0,
@@ -34,12 +40,14 @@ export default function ProductDetailPage() {
   const fallbackProduct = PRODUCTS.find((p) => p.id === slug) || PRODUCTS[0] || dummyProduct;
   const [product, setProduct] = useState<any>(fallbackProduct);
   const [loading, setLoading] = useState(true);
+  const [rawProduct, setRawProduct] = useState<any>(null);
 
   useEffect(() => {
     if (!slug) return;
     apiClient.get(`/products/${slug}`)
       .then(res => {
         if (res.data) {
+          setRawProduct(res.data);
           const mapped = mapApiProductToMockProduct(res.data);
           setProduct(mapped);
           setActiveDetailColor(mapped.colors[0] || null);
@@ -56,14 +64,32 @@ export default function ProductDetailPage() {
   const [activeDetailColor, setActiveDetailColor] = useState<{ name: string; hex: string } | null>(null);
   const [activeDetailSize, setActiveDetailSize] = useState<string>('M');
   const [isSizeGuideOpen, setIsSizeGuideOpen] = useState<boolean>(false);
-  const [isFavorite, setIsFavorite] = useState<boolean>(false);
+  const [activeImageIndex, setActiveImageIndex] = useState<number>(0);
 
-  const toggleFavorite = () => {
-    setIsFavorite(!isFavorite);
-    if (!isFavorite) {
-      showToast('Đã thêm sản phẩm vào danh mục yêu thích!', 'success');
-    } else {
-      showToast('Đã xóa sản phẩm khỏi danh mục yêu thích.', 'info');
+  const isFavorite = product?.dbId ? isInWishlist(product.dbId) : false;
+
+  const toggleFavorite = async () => {
+    if (!isAuthenticated) {
+      showToast('Vui lòng đăng nhập để lưu sản phẩm yêu thích!', 'info');
+      setTimeout(() => {
+        navigate('/login', { state: { from: location.pathname } });
+      }, 1500);
+      return;
+    }
+
+    if (!product || !product.dbId || !rawProduct) return;
+
+    try {
+      if (isFavorite) {
+        await removeFromWishlist(product.dbId);
+        showToast('Đã xóa sản phẩm khỏi danh mục yêu thích.', 'info');
+      } else {
+        await addToWishlist(rawProduct);
+        showToast('Đã thêm sản phẩm vào danh mục yêu thích!', 'success');
+      }
+    } catch (err) {
+      console.error("Lỗi khi thay đổi yêu thích:", err);
+      showToast('Có lỗi xảy ra, vui lòng thử lại sau.', 'info');
     }
   };
 
@@ -84,6 +110,7 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     if (product) {
+      setActiveImageIndex(0);
       setActiveDetailColor(product.colors[0] || null);
       setActiveDetailSize(product.sizes[0] || 'M');
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -152,7 +179,7 @@ export default function ProductDetailPage() {
             <div className="aspect-[3/4] bg-surface-container overflow-hidden rounded-xs shadow-[0_8px_32px_rgba(68,42,34,0.03)] border border-[#d4c3be]/20 relative">
               <img
                 alt={product.name}
-                src={product.images[0]}
+                src={product.images[activeImageIndex] || product.images[0]}
                 className="w-full h-full object-cover transition-transform duration-[2200ms] hover:scale-105"
                 referrerPolicy="no-referrer"
               />
@@ -164,24 +191,31 @@ export default function ProductDetailPage() {
             </div>
 
             {/* Sub-thumbnails */}
-            <div className="grid grid-cols-2 gap-6">
-              <div className="aspect-square bg-surface-container overflow-hidden rounded-xs border border-[#d4c3be]/20 relative group">
-                <img
-                  alt="Fabric Macro 1"
-                  src={product.images[1] || product.images[0]}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  referrerPolicy="no-referrer"
-                />
+            {product.images && product.images.length > 1 && (
+              <div className="grid grid-cols-4 gap-4">
+                {product.images.map((imgUrl: string, idx: number) => {
+                  const isActive = activeImageIndex === idx;
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setActiveImageIndex(idx)}
+                      className={`aspect-[3/4] bg-surface-container overflow-hidden rounded-xs border transition-all cursor-pointer p-0 bg-transparent flex items-center justify-center outline-none ${
+                        isActive 
+                          ? 'border-primary ring-2 ring-primary/20 scale-[1.02]' 
+                          : 'border-[#d4c3be]/40 hover:border-primary'
+                      }`}
+                    >
+                      <img
+                        alt={`${product.name} thumbnail ${idx + 1}`}
+                        src={imgUrl}
+                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                        referrerPolicy="no-referrer"
+                      />
+                    </button>
+                  );
+                })}
               </div>
-              <div className="aspect-square bg-surface-container overflow-hidden rounded-xs border border-[#d4c3be]/20 relative group">
-                <img
-                  alt="Fabric Macro 2"
-                  src={product.images[2] || product.images[0]}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Right Column - Purchase panel */}
@@ -209,9 +243,10 @@ export default function ProductDetailPage() {
                   "{product.quote}"
                 </p>
               )}
-              <p className="font-sans text-xs text-on-surface-variant/80 tracking-wide leading-relaxed">
-                {product.description}
-              </p>
+              <div 
+                className="font-sans text-xs text-on-surface-variant/80 tracking-wide leading-relaxed [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-2 [&_li]:my-0.5 [&_strong]:font-semibold [&_em]:italic"
+                dangerouslySetInnerHTML={{ __html: product.description }}
+              />
             </div>
 
             {/* Attributes Selection */}

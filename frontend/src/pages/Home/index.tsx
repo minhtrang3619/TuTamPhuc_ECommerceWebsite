@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { ArrowRight, Leaf } from 'lucide-react'
+import { Marquee } from '@/components/ui/Marquee'
 
 export default function HomePage() {
   const scrollToCollections = () => {
@@ -95,6 +96,21 @@ export default function HomePage() {
             </div>
           </Link>
         </div>
+      </section>
+
+      {/* Decorative Zen Marquee */}
+      <section className="py-4 bg-surface-container/20 border-y border-outline-variant/20 overflow-hidden select-none">
+        <Marquee
+          items={[
+            "Tĩnh Tâm", "•", "An Nhiên", "•", "Tự Tại", "•",
+            "Từ Bi", "•", "Trí Tuệ", "•", "Thanh Tịnh", "•",
+            "Chánh Niệm", "•", "Diện Trang Nghiêm", "•", "Khởi Tâm Từ", "•"
+          ]}
+          speed="slow"
+          className="bg-transparent border-none py-0 text-primary/10 font-serif text-2xl md:text-4xl tracking-widest uppercase"
+          gap="gap-16"
+          pauseOnHover={false}
+        />
       </section>
 
       {/* Charity Campaign Section */}

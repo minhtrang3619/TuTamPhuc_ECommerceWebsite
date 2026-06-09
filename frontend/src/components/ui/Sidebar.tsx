@@ -8,6 +8,7 @@ interface SidebarProps {
   setSelectedColors: (colors: string[]) => void;
   selectedSizes: string[];
   setSelectedSizes: (sizes: string[]) => void;
+  colors?: { name: string; hex: string }[];
   onClearAll: () => void;
 }
 
@@ -18,6 +19,7 @@ export default function Sidebar({
   setSelectedColors,
   selectedSizes,
   setSelectedSizes,
+  colors = COLORS,
   onClearAll,
 }: SidebarProps) {
   
@@ -30,8 +32,10 @@ export default function Sidebar({
   };
 
   const handleColorToggle = (colorHex: string) => {
-    if (selectedColors.includes(colorHex)) {
-      setSelectedColors(selectedColors.filter((c) => c !== colorHex));
+    const hexLower = colorHex.toLowerCase();
+    const isSelected = selectedColors.map(c => c.toLowerCase()).includes(hexLower);
+    if (isSelected) {
+      setSelectedColors(selectedColors.filter((c) => c.toLowerCase() !== hexLower));
     } else {
       setSelectedColors([...selectedColors, colorHex]);
     }
@@ -99,8 +103,8 @@ export default function Sidebar({
       <div>
         <h4 className="text-[11px] uppercase tracking-widest font-semibold text-primary mb-3">Màu sắc</h4>
         <div className="flex flex-wrap gap-3">
-          {COLORS.map((color) => {
-            const isSelected = selectedColors.includes(color.hex);
+          {colors.map((color) => {
+            const isSelected = selectedColors.map(c => c.toLowerCase()).includes(color.hex.toLowerCase());
             return (
               <button
                 key={color.hex}

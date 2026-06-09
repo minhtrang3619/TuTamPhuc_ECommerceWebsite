@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -22,6 +22,8 @@ import {
   Heart
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { useWishlistStore } from '../../store/wishlistStore';
+import { mapApiProductToMockProduct } from '../../utils/productMapper';
 import { PRODUCTS } from '../../data';
 import { formatPrice } from '../../components/ui/ProductCard';
 import Toast from '../../components/ui/Toast';
@@ -292,11 +294,31 @@ const MOCK_VOUCHERS: Voucher[] = [
   }
 ];
 
-const MOCK_FAVORITES = PRODUCTS.slice(0, 3);
-
 export default function ProfilePage() {
   const { user, isAuthenticated, updateUser, logout } = useAuthStore();
   const navigate = useNavigate();
+  const { items: wishlistItems, fetchWishlist, removeFromWishlist } = useWishlistStore();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchWishlist();
+    }
+  }, [isAuthenticated, fetchWishlist]);
+
+  const mappedFavorites = useMemo(() => {
+    return wishlistItems.map(p => mapApiProductToMockProduct(p));
+  }, [wishlistItems]);
+
+  const handleRemoveFavorite = async (dbId?: number) => {
+    if (!dbId) return;
+    try {
+      await removeFromWishlist(dbId);
+      showToast('Đã xóa sản phẩm khỏi danh mục yêu thích.', 'info');
+    } catch (err) {
+      console.error("Lỗi khi xóa yêu thích:", err);
+      showToast('Không thể xóa sản phẩm. Vui lòng thử lại sau.', 'info');
+    }
+  };
 
   // Selected sub-tab
   const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'favorites' | 'addresses' | 'offers'>('profile');
@@ -979,7 +1001,7 @@ export default function ProfilePage() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                    {MOCK_FAVORITES.map((product) => (
+                    {mappedFavorites.map((product) => (
                       <div key={product.id} className="group relative bg-[#fcfaf7] border border-[#d4c3be]/40 overflow-hidden rounded-sm transition-all duration-300 hover:shadow-md flex flex-col h-full justify-between">
                         {/* Product Image */}
                         <div className="aspect-[3/4] overflow-hidden bg-white relative">
@@ -992,7 +1014,7 @@ export default function ProfilePage() {
                           <button
                             type="button"
                             className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center text-error border-none cursor-pointer hover:scale-110 transition-transform"
-                            onClick={() => showToast('Đã xóa khỏi danh sách yêu thích', 'info')}
+                            onClick={() => handleRemoveFavorite(product.dbId)}
                           >
                             <Heart size={16} fill="currentColor" />
                           </button>
@@ -1024,7 +1046,7 @@ export default function ProfilePage() {
                       </div>
                     ))}
                     
-                    {MOCK_FAVORITES.length === 0 && (
+                    {mappedFavorites.length === 0 && (
                       <div className="col-span-3 py-16 flex flex-col items-center justify-center text-on-surface-variant/60 gap-2 border border-dashed border-[#d4c3be]/50 rounded-sm w-full">
                         <Heart size={28} className="opacity-40" />
                         <p className="text-xs font-medium">Chưa có sản phẩm yêu thích nào.</p>

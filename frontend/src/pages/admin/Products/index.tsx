@@ -19,11 +19,15 @@ import {
   Tag,
   CreditCard,
   PenTool,
-  ArrowLeft
+  ArrowLeft,
+  Leaf,
+  Heart,
+  MessageSquare
 } from 'lucide-react'
 
 import AdminCategories from '../Categories'
 import apiClient from '@/services/apiClient'
+import { getImageUrl } from '@/utils/productMapper'
 
 interface ProductItem {
   id: string
@@ -35,6 +39,7 @@ interface ProductItem {
   seller: string
   status: string
   image: string
+  raw: any
 }
 
 export default function AdminProducts() {
@@ -62,7 +67,8 @@ export default function AdminProducts() {
         stock: p.stock,
         seller: 'Từ Tâm Chính',
         status: p.status === 'active' ? 'Đang bán' : 'Đã lưu trữ',
-        image: p.images?.[0]?.url || 'https://lh3.googleusercontent.com/aida-public/AB6AXuCoN-bFmYs_4Pou635qnLS4buY4mQKx8avkQwiBnjE0MwTqvdyiwKCu6jUyLwtVA_ZfrjDhH8OeUggZ53HFGmyQisSBYlPfS5NGXuRVO_pIn8t3RlN6Uohv0j9XqwHEQdLaDArg7CzxVTcwpCAV-iOUO236FuvB4u5dI7nU6RbBNWaym5M8ECoLYQL1lCAaKStoNOhRzzEkYgEpOKTSJVFf6RqrwsdARQn6Iq0LJcKA4UevZyqHJmymu2vADk4NZzFUzTw7Rt-lfTNp'
+        image: getImageUrl(p.images?.[0]?.url),
+        raw: p
       }))
       setProducts(mapped)
     } catch (err) {
@@ -89,6 +95,16 @@ export default function AdminProducts() {
   // Form Open State (Reuses isAddModalOpen but renders full page)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null)
+  const [mainImageFile, setMainImageFile] = useState<File | null>(null)
+  const [galleryImageFiles, setGalleryImageFiles] = useState<{ blobUrl: string; file: File }[]>([])
+  const [isSaving, setIsSaving] = useState(false)
+  const [isSaveConfirmModalOpen, setIsSaveConfirmModalOpen] = useState(false)
+
+  // Preview Modal states
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [previewActiveColor, setPreviewActiveColor] = useState<{ name: string; hex: string } | null>(null)
+  const [previewActiveSize, setPreviewActiveSize] = useState<string>('M')
+
 
   // Full product form fields state
   const [formData, setFormData] = useState({
@@ -142,8 +158,85 @@ export default function AdminProducts() {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
   }
 
+  const formatNumberWithDots = (num: number | string) => {
+    if (!num && num !== 0) return ''
+    const str = String(num).replace(/\D/g, '')
+    if (!str) return ''
+    return Number(str).toLocaleString('vi-VN')
+  }
+
+  const parseDotsToNumber = (str: string) => {
+    const cleanStr = str.replace(/\./g, '').replace(/,/g, '')
+    const num = Number(cleanStr)
+    return isNaN(num) ? 0 : num
+  }
+
+  const handleFormatText = (format: 'bold' | 'italic' | 'list') => {
+    const textarea = document.getElementById('product-description-textarea') as HTMLTextAreaElement
+    if (!textarea) return
+
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const text = textarea.value
+    const selectedText = text.substring(start, end)
+
+    let prefix = ''
+    let suffix = ''
+    let replacement = selectedText
+
+    if (format === 'bold') {
+      prefix = '<strong>'
+      suffix = '</strong>'
+    } else if (format === 'italic') {
+      prefix = '<em>'
+      suffix = '</em>'
+    } else if (format === 'list') {
+      if (selectedText) {
+        const lines = selectedText.split('\n')
+        prefix = '<ul>\n'
+        replacement = lines.map(line => `  <li>${line}</li>`).join('\n')
+        suffix = '\n</ul>'
+      } else {
+        prefix = '<ul>\n  <li>'
+        replacement = ''
+        suffix = '</li>\n</ul>'
+      }
+    }
+
+    const fullReplacement = prefix + replacement + suffix
+    const newValue = text.substring(0, start) + fullReplacement + text.substring(end)
+    
+    setFormData(prev => ({ ...prev, description: newValue }))
+
+    setTimeout(() => {
+      textarea.focus()
+      if (selectedText) {
+        textarea.setSelectionRange(start, start + fullReplacement.length)
+      } else {
+        const cursorPosition = start + prefix.length
+        textarea.setSelectionRange(cursorPosition, cursorPosition)
+      }
+    }, 50)
+  }
+
+
+  const handleOpenPreview = () => {
+    if (formData.variants && formData.variants.length > 0) {
+      setPreviewActiveColor({
+        name: formData.variants[0].colorName,
+        hex: formData.variants[0].colorHex
+      })
+    } else {
+      setPreviewActiveColor({ name: 'Nâu đất', hex: '#5D4037' })
+    }
+    setPreviewActiveSize('M')
+    setIsPreviewOpen(true)
+  }
+
   const handleOpenAdd = () => {
     setSelectedProduct(null)
+    setMainImageFile(null)
+    setGalleryImageFiles([])
     setFormData({
       id: '',
       name: '',
@@ -178,13 +271,60 @@ export default function AdminProducts() {
 
   const handleOpenEdit = (p: ProductItem) => {
     setSelectedProduct(p)
+    setMainImageFile(null)
+    setGalleryImageFiles([])
+
+    // Parse raw variants from API response
+    const rawVariants = p.raw?.variants || []
+    const colorItems = rawVariants.filter((v: any) => v.name === 'Màu')
+    const sizeItems = rawVariants.filter((v: any) => v.name === 'Kích cỡ' || v.name === 'Size')
+
+    const sizesStock = { S: 0, M: 0, L: 0, XL: 0 }
+    sizeItems.forEach((s: any) => {
+      if (s.value === 'S') sizesStock.S = s.stock
+      if (s.value === 'M') sizesStock.M = s.stock
+      if (s.value === 'L') sizesStock.L = s.stock
+      if (s.value === 'XL') sizesStock.XL = s.stock
+    })
+
+    const colorMap: Record<string, string> = {
+      'Nâu nhạt': '#EADDD7',
+      'Nâu đất': '#5D4037',
+      'Nâu Trầm (Earth Brown)': '#5D4037',
+      'Cát Trắng (Sand Ivory)': '#D7CCC8',
+      'Trắng ngà': '#F5F5F5',
+      'Xanh rêu': '#8D9B91'
+    }
+
+    const formVariants = colorItems.map((c: any) => {
+      const parts = c.value.split('|')
+      const colorName = parts[0]
+      const colorHex = parts.length === 2 ? parts[1] : (colorMap[c.value] || '#ece0dc')
+      return {
+        colorName,
+        colorHex,
+        sizes: { ...sizesStock }
+      }
+    })
+
+    const finalVariants = formVariants.length > 0 ? formVariants : [
+      {
+        colorName: 'Nâu Trầm (Earth Brown)',
+        colorHex: '#5D4037',
+        sizes: sizesStock
+      }
+    ]
+
+    // Parse gallery images
+    const apiGalleryImages = p.raw?.images?.map((img: any) => getImageUrl(img.url)) || []
+
     setFormData({
       id: p.id,
       name: p.name,
       sku: p.sku,
       category: p.category,
-      description: 'Pháp phục mang lại cảm giác an yên từ sớ vải dệt tự nhiên.',
-      material: p.category.includes('Lụa') ? 'Lụa tơ tằm Hà Đông' : 'Linen tự nhiên',
+      description: p.raw?.description || '',
+      material: p.raw?.short_description || p.raw?.tags?.[0] || 'Linen tự nhiên',
       price: p.price,
       unit: 'Bộ',
       discountProgram: 'Không có',
@@ -193,17 +333,8 @@ export default function AdminProducts() {
       startDate: '',
       endDate: '',
       image: p.image,
-      galleryImages: [
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuCnG4BEALp5sWYNunjiFY4iSc-Fujq4E1lVF-3x6FYnnEsPx0zSK11SVLSsryTFiWho2mhe32L9cW7XgPPjg9RkmfH5fHhynGmPQx8gMEGR9BzldFMZ444XX15X9AgKky2Xc86SagH-z0LmBuQCdT1LEz6yUYap07_Xh_aXXBmQHTHbW2l-wy65vaJGXOsquNdAzEnxXxugcM__N960gIZWsMQz_6YDlwnZq0M8SXQTrhWiO_xihjkiRiRky9AOgHdxBiF5UkrxQHxX',
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuCrRKsq3BJlHE_JjY09_6CpeMmhpcJMF9AUwHVDy5peSAmZQ5rHNPSz1XvDQiXTDr6psTpJ3iUM28hiqIZA5Booc6VZHyF7bA5qQvGzK_XyCFhmhOuQ-mHqmhknkz75RpXbJe5sX6j1leWqKMJBYTM4oTZgyWR-aZgpDgoqC5xiamhQibo18_pb9BR_1ZPOG7KG79s5sQIeYiV1jvbUuB05WG0tJG0supZVil67yvH4I0JgUW8AJvjByZyXSU8GR4hLrQ5Jer77-VRX'
-      ],
-      variants: [
-        {
-          colorName: 'Nâu Trầm (Earth Brown)',
-          colorHex: '#5D4037',
-          sizes: { S: Math.floor(p.stock / 2), M: Math.ceil(p.stock / 2), L: 0, XL: 0 }
-        }
-      ]
+      galleryImages: apiGalleryImages.length > 0 ? apiGalleryImages : [p.image],
+      variants: finalVariants
     })
     setIsAddModalOpen(true)
   }
@@ -260,10 +391,11 @@ export default function AdminProducts() {
     }))
   }
 
-  // Image upload simulation
+  // Image upload
   const handleMainImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      setMainImageFile(file)
       const url = URL.createObjectURL(file)
       setFormData(prev => ({ ...prev, image: url }))
     }
@@ -272,10 +404,14 @@ export default function AdminProducts() {
   const handleGalleryImagesUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (files) {
+      const newItems: { blobUrl: string; file: File }[] = []
       const urls: string[] = []
       for (let i = 0; i < files.length; i++) {
-        urls.push(URL.createObjectURL(files[i]))
+        const url = URL.createObjectURL(files[i])
+        newItems.push({ blobUrl: url, file: files[i] })
+        urls.push(url)
       }
+      setGalleryImageFiles(prev => [...prev, ...newItems])
       setFormData(prev => ({
         ...prev,
         galleryImages: [...prev.galleryImages, ...urls]
@@ -284,6 +420,8 @@ export default function AdminProducts() {
   }
 
   const handleRemoveGalleryImage = (index: number) => {
+    const urlToRemove = formData.galleryImages[index]
+    setGalleryImageFiles(prev => prev.filter(item => item.blobUrl !== urlToRemove))
     setFormData(prev => ({
       ...prev,
       galleryImages: prev.galleryImages.filter((_, idx) => idx !== index)
@@ -291,59 +429,110 @@ export default function AdminProducts() {
   }
 
   // Save product logic
-  const handleSaveProductSubmit = () => {
+  const handleSaveProductSubmit = async () => {
     if (!formData.name || !formData.sku || formData.price <= 0) {
       alert('Vui lòng điền đầy đủ tên, SKU và giá bán.')
       return
     }
 
-    const totalStockFromVariants = formData.variants.reduce((acc, v) => {
-      return acc + (v.sizes.S + v.sizes.M + v.sizes.L + v.sizes.XL)
-    }, 0)
+    try {
+      setIsSaving(true)
 
-    // Find category ID matching formData.category name
-    let catId = dbCategories.find(c => c.name.toLowerCase() === formData.category.toLowerCase())?.id
-    if (!catId && dbCategories.length > 0) {
-      catId = dbCategories[0].id
-    }
-    if (!catId) {
-      catId = 1
-    }
+      // 1. Upload main image if it's a new local file (blob)
+      let finalMainImageUrl = formData.image
+      if (mainImageFile) {
+        const uploadData = new FormData()
+        uploadData.append('file', mainImageFile)
+        const uploadRes = await apiClient.post('/uploads/image', uploadData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+        finalMainImageUrl = uploadRes.data.url
+      } else if (finalMainImageUrl.startsWith('blob:')) {
+        alert('Lỗi: Ảnh đại diện hiện tại là đường dẫn tạm thời. Vui lòng chọn tải lên lại ảnh đại diện chính.')
+        setIsSaving(false)
+        return
+      }
 
-    const slug = formData.name.toLowerCase()
-      .replace(/ /g, '-')
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9-]/g, '')
+      // 2. Upload gallery images if they are new local files (blobs)
+      const finalGalleryUrls: string[] = []
+      for (const imgUrl of formData.galleryImages) {
+        const localFileItem = galleryImageFiles.find(item => item.blobUrl === imgUrl)
+        if (localFileItem) {
+          const uploadData = new FormData()
+          uploadData.append('file', localFileItem.file)
+          const uploadRes = await apiClient.post('/uploads/image', uploadData, {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          })
+          finalGalleryUrls.push(uploadRes.data.url)
+        } else {
+          // If it is a blob url but not found in file mapping, skip it to avoid database pollution
+          if (imgUrl.startsWith('blob:')) {
+            console.warn('Bỏ qua ảnh phụ chưa tải lên:', imgUrl)
+            continue
+          }
+          // Keep existing or external image URL, converting back to relative path if it points to local API
+          const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+          const relativeUrl = imgUrl.replace(BASE_URL, '')
+          finalGalleryUrls.push(relativeUrl)
+        }
+      }
 
-    const apiVariants: any[] = []
-    formData.variants.forEach(v => {
-      // Add color variant
-      apiVariants.push({
-        name: "Màu",
-        value: v.colorName,
-        additional_price: 0.0,
-        stock: v.sizes.S + v.sizes.M + v.sizes.L + v.sizes.XL
+      // Format finalMainImageUrl as relative path if it contains BASE_URL
+      const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+      const relativeMainImageUrl = finalMainImageUrl.replace(BASE_URL, '')
+
+      const totalStockFromVariants = formData.variants.reduce((acc, v) => {
+        return acc + (v.sizes.S + v.sizes.M + v.sizes.L + v.sizes.XL)
+      }, 0)
+
+      // Find category ID matching formData.category name
+      let catId = dbCategories.find(c => c.name.toLowerCase() === formData.category.toLowerCase())?.id
+      if (!catId && dbCategories.length > 0) {
+        catId = dbCategories[0].id
+      }
+      if (!catId) {
+        catId = 1
+      }
+
+      const slug = formData.name.toLowerCase()
+        .replace(/đ/g, 'd')
+        .replace(/ /g, '-')
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9-]/g, '')
+        .replace(/-+/g, '-')
+
+      const apiVariants: any[] = []
+      formData.variants.forEach(v => {
+        // Add color variant with serialized hex code
+        apiVariants.push({
+          name: "Màu",
+          value: `${v.colorName}|${v.colorHex}`,
+          additional_price: 0.0,
+          stock: v.sizes.S + v.sizes.M + v.sizes.L + v.sizes.XL
+        })
+        // Add size variants
+        if (v.sizes.S > 0) apiVariants.push({ name: "Kích cỡ", value: "S", stock: v.sizes.S })
+        if (v.sizes.M > 0) apiVariants.push({ name: "Kích cỡ", value: "M", stock: v.sizes.M })
+        if (v.sizes.L > 0) apiVariants.push({ name: "Kích cỡ", value: "L", stock: v.sizes.L })
+        if (v.sizes.XL > 0) apiVariants.push({ name: "Kích cỡ", value: "XL", stock: v.sizes.XL })
       })
-      // Add size variants
-      if (v.sizes.S > 0) apiVariants.push({ name: "Kích cỡ", value: "S", stock: v.sizes.S })
-      if (v.sizes.M > 0) apiVariants.push({ name: "Kích cỡ", value: "M", stock: v.sizes.M })
-      if (v.sizes.L > 0) apiVariants.push({ name: "Kích cỡ", value: "L", stock: v.sizes.L })
-      if (v.sizes.XL > 0) apiVariants.push({ name: "Kích cỡ", value: "XL", stock: v.sizes.XL })
-    })
 
-    const apiImages: any[] = []
-    if (formData.image) {
-      apiImages.push({
-        url: formData.image,
-        alt: formData.name,
-        is_primary: true,
-        sort_order: 0
-      })
-    }
-    if (formData.galleryImages && formData.galleryImages.length > 0) {
-      formData.galleryImages.forEach((imgUrl, index) => {
-        if (imgUrl && imgUrl !== formData.image) {
+      const apiImages: any[] = []
+      if (relativeMainImageUrl) {
+        apiImages.push({
+          url: relativeMainImageUrl,
+          alt: formData.name,
+          is_primary: true,
+          sort_order: 0
+        })
+      }
+      finalGalleryUrls.forEach((imgUrl, index) => {
+        if (imgUrl && imgUrl !== relativeMainImageUrl) {
           apiImages.push({
             url: imgUrl,
             alt: formData.name,
@@ -352,39 +541,49 @@ export default function AdminProducts() {
           })
         }
       })
+
+      const payload = {
+        name: formData.name,
+        slug: slug,
+        description: formData.description,
+        short_description: formData.material,
+        price: formData.price,
+        sku: formData.sku,
+        stock: totalStockFromVariants,
+        status: 'active',
+        category_id: catId,
+        tags: [formData.material],
+        weight: 350,
+        is_featured: false,
+        variants: apiVariants,
+        images: apiImages
+      }
+
+      if (formData.id) {
+        await apiClient.put(`/products/${formData.id}`, payload)
+      } else {
+        await apiClient.post('/products', payload)
+      }
+
+      setIsAddModalOpen(false)
+      setSelectedProduct(null)
+      fetchProducts()
+    } catch (err: any) {
+      console.error('Lỗi khi lưu sản phẩm:', err)
+      let errorMsg = 'Có lỗi xảy ra khi lưu sản phẩm. Vui lòng thử lại.'
+      if (err.response?.data?.detail) {
+        if (typeof err.response.data.detail === 'string') {
+          errorMsg = err.response.data.detail
+        } else if (Array.isArray(err.response.data.detail)) {
+          errorMsg = err.response.data.detail.map((d: any) => `${d.loc?.join('.') || 'loc'}: ${d.msg}`).join('\n')
+        } else {
+          errorMsg = JSON.stringify(err.response.data.detail)
+        }
+      }
+      alert(`Lỗi:\n${errorMsg}`)
+    } finally {
+      setIsSaving(false)
     }
-
-    const payload = {
-      name: formData.name,
-      slug: slug,
-      description: formData.description,
-      short_description: formData.material,
-      price: formData.price,
-      sku: formData.sku,
-      stock: totalStockFromVariants,
-      status: 'active',
-      category_id: catId,
-      tags: [formData.material],
-      weight: 350,
-      is_featured: false,
-      variants: apiVariants,
-      images: apiImages
-    }
-
-    const saveRequest = formData.id
-      ? apiClient.put(`/products/${formData.id}`, payload)
-      : apiClient.post('/products', payload)
-
-    saveRequest
-      .then(() => {
-        setIsAddModalOpen(false)
-        setSelectedProduct(null)
-        fetchProducts()
-      })
-      .catch(err => {
-        console.error('Lỗi khi lưu sản phẩm:', err)
-        alert('Có lỗi xảy ra khi lưu sản phẩm. Vui lòng thử lại.')
-      })
   }
 
   const handleOpenDelete = (p: ProductItem) => {
@@ -489,11 +688,33 @@ export default function AdminProducts() {
                 <label className="font-caption text-xs text-outline uppercase tracking-wider block mb-2 font-medium">Mô tả chi tiết</label>
                 <div className="border border-outline-variant rounded-lg overflow-hidden">
                   <div className="bg-surface-container-low p-2 border-b border-outline-variant flex gap-2">
-                    <button className="p-1 hover:bg-outline-variant/20 rounded transition-colors" type="button"><Bold size={16} /></button>
-                    <button className="p-1 hover:bg-outline-variant/20 rounded transition-colors" type="button"><Italic size={16} /></button>
-                    <button className="p-1 hover:bg-outline-variant/20 rounded transition-colors" type="button"><List size={16} /></button>
+                    <button 
+                      onClick={() => handleFormatText('bold')} 
+                      className="p-1 hover:bg-outline-variant/20 rounded transition-colors" 
+                      type="button" 
+                      title="Chữ đậm"
+                    >
+                      <Bold size={16} />
+                    </button>
+                    <button 
+                      onClick={() => handleFormatText('italic')} 
+                      className="p-1 hover:bg-outline-variant/20 rounded transition-colors" 
+                      type="button" 
+                      title="Chữ nghiêng"
+                    >
+                      <Italic size={16} />
+                    </button>
+                    <button 
+                      onClick={() => handleFormatText('list')} 
+                      className="p-1 hover:bg-outline-variant/20 rounded transition-colors" 
+                      type="button" 
+                      title="Danh sách gạch đầu dòng"
+                    >
+                      <List size={16} />
+                    </button>
                   </div>
                   <textarea 
+                    id="product-description-textarea"
                     value={formData.description}
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
                     className="w-full border-none focus:ring-0 p-4 font-body-md text-sm bg-transparent" 
@@ -524,11 +745,11 @@ export default function AdminProducts() {
                 <div>
                   <label className="font-caption text-xs text-outline uppercase tracking-wider block mb-2 font-medium">Giá bán lẻ (VNĐ)</label>
                   <input 
-                    value={formData.price || ''}
-                    onChange={(e) => setFormData({...formData, price: Number(e.target.value)})}
+                    value={formatNumberWithDots(formData.price)}
+                    onChange={(e) => setFormData({...formData, price: parseDotsToNumber(e.target.value)})}
                     className="w-full border-0 border-b border-outline-variant bg-transparent focus:ring-0 focus:border-primary py-2 font-body-md text-sm transition-all" 
                     placeholder="1.250.000" 
-                    type="number"
+                    type="text"
                   />
                 </div>
                 <div>
@@ -672,7 +893,7 @@ export default function AdminProducts() {
             {/* Action Panel */}
             <section className="bg-white p-8 rounded-lg shadow-[0_32px_64px_-20px_rgba(68,42,34,0.06)] space-y-4 sticky top-24">
               <button 
-                onClick={() => alert('Chế độ xem trước đang được chuẩn bị. Tâm trí bình tĩnh, vạn sự sẽ thành.')}
+                onClick={handleOpenPreview}
                 className="w-full py-4 px-6 border border-primary text-primary font-label-md text-xs uppercase tracking-wider rounded hover:bg-primary/5 transition-all flex items-center justify-center gap-2" 
                 type="button"
               >
@@ -687,11 +908,18 @@ export default function AdminProducts() {
                   Hủy bỏ
                 </button>
                 <button 
-                  onClick={handleSaveProductSubmit}
-                  className="py-4 px-4 bg-primary text-on-primary font-label-md text-xs uppercase tracking-wider rounded hover:bg-primary/90 transition-all shadow-md" 
+                  onClick={() => {
+                    if (!formData.name || !formData.sku || formData.price <= 0) {
+                      alert('Vui lòng điền đầy đủ tên, SKU và giá bán.')
+                      return
+                    }
+                    setIsSaveConfirmModalOpen(true)
+                  }}
+                  disabled={isSaving}
+                  className="py-4 px-4 bg-primary text-on-primary font-label-md text-xs uppercase tracking-wider rounded hover:bg-primary/90 transition-all shadow-md disabled:opacity-50 flex items-center justify-center gap-1.5" 
                   type="button"
                 >
-                  Đăng sản phẩm
+                  {isSaving ? 'Đang lưu...' : 'Đăng sản phẩm'}
                 </button>
               </div>
               <div className="pt-6 border-t border-outline-variant/20">
@@ -778,6 +1006,242 @@ export default function AdminProducts() {
             </section>
           </aside>
         </form>
+
+        {/* Zen Product Preview Modal */}
+        {isPreviewOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4 md:p-8 animate-in fade-in duration-300">
+            <div className="bg-[#fcfaf7] border border-outline-variant/30 rounded-xl max-w-5xl w-full h-[90vh] shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-8 duration-500 font-sans">
+              {/* Modal Header */}
+              <div className="bg-white px-8 py-4 border-b border-outline-variant/20 flex items-center justify-between shrink-0">
+                <div>
+                  <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-primary/60 font-sans">Chế độ xem trước</span>
+                  <h3 className="font-serif text-lg font-bold text-primary">Xem trước hiển thị sản phẩm</h3>
+                </div>
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => {
+                      setIsPreviewOpen(false);
+                      if (!formData.name || !formData.sku || formData.price <= 0) {
+                        alert('Vui lòng điền đầy đủ tên, SKU và giá bán.');
+                        return;
+                      }
+                      setIsSaveConfirmModalOpen(true);
+                    }}
+                    className="px-5 py-2 bg-primary text-on-primary rounded font-label-md text-xs hover:bg-primary/95 transition-colors uppercase tracking-wider font-semibold"
+                  >
+                    Đăng sản phẩm
+                  </button>
+                  <button 
+                    onClick={() => setIsPreviewOpen(false)}
+                    className="p-2 hover:bg-surface-container-low rounded-full transition-all text-on-surface-variant hover:text-primary"
+                    title="Đóng xem trước"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Scrollable Content (Mimics ProductDetail Page) */}
+              <div className="flex-1 overflow-y-auto p-8 md:p-12">
+                <div className="max-w-4xl mx-auto">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+                    
+                    {/* Left Column - Images */}
+                    <div className="lg:col-span-7 flex flex-col gap-6">
+                      <div className="aspect-[3/4] bg-surface-container overflow-hidden rounded-xs shadow-[0_8px_32px_rgba(68,42,34,0.03)] border border-[#d4c3be]/20 relative">
+                        {formData.image ? (
+                          <img
+                            alt={formData.name || 'Ảnh sản phẩm'}
+                            src={formData.image}
+                            className="w-full h-full object-cover transition-transform duration-[2200ms] hover:scale-105"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-surface-container-low flex flex-col items-center justify-center text-outline-variant">
+                            <ImageIcon size={48} className="mb-2 opacity-40" />
+                            <span className="text-xs">Chưa có ảnh đại diện</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Sub-thumbnails / Gallery */}
+                      {formData.galleryImages && formData.galleryImages.length > 0 && (
+                        <div className="grid grid-cols-2 gap-6">
+                          {formData.galleryImages.slice(0, 2).map((img, idx) => (
+                            <div key={idx} className="aspect-square bg-surface-container overflow-hidden rounded-xs border border-[#d4c3be]/20 relative group">
+                              <img
+                                alt={`Fabric Detail ${idx + 1}`}
+                                src={img}
+                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right Column - Info Panel */}
+                    <div className="lg:col-span-5 flex flex-col text-left">
+                      <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-[#5d4037] mb-1.5 flex items-center gap-1.5 font-sans">
+                        <Leaf size={12} className="text-primary/60" />
+                        Pháp phục tự nhiên truyền thống • {formData.category}
+                      </span>
+                      <h1 className="font-serif text-2xl md:text-3.5xl text-primary font-bold mb-2 tracking-wide leading-tight">
+                        {formData.name || 'Tên sản phẩm'}
+                      </h1>
+
+                      <div className="flex items-baseline gap-3 mb-8 font-sans font-semibold">
+                        <span className="text-xl text-primary font-bold">
+                          {formatPrice(formData.price)}
+                        </span>
+                      </div>
+
+                      {/* Description details */}
+                      <div className="space-y-4.5 mb-10 border-l border-[#d4c3be] pl-5 text-left">
+                        <p className="font-serif italic text-[#5d4037]/95 text-sm md:text-base leading-relaxed opacity-90">
+                          Chất liệu: {formData.material || 'Linen tự nhiên'} • Đơn vị: {formData.unit || 'Bộ'}
+                        </p>
+                        {formData.description ? (
+                          <div 
+                            className="font-sans text-xs text-on-surface-variant/80 tracking-wide leading-relaxed prose prose-stone max-w-none [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-2 [&_li]:my-0.5 [&_strong]:font-semibold [&_em]:italic"
+                            dangerouslySetInnerHTML={{ __html: formData.description }}
+                          />
+                        ) : (
+                          <p className="text-xs text-on-surface-variant/40 italic">Chưa có mô tả chi tiết sản phẩm...</p>
+                        )}
+                      </div>
+
+                      {/* Interactive swatch mockups */}
+                      <div className="space-y-6 mb-10 text-left">
+                        {formData.variants && formData.variants.length > 0 && (
+                          <div>
+                            <span className="block text-[11px] uppercase tracking-widest font-bold text-[#5d4037] mb-3 font-sans">
+                              Màu sắc: <span className="text-on-surface font-normal">{previewActiveColor?.name}</span>
+                            </span>
+                            <div className="flex space-x-3">
+                              {formData.variants.map((v, idx) => {
+                                const isSelected = previewActiveColor?.hex === v.colorHex;
+                                return (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => setPreviewActiveColor({ name: v.colorName, hex: v.colorHex })}
+                                    className={`w-8 h-8 rounded-full border p-0.5 transition-all ${
+                                      isSelected ? 'border-primary ring-2 ring-primary/20 scale-103' : 'border-transparent hover:border-outline-variant'
+                                    }`}
+                                    title={v.colorName}
+                                  >
+                                    <div className="w-full h-full rounded-full border border-black/5" style={{ backgroundColor: v.colorHex }} />
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Sizes chooser mockup */}
+                        <div>
+                          <span className="block text-[11px] uppercase tracking-widest font-bold text-[#5d4037] mb-3 font-sans">
+                            Kích thước
+                          </span>
+                          <div className="flex flex-wrap gap-2.5 font-sans">
+                            {['S', 'M', 'L', 'XL'].map((size) => {
+                              const isSelected = previewActiveSize === size;
+                              return (
+                                <button
+                                  key={size}
+                                  type="button"
+                                  onClick={() => setPreviewActiveSize(size)}
+                                  className={`px-5 py-2 min-w-14 border text-xs tracking-wider transition-all font-bold rounded-sm ${
+                                    isSelected
+                                      ? 'border-primary bg-[#e2e2e2] text-primary shadow-xs'
+                                      : 'border-[#d4c3be] text-on-surface-variant hover:border-primary'
+                                  }`}
+                                >
+                                  {size}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Simulated purchase actions */}
+                      <div className="space-y-3 font-sans text-left">
+                        <div className="flex gap-3">
+                          <button
+                            type="button"
+                            className="flex-1 py-4 border border-primary text-primary font-bold text-xs uppercase tracking-widest hover:bg-primary/5 transition-all flex justify-center items-center gap-2 rounded-xs opacity-50 cursor-not-allowed bg-transparent"
+                            disabled
+                          >
+                            Thêm vào giỏ hàng
+                          </button>
+                          <button
+                            type="button"
+                            className="px-6 py-4 border border-[#d4c3be] text-[#5d4037] font-bold text-xs uppercase tracking-widest hover:bg-[#5d4037]/5 transition-all flex justify-center items-center gap-2 rounded-xs opacity-50 cursor-not-allowed bg-transparent"
+                            disabled
+                          >
+                            <MessageSquare size={16} />
+                            Tư vấn
+                          </button>
+                          <button
+                            type="button"
+                            className="px-4 py-4 border border-[#d4c3be] rounded-xs text-[#5d4037] opacity-50 cursor-not-allowed bg-transparent flex items-center justify-center"
+                            disabled
+                          >
+                            <Heart size={16} />
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-center text-on-surface-variant/40 mt-1 italic font-sans">
+                          Các nút chức năng mua hàng bị vô hiệu hóa trong chế độ xem trước
+                        </p>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Save Confirmation Modal (Zen UI Card Modal) */}
+        {isSaveConfirmModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-300 font-sans">
+            <div className="bg-white border border-outline-variant/30 rounded-xl max-w-sm w-full shadow-2xl p-6 relative animate-in slide-in-from-bottom-8 duration-500 font-sans text-left">
+              <button 
+                onClick={() => setIsSaveConfirmModalOpen(false)}
+                className="absolute top-4 right-4 text-on-surface-variant hover:text-primary transition-colors p-1"
+              >
+                <X size={20} />
+              </button>
+              <h3 className="font-headline-sm text-headline-sm text-primary mb-3">
+                {formData.id ? 'Xác nhận thay đổi' : 'Xác nhận đăng sản phẩm'}
+              </h3>
+              <p className="font-body-md text-on-surface-variant text-sm mb-5 leading-relaxed">
+                {formData.id 
+                  ? 'Bạn có chắc chắn muốn lưu các thay đổi cho sản phẩm này không?' 
+                  : 'Bạn có chắc chắn muốn đăng sản phẩm mới này lên hệ thống không?'}
+              </p>
+              <div className="flex justify-end gap-3">
+                <button 
+                  onClick={() => setIsSaveConfirmModalOpen(false)}
+                  className="px-4 py-2 border border-outline-variant/50 rounded font-label-md text-xs text-on-surface-variant hover:bg-surface-container-low transition-colors"
+                >
+                  Hủy bỏ
+                </button>
+                <button 
+                  onClick={() => {
+                    setIsSaveConfirmModalOpen(false)
+                    handleSaveProductSubmit()
+                  }}
+                  className="px-5 py-2 bg-primary text-on-primary rounded font-label-md text-xs hover:bg-primary/95 transition-colors"
+                >
+                  Đồng ý
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }

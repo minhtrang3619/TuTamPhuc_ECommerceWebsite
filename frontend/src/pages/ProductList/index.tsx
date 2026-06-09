@@ -57,6 +57,8 @@ export default function ProductListPage() {
         setSelectedCategories(['Đồ lam nam', 'Đồ lam nữ']);
       } else if (activeCategorySlug === 'ao-trang') {
         setSelectedCategories(['Áo tràng']);
+      } else if (activeCategorySlug === 'phap-phuc') {
+        setSelectedCategories(['Pháp Phục']);
       }
       setCurrentPage(1);
     } else {
@@ -74,6 +76,19 @@ export default function ProductListPage() {
   const showToast = (message: string, type: 'success' | 'info' = 'success') => {
     setToast({ message, isVisible: true, type });
   };
+
+  // Extract unique colors present in all loaded products
+  const availableColors = useMemo(() => {
+    const colorMap = new Map();
+    dbProducts.forEach((product) => {
+      (product.colors || []).forEach((c) => {
+        if (c && c.hex) {
+          colorMap.set(c.hex.toLowerCase(), c);
+        }
+      });
+    });
+    return Array.from(colorMap.values());
+  }, [dbProducts]);
 
   // Filter and sort products list
   const filteredProducts = useMemo(() => {
@@ -93,8 +108,8 @@ export default function ProductListPage() {
 
       // 3. Colors filter
       if (selectedColors.length > 0) {
-        const productColorsHex = product.colors.map(col => col.hex);
-        const hasOverlayColor = productColorsHex.some(hex => selectedColors.includes(hex));
+        const productColorsHex = product.colors.map(col => col.hex.toLowerCase());
+        const hasOverlayColor = productColorsHex.some(hex => selectedColors.map(c => c.toLowerCase()).includes(hex));
         if (!hasOverlayColor) return false;
       }
 
@@ -110,7 +125,7 @@ export default function ProductListPage() {
       if (sortBy === 'price-desc') return b.price - a.price;
       return 0; // 'latest' matches raw order
     });
-  }, [searchQuery, selectedCategories, selectedColors, selectedSizes, sortBy]);
+  }, [dbProducts, searchQuery, selectedCategories, selectedColors, selectedSizes, sortBy]);
 
   // Paginated items
   const productsPerPage = 6;
@@ -181,6 +196,7 @@ export default function ProductListPage() {
               setSelectedSizes(sizes);
               setCurrentPage(1);
             }}
+            colors={availableColors}
             onClearAll={handleClearAllFilters}
           />
 

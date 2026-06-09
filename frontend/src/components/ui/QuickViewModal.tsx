@@ -120,9 +120,10 @@ export default function QuickViewModal({
                     {product.quote}
                   </p>
                 )}
-                <p className="text-xs text-on-surface-variant/90 leading-relaxed mb-5 line-clamp-3">
-                  {product.description}
-                </p>
+                <div 
+                  className="text-xs text-on-surface-variant/90 leading-relaxed mb-5 line-clamp-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-2 [&_li]:my-0.5 [&_strong]:font-semibold [&_em]:italic"
+                  dangerouslySetInnerHTML={{ __html: product.description }}
+                />
 
                 {/* Color selects */}
                 <div className="mb-4">

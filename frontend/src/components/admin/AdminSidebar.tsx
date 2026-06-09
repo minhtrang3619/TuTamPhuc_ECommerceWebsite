@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store'
+import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -11,12 +13,22 @@ import {
   FileText,
   LogOut,
   BarChart3,
-  Headphones
+  Headphones,
+  X
 } from 'lucide-react'
 
-export function AdminSidebar() {
+interface AdminSidebarProps {
+  isOpen: boolean
+  onClose: () => void
+}
+
+export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
   const { user, logout } = useAuthStore()
   const location = useLocation()
+
+  useEffect(() => {
+    onClose()
+  }, [location.pathname])
 
   const role = user?.role?.toLowerCase() || 'admin' // Fallback for safety
   const isCSKH = role === 'customer_service'
@@ -110,9 +122,21 @@ export function AdminSidebar() {
   if (isCSKH) {
     // Custom CSKH Sidebar Layout (Matches the Image Style)
     return (
-      <aside className="w-60 bg-[#f4f2f0] flex flex-col flex-shrink-0 min-h-screen transition-all py-10 px-8 border-r border-[#e5e1de]/40">
+      <aside className={cn(
+        "w-60 bg-[#f4f2f0] flex flex-col flex-shrink-0 min-h-screen transition-all py-10 px-8 border-r border-[#e5e1de]/40 ease-in-out duration-300",
+        "fixed inset-y-0 left-0 z-40 md:static md:translate-x-0",
+        isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+      )}>
         <div className="flex-1">
-          <div className="mb-8 pb-6 border-b border-[#e5e1de]/60">
+          <div className="mb-8 pb-6 border-b border-[#e5e1de]/60 relative">
+            {/* Close Button for Mobile */}
+            <button
+              onClick={onClose}
+              className="absolute -top-6 -right-4 md:hidden p-1.5 rounded-full hover:bg-neutral-200/50 text-[#827470] transition-colors"
+              title="Đóng menu"
+            >
+              <X size={18} />
+            </button>
             <h2 className="text-sm font-serif font-bold text-[#442a22] tracking-wider uppercase">TỪ TÂM PHỤC</h2>
             <p className="text-[10px] text-[#827470] mt-2 tracking-wide uppercase font-semibold">
               Xin chào nhân viên chăm sóc khách hàng
@@ -158,10 +182,22 @@ export function AdminSidebar() {
   const menuItems = allMenuItems.filter(item => item.roles.includes(role))
 
   return (
-    <aside className="w-64 bg-surface border-r border-outline-variant/30 flex flex-col flex-shrink-0 transition-all min-h-screen">
-      <div className="p-6 border-b border-outline-variant/30">
-        <h2 className="text-xl font-serif font-bold text-primary tracking-wider">TỪ TÂM PHỤC</h2>
-        <div className="mt-2 inline-block px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium uppercase tracking-wider">
+    <aside className={cn(
+      "w-64 bg-surface border-r border-outline-variant/30 flex flex-col flex-shrink-0 transition-all min-h-screen ease-in-out duration-300",
+      "fixed inset-y-0 left-0 z-40 md:static md:translate-x-0",
+      isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+    )}>
+      <div className="p-6 border-b border-outline-variant/30 relative">
+        {/* Close Button for Mobile */}
+        <button
+          onClick={onClose}
+          className="absolute top-6 right-6 md:hidden p-1.5 rounded-full hover:bg-neutral-100 text-on-surface-variant hover:text-primary transition-colors"
+          title="Đóng menu"
+        >
+          <X size={18} />
+        </button>
+        <h2 className="text-xl font-serif font-bold text-primary tracking-wider font-sans">TỪ TÂM PHỤC</h2>
+        <div className="mt-2 inline-block px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium uppercase tracking-wider font-sans">
           {role === 'admin' ? 'Chủ cửa hàng' : role === 'shop_staff' ? 'NV Cửa hàng' : 'CSKH'}
         </div>
       </div>

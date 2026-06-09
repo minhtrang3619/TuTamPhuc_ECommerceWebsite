@@ -6,6 +6,7 @@ from app.database.session import get_db
 from app.core.dependencies import get_current_user, require_admin
 from app.models.user import User
 from app.models.wishlist import WishlistItem
+from app.models.product import Product
 from app.schemas.product import ProductResponse
 
 router = APIRouter(prefix="/wishlist", tags=["Wishlist"])
@@ -26,6 +27,11 @@ def add_to_wishlist(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # Check if product exists
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Sản phẩm không tồn tại")
+
     existing = db.query(WishlistItem).filter(
         WishlistItem.user_id == current_user.id,
         WishlistItem.product_id == product_id,
