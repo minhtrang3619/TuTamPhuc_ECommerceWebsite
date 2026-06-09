@@ -29,6 +29,7 @@ class CategoryResponse(BaseSchema):
     image: Optional[str] = None
     parent_id: Optional[int] = None
     sort_order: int
+    product_count: int = 0
     created_at: datetime
     updated_at: datetime
 

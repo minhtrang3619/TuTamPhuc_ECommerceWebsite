@@ -1,27 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Search, Edit2, Trash2, FolderOpen, X } from 'lucide-react'
-
-interface CategoryItem {
-  id: number
-  name: string
-  slug: string
-  description: string
-  count: number
-}
+import { categoryService } from '@/services/categoryService'
+import type { Category } from '@/types'
 
 export default function AdminCategories() {
   const [searchTerm, setSearchTerm] = useState('')
-
-  const [categories, setCategories] = useState<CategoryItem[]>([
-    { id: 1, name: 'Áo choàng thiền', slug: 'ao-choang-thien', description: 'Trang phục khoác ngoài khi hành lễ hoặc tọa thiền.', count: 12 },
-    { id: 2, name: 'Áo Tunic', slug: 'ao-tunic', description: 'Các mẫu áo cổ trụ nhẹ nhàng, thoáng mát hằng ngày.', count: 8 },
-    { id: 3, name: 'Quần thiền', slug: 'quan-thien', description: 'Quần ống rộng thoải mái cho việc thiền tập.', count: 6 },
-    { id: 4, name: 'Phụ kiện', slug: 'phu-kien', description: 'Khăn lụa, đai thêu và các phụ kiện Phật giáo.', count: 15 }
-  ])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
   // Modals state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [selectedCategory, setSelectedCategory] = useState<CategoryItem | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
   const [editName, setEditName] = useState('')
   const [editSlug, setEditSlug] = useState('')
   const [editDescription, setEditDescription] = useState('')
@@ -33,65 +22,87 @@ export default function AdminCategories() {
 
   // Delete modal state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [categoryToDelete, setCategoryToDelete] = useState<CategoryItem | null>(null)
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null)
+
+  const fetchCategories = async () => {
+    try {
+      setIsLoading(true)
+      const data = await categoryService.getCategories()
+      setCategories(data)
+    } catch (error) {
+      console.error('Failed to fetch categories:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchCategories()
+  }, [])
 
   const filteredCategories = categories.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.description.toLowerCase().includes(searchTerm.toLowerCase())
+    (c.description && c.description.toLowerCase().includes(searchTerm.toLowerCase()))
   )
 
-  const handleOpenEdit = (c: CategoryItem) => {
+  const handleOpenEdit = (c: Category) => {
     setSelectedCategory(c)
     setEditName(c.name)
     setEditSlug(c.slug)
-    setEditDescription(c.description)
+    setEditDescription(c.description || '')
     setIsEditModalOpen(true)
   }
 
-  const handleSaveCategory = () => {
+  const handleSaveCategory = async () => {
     if (selectedCategory) {
-      setCategories(prev => prev.map(c => {
-        if (c.id === selectedCategory.id) {
-          return {
-            ...c,
-            name: editName,
-            slug: editSlug,
-            description: editDescription
-          }
-        }
-        return c
-      }))
-      setIsEditModalOpen(false)
-      setSelectedCategory(null)
+      try {
+        const updated = await categoryService.updateCategory(selectedCategory.id, {
+          name: editName,
+          slug: editSlug,
+          description: editDescription
+        })
+        setCategories(prev => prev.map(c => c.id === selectedCategory.id ? updated : c))
+        setIsEditModalOpen(false)
+        setSelectedCategory(null)
+      } catch (error) {
+        console.error('Failed to update category:', error)
+      }
     }
   }
 
-  const handleAddCategory = () => {
+  const handleAddCategory = async () => {
     if (!newName || !newSlug) return
-    const newCat: CategoryItem = {
-      id: categories.length + 1,
-      name: newName,
-      slug: newSlug,
-      description: newDescription,
-      count: 0
+    try {
+      const newCat = await categoryService.createCategory({
+        name: newName,
+        slug: newSlug,
+        description: newDescription
+      })
+      setCategories(prev => [...prev, newCat])
+      setIsAddModalOpen(false)
+      setNewName('')
+      setNewSlug('')
+      setNewDescription('')
+    } catch (error) {
+      console.error('Failed to add category:', error)
     }
-    setCategories(prev => [...prev, newCat])
-    setIsAddModalOpen(false)
-    setNewName('')
-    setNewSlug('')
-    setNewDescription('')
   }
 
-  const handleOpenDelete = (c: CategoryItem) => {
+  const handleOpenDelete = (c: Category) => {
     setCategoryToDelete(c)
     setIsDeleteModalOpen(true)
   }
 
-  const confirmDeleteCategory = () => {
+  const confirmDeleteCategory = async () => {
     if (categoryToDelete) {
-      setCategories(prev => prev.filter(c => c.id !== categoryToDelete.id))
-      setIsDeleteModalOpen(false)
-      setCategoryToDelete(null)
+      try {
+        await categoryService.deleteCategory(categoryToDelete.id)
+        setCategories(prev => prev.filter(c => c.id !== categoryToDelete.id))
+        setIsDeleteModalOpen(false)
+        setCategoryToDelete(null)
+      } catch (error) {
+        console.error('Failed to delete category:', error)
+      }
     }
   }
 
@@ -126,44 +137,49 @@ export default function AdminCategories() {
         </div>
       </div>
 
-      {/* Grid List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {filteredCategories.map((c) => (
-          <div 
-            key={c.id}
-            className="bg-surface-container-lowest p-6 rounded-xl shadow-[0_10px_32px_-4px_rgba(68,42,34,0.05)] border border-outline-variant/10 hover:border-primary/20 transition-all duration-500 flex flex-col justify-between"
-          >
-            <div>
-              <div className="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center text-primary mb-4">
-                <FolderOpen size={20} strokeWidth={1.5} />
+      {/* Loading state */}
+      {isLoading ? (
+        <div className="text-center py-10 text-on-surface-variant">Đang tải danh mục...</div>
+      ) : (
+        /* Grid List */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {filteredCategories.map((c) => (
+            <div 
+              key={c.id}
+              className="bg-surface-container-lowest p-6 rounded-xl shadow-[0_10px_32px_-4px_rgba(68,42,34,0.05)] border border-outline-variant/10 hover:border-primary/20 transition-all duration-500 flex flex-col justify-between"
+            >
+              <div>
+                <div className="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center text-primary mb-4">
+                  <FolderOpen size={20} strokeWidth={1.5} />
+                </div>
+                <h3 className="font-semibold text-lg text-primary mb-1">{c.name}</h3>
+                <p className="text-xs text-on-surface-variant/40 mb-3">Slug: {c.slug}</p>
+                <p className="text-sm text-on-surface-variant/75 leading-relaxed mb-6">
+                  {c.description || 'Chưa có mô tả'}
+                </p>
               </div>
-              <h3 className="font-semibold text-lg text-primary mb-1">{c.name}</h3>
-              <p className="text-xs text-on-surface-variant/40 mb-3">Slug: {c.slug}</p>
-              <p className="text-sm text-on-surface-variant/75 leading-relaxed mb-6">
-                {c.description}
-              </p>
-            </div>
-            
-            <div className="flex items-center justify-between border-t border-outline-variant/10 pt-4 mt-auto">
-              <span className="text-xs font-semibold text-primary">{c.count} sản phẩm</span>
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => handleOpenEdit(c)}
-                  className="p-1.5 hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors rounded"
-                >
-                  <Edit2 size={14} />
-                </button>
-                <button 
-                  onClick={() => handleOpenDelete(c)}
-                  className="p-1.5 hover:bg-surface-container text-on-surface-variant hover:text-red-600 transition-colors rounded"
-                >
-                  <Trash2 size={14} />
-                </button>
+              
+              <div className="flex items-center justify-between border-t border-outline-variant/10 pt-4 mt-auto">
+                <span className="text-xs font-semibold text-primary">{c.product_count || 0} sản phẩm</span>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => handleOpenEdit(c)}
+                    className="p-1.5 hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors rounded"
+                  >
+                    <Edit2 size={14} />
+                  </button>
+                  <button 
+                    onClick={() => handleOpenDelete(c)}
+                    className="p-1.5 hover:bg-surface-container text-on-surface-variant hover:text-red-600 transition-colors rounded"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Edit Category Modal */}
       {isEditModalOpen && selectedCategory && (
@@ -291,7 +307,7 @@ export default function AdminCategories() {
         </div>
       )}
 
-      {/* Delete Category Confirmation Modal (Zen UI Card Modal) */}
+      {/* Delete Category Confirmation Modal */}
       {isDeleteModalOpen && categoryToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-300">
           <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl max-w-sm w-full shadow-2xl p-6 relative animate-in slide-in-from-bottom-8 duration-500">

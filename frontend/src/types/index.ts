@@ -46,6 +46,7 @@ export interface Category {
   image?: string
   parent_id?: number
   children?: Category[]
+  product_count?: number
   created_at: string
 }
 

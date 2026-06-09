@@ -1,11 +1,6 @@
 import { Product } from './mockTypes';
 
-export const CATEGORIES = [
-  'Đồ lam nam',
-  'Đồ lam nữ',
-  'Áo tràng',
-  'Pháp Phục',
-];
+
 
 export const COLORS = [
   { name: 'Nâu nhạt', hex: '#EADDD7' },

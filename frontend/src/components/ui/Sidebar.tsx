@@ -1,5 +1,5 @@
 import { Sparkles, Trash2 } from 'lucide-react';
-import { CATEGORIES, COLORS } from '../../data';
+import { COLORS } from '../../data';
 
 interface SidebarProps {
   selectedCategories: string[];
@@ -9,6 +9,7 @@ interface SidebarProps {
   selectedSizes: string[];
   setSelectedSizes: (sizes: string[]) => void;
   colors?: { name: string; hex: string }[];
+  categories?: { name: string; slug: string }[];
   onClearAll: () => void;
 }
 
@@ -20,6 +21,7 @@ export default function Sidebar({
   selectedSizes,
   setSelectedSizes,
   colors = COLORS,
+  categories = [],
   onClearAll,
 }: SidebarProps) {
   
@@ -76,19 +78,19 @@ export default function Sidebar({
       <div>
         <h4 className="text-[11px] uppercase tracking-widest font-semibold text-primary mb-3">Danh mục</h4>
         <ul className="flex flex-col gap-3 font-medium text-xs text-on-surface-variant">
-          {CATEGORIES.map((category) => {
-            const isChecked = selectedCategories.includes(category);
+          {categories.map((category) => {
+            const isChecked = selectedCategories.includes(category.name);
             return (
-              <li key={category}>
+              <li key={category.slug}>
                 <label className="flex items-center gap-2.5 cursor-pointer hover:text-primary transition-colors group">
                   <input
                     type="checkbox"
                     checked={isChecked}
-                    onChange={() => handleCategoryChange(category)}
+                    onChange={() => handleCategoryChange(category.name)}
                     className="form-checkbox text-primary focus:ring-primary border-[#d4c3be] rounded-sm bg-transparent cursor-pointer h-4 w-4 transition-colors"
                   />
                   <span className={`${isChecked ? 'text-primary font-bold' : ''} group-hover:translate-x-0.5 transition-transform duration-200`}>
-                    {category}
+                    {category.name}
                   </span>
                 </label>
               </li>

@@ -1,23 +1,18 @@
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { ShoppingCart, Heart, User, Menu, Search, X } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useMockCartStore } from '@/store/mockCartStore'
 import { useAuthStore } from '@/store/authStore'
 import { useWishlistStore } from '@/store/wishlistStore'
 import { cn } from '@/lib/utils'
 import { Marquee } from '@/components/ui/Marquee'
-
-const navLinks = [
-  { label: 'Trang Chủ', href: '/' },
-  { label: 'Đồ Lam', href: '/san-pham?category=do-lam' },
-  { label: 'Pháp Phục', href: '/san-pham?category=phap-phuc' },
-  { label: 'Áo Tràng', href: '/san-pham?category=ao-trang' },
-  { label: 'Blog', href: '/blog' },
-]
+import { categoryService } from '@/services/categoryService'
+import type { Category } from '@/types'
 
 export function Navbar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const [categories, setCategories] = useState<Category[]>([])
   const { isAuthenticated, user } = useAuthStore()
   const { cart, openCart } = useMockCartStore()
   const { items: wishlistItems, fetchWishlist } = useWishlistStore()
@@ -25,10 +20,17 @@ export function Navbar() {
   const location = useLocation()
 
   useEffect(() => {
+    categoryService.getCategories().then(setCategories).catch(console.error)
     if (isAuthenticated) {
       fetchWishlist()
     }
   }, [isAuthenticated, fetchWishlist])
+
+  const navLinks = useMemo(() => [
+    { label: 'Trang Chủ', href: '/' },
+    ...categories.map(c => ({ label: c.name, href: `/san-pham?category=${c.slug}` })),
+    { label: 'Blog', href: '/blog' },
+  ], [categories])
 
   const marqueeItems = [
     "Miễn phí vận chuyển cho đơn hàng từ 1.000.000đ",

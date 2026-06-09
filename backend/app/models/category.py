@@ -20,5 +20,9 @@ class Category(BaseModel):
     # Products in this category
     products = relationship("Product", back_populates="category", lazy="dynamic")
 
+    @property
+    def product_count(self) -> int:
+        return self.products.count()
+
     def __repr__(self):
         return f"<Category id={self.id} name={self.name}>"

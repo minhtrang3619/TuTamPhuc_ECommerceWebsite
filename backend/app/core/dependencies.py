@@ -52,6 +52,15 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
+def require_shop_staff_or_admin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role not in [UserRole.ADMIN, UserRole.STAFF, UserRole.SHOP_STAFF]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Không đủ quyền truy cập",
+        )
+    return current_user
+
+
 def require_super_admin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != UserRole.ADMIN:
         raise HTTPException(

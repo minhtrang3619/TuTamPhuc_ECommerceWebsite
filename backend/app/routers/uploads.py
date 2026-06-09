@@ -1,7 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, UploadFile, File
 
-from app.core.dependencies import require_admin
+from app.core.dependencies import require_shop_staff_or_admin
 from app.services.upload_service import UploadService
 from app.models.user import User
 
@@ -12,7 +12,7 @@ router = APIRouter(prefix="/uploads", tags=["Uploads"])
 async def upload_single_image(
     file: UploadFile = File(...),
     folder: str = "products",
-    _: User = Depends(require_admin),
+    _: User = Depends(require_shop_staff_or_admin),
 ):
     """Upload một ảnh. Trả về URL."""
     service = UploadService()
@@ -24,7 +24,7 @@ async def upload_single_image(
 async def upload_multiple_images(
     files: List[UploadFile] = File(...),
     folder: str = "products",
-    _: User = Depends(require_admin),
+    _: User = Depends(require_shop_staff_or_admin),
 ):
     """Upload nhiều ảnh cùng lúc. Trả về danh sách URL."""
     service = UploadService()

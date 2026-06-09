@@ -12,6 +12,7 @@ import Toast from '../../components/ui/Toast';
 import { useMockCartStore } from '../../store/mockCartStore';
 import apiClient from '@/services/apiClient';
 import { mapApiProductToMockProduct } from '@/utils/productMapper';
+import { categoryService } from '@/services/categoryService';
 
 export default function ProductListPage() {
   const navigate = useNavigate();
@@ -23,6 +24,8 @@ export default function ProductListPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    categoryService.getCategories().then(setCategories).catch(console.error);
+
     apiClient.get('/products?page_size=100')
       .then(res => {
         const items = res.data?.items || [];
@@ -40,6 +43,7 @@ export default function ProductListPage() {
   }, []);
 
   // Active filter state
+  const [categories, setCategories] = useState<any[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
@@ -52,19 +56,18 @@ export default function ProductListPage() {
   const activeCategorySlug = slug || categoryParam;
 
   useEffect(() => {
-    if (activeCategorySlug) {
-      if (activeCategorySlug === 'do-lam') {
-        setSelectedCategories(['Đồ lam nam', 'Đồ lam nữ']);
-      } else if (activeCategorySlug === 'ao-trang') {
-        setSelectedCategories(['Áo tràng']);
-      } else if (activeCategorySlug === 'phap-phuc') {
-        setSelectedCategories(['Pháp Phục']);
+    if (activeCategorySlug && categories.length > 0) {
+      const match = categories.find(c => c.slug === activeCategorySlug);
+      if (match) {
+        setSelectedCategories([match.name]);
+      } else {
+        setSelectedCategories([]);
       }
       setCurrentPage(1);
-    } else {
+    } else if (!activeCategorySlug) {
       setSelectedCategories([]);
     }
-  }, [activeCategorySlug]);
+  }, [activeCategorySlug, categories]);
 
   // Toast alert state
   const [toast, setToast] = useState<{ message: string; isVisible: boolean; type?: 'success' | 'info' }>({
@@ -181,6 +184,7 @@ export default function ProductListPage() {
         <div className="flex flex-col md:flex-row gap-10 items-start">
           {/* Sidebar filter component column */}
           <Sidebar
+            categories={categories}
             selectedCategories={selectedCategories}
             setSelectedCategories={(c) => {
               setSelectedCategories(c);

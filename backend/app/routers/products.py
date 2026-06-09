@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.schemas.product import ProductResponse, PaginatedProducts
 from app.services.product_service import ProductService
-from app.core.dependencies import require_admin
+from app.core.dependencies import require_admin, require_shop_staff_or_admin
 from app.schemas.product import ProductCreate, ProductUpdate
 from app.models.user import User
 
@@ -49,12 +49,12 @@ def get_related(product_id: int, db: Session = Depends(get_db)):
     return ProductService(db).get_related(product_id)
 
 
-# ── Admin endpoints ──────────────────────────────────────────
+# ── Admin & Staff endpoints ───────────────────────────────────
 @router.post("", response_model=ProductResponse, status_code=201)
 def create_product(
     data: ProductCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_shop_staff_or_admin),
 ):
     return ProductService(db).create(data)
 
@@ -64,7 +64,7 @@ def update_product(
     product_id: int,
     data: ProductUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_shop_staff_or_admin),
 ):
     return ProductService(db).update(product_id, data)
 
@@ -73,6 +73,6 @@ def update_product(
 def delete_product(
     product_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_shop_staff_or_admin),
 ):
     ProductService(db).delete(product_id)
