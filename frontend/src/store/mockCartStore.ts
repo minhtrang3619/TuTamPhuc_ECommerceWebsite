@@ -4,6 +4,7 @@ import { CartItem, Product } from '../mockTypes';
 
 interface MockCartState {
   cart: CartItem[];
+  buyNowItem: CartItem | null;
   isCartOpen: boolean;
   isCheckoutOpen: boolean;
   appliedPromo: string;
@@ -18,12 +19,15 @@ interface MockCartState {
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
   setPromo: (promo: string, discount: number) => void;
+  setBuyNowItem: (product: Product, color: { name: string; hex: string }, size: string, quantity: number) => void;
+  clearBuyNowItem: () => void;
 }
 
 export const useMockCartStore = create<MockCartState>()(
   persist(
     (set) => ({
       cart: [],
+      buyNowItem: null,
       isCartOpen: false,
       isCheckoutOpen: false,
       appliedPromo: '',
@@ -32,7 +36,7 @@ export const useMockCartStore = create<MockCartState>()(
       openCart: () => set({ isCartOpen: true }),
       closeCart: () => set({ isCartOpen: false }),
       openCheckout: () => set({ isCheckoutOpen: true }),
-      closeCheckout: () => set({ isCheckoutOpen: false }),
+      closeCheckout: () => set({ isCheckoutOpen: false, buyNowItem: null }),
 
       addItem: (product, color, size, quantity) =>
         set((state) => {
@@ -71,6 +75,20 @@ export const useMockCartStore = create<MockCartState>()(
 
       clearCart: () => set({ cart: [], appliedPromo: '', discountValue: 0 }),
       setPromo: (promo, discount) => set({ appliedPromo: promo, discountValue: discount }),
+      setBuyNowItem: (product, color, size, quantity) =>
+        set(() => {
+          const id = `buynow-${product.id}-${color.hex}-${size}`;
+          return {
+            buyNowItem: {
+              id,
+              product,
+              color,
+              size,
+              quantity,
+            },
+          };
+        }),
+      clearBuyNowItem: () => set({ buyNowItem: null }),
     }),
     {
       name: 'tutamphuc-mock-cart',

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Minus, Trash, Ticket, ArrowRight, ShieldCheck } from 'lucide-react';
-import { useMockCartStore } from '../../store/mockCartStore';
+import { useMockCartStore } from '@/store/mockCartStore';
 import { formatPrice } from '../ui/ProductCard';
 
 export function CartDrawer() {

@@ -1,4 +1,5 @@
 export interface Product {
+  dbId?: number;
   id: string;
   name: string;
   price: number;

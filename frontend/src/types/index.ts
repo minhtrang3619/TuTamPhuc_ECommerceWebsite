@@ -261,3 +261,20 @@ export interface Customer {
   updated_at: string
 }
 
+// ========================
+// User Address Types
+// ========================
+export interface UserAddress {
+  id: number
+  user_id: number
+  name: string
+  phone: string
+  province: string
+  district: string
+  ward: string
+  street: string
+  isDefault: boolean
+  created_at: string
+  updated_at: string
+}
+

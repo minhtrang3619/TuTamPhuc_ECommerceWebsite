@@ -9,7 +9,7 @@ import Sidebar from '../../components/ui/Sidebar';
 import ProductCard from '../../components/ui/ProductCard';
 import QuickViewModal from '../../components/ui/QuickViewModal';
 import Toast from '../../components/ui/Toast';
-import { useMockCartStore } from '../../store/mockCartStore';
+import { useMockCartStore } from '@/store/mockCartStore';
 import apiClient from '@/services/apiClient';
 import { mapApiProductToMockProduct } from '@/utils/productMapper';
 import { categoryService } from '@/services/categoryService';
@@ -18,7 +18,7 @@ export default function ProductListPage() {
   const navigate = useNavigate();
   const { slug } = useParams();
   const [searchParams] = useSearchParams();
-  const { addItem, openCheckout } = useMockCartStore();
+  const { addItem, openCheckout, setBuyNowItem } = useMockCartStore();
 
   const [dbProducts, setDbProducts] = useState<Product[]>(PRODUCTS);
   const [loading, setLoading] = useState(true);
@@ -154,7 +154,7 @@ export default function ProductListPage() {
   };
 
   const handleBuyNow = (product: Product, color: { name: string; hex: string }, size: string, qty: number) => {
-    addItem(product, color, size, qty);
+    setBuyNowItem(product, color, size, qty);
     openCheckout();
   };
 
@@ -173,7 +173,7 @@ export default function ProductListPage() {
             Cửa hàng di sản đũi tơ tằm
           </span>
           <h1 className="font-serif text-3xl md:text-5xl text-primary font-bold mb-4 tracking-wide leading-tight">
-            Trang Phục & Đồ Lam
+            Đồ Lam & Pháp Phục
           </h1>
           <p className="font-sans text-xs md:text-sm text-on-surface-variant max-w-xl mx-auto leading-relaxed opacity-90 pl-3 border-l-2 border-[#d4c3be]/30 md:border-l-0">
             Sự tĩnh tại trong từng đường kim mũi chỉ, mang đến cảm giác an nhiên và trang nhã tuyệt đối cho người mặc.

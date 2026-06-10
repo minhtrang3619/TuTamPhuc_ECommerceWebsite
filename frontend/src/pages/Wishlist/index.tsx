@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate, Link } from 'react-router-dom'
-import { Heart, Trash2, ShoppingCart, ArrowRight } from 'lucide-react'
+import { Heart, Trash2, ArrowRight } from 'lucide-react'
 
 import { useWishlistStore } from '@/store/wishlistStore'
 import { useMockCartStore } from '@/store/mockCartStore'
@@ -14,7 +14,7 @@ import type { Product } from '@/mockTypes'
 export default function WishlistPage() {
   const navigate = useNavigate()
   const { items: apiItems, loading, fetchWishlist, removeFromWishlist } = useWishlistStore()
-  const { addItem, openCheckout } = useMockCartStore()
+  const { addItem, openCheckout, setBuyNowItem } = useMockCartStore()
 
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null)
   
@@ -35,7 +35,7 @@ export default function WishlistPage() {
 
   // Map ApiProduct to MockProduct
   const products = useMemo(() => {
-    return apiItems.map((p) => mapApiProductToMockProduct(p))
+    return apiItems.map((p) => mapApiProductToMockProduct(p) as unknown as Product)
   }, [apiItems])
 
   const handleRemove = async (dbId?: number) => {
@@ -55,7 +55,7 @@ export default function WishlistPage() {
   }
 
   const handleBuyNow = (product: Product, color: { name: string; hex: string }, size: string, qty: number) => {
-    addItem(product, color, size, qty)
+    setBuyNowItem(product, color, size, qty)
     openCheckout()
   }
 

@@ -39,6 +39,16 @@ def get_order(
     return OrderService(db).get_by_id(order_id, current_user.id)
 
 
+@router.get("/code/{code}", response_model=OrderResponse)
+def get_order_by_code(
+    code: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return OrderService(db).get_by_code(code, current_user.id)
+
+
+
 @router.post("/{order_id}/cancel", response_model=OrderResponse)
 def cancel_order(
     order_id: int,

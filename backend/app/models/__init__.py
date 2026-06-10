@@ -9,6 +9,7 @@ from app.models.wishlist import WishlistItem
 from app.models.review import Review
 from app.models.blog import BlogPost, BlogStatus
 from app.models.customer import Customer
+from app.models.address import Address
 
 __all__ = [
     "BaseModel",
@@ -21,4 +22,5 @@ __all__ = [
     "Review",
     "BlogPost", "BlogStatus",
     "Customer",
+    "Address",
 ]

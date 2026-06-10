@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.models.order import Order, OrderItem, OrderStatus
 from app.models.cart import Cart
+from app.models.product import Product
 from app.schemas.order import OrderCreate, PaginatedOrders
 
 
@@ -16,6 +17,61 @@ class OrderService:
         return f"TTP-{uuid.uuid4().hex[:8].upper()}"
 
     def create_from_cart(self, user_id: int, data: OrderCreate) -> Order:
+        discount = data.discount or 0.0
+        shipping_fee = data.shipping_fee if data.shipping_fee is not None else 30000.0
+
+        if data.items:
+            # Create order from explicit items list
+            subtotal = sum(item.price * item.quantity for item in data.items)
+            total = max(0.0, subtotal + shipping_fee - discount)
+
+            order = Order(
+                order_code=self._generate_order_code(),
+                user_id=user_id,
+                shipping_address=data.shipping_address.model_dump(),
+                payment_method=data.payment_method,
+                notes=data.notes,
+                coupon_code=data.coupon_code,
+                subtotal=subtotal,
+                discount=discount,
+                shipping_fee=shipping_fee,
+                total=total,
+            )
+            self.db.add(order)
+            self.db.flush()
+
+            for item in data.items:
+                product = self.db.query(Product).filter(Product.id == item.product_id).first()
+                if not product:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Không tìm thấy sản phẩm có ID {item.product_id}",
+                    )
+
+                order_item = OrderItem(
+                    order_id=order.id,
+                    product_id=item.product_id,
+                    variant_id=None,
+                    quantity=item.quantity,
+                    price=item.price,
+                    subtotal=item.price * item.quantity,
+                    product_snapshot={
+                        "name": product.name,
+                        "image": product.images[0].url if product.images else None,
+                        "color": item.color_name,
+                        "color_hex": item.color_hex,
+                        "size": item.size,
+                    },
+                )
+                self.db.add(order_item)
+                # Deduct stock
+                product.stock -= item.quantity
+
+            self.db.commit()
+            self.db.refresh(order)
+            return order
+
+        # Default fallback to create from cart
         # Get user's cart
         cart = self.db.query(Cart).filter(Cart.user_id == user_id).first()
         if not cart or not cart.items:
@@ -25,8 +81,7 @@ class OrderService:
             )
 
         subtotal = sum(item.price * item.quantity for item in cart.items)
-        shipping_fee = 30000.0  # flat rate, can be dynamic later
-        total = subtotal + shipping_fee
+        total = max(0.0, subtotal + shipping_fee - discount)
 
         order = Order(
             order_code=self._generate_order_code(),
@@ -36,7 +91,7 @@ class OrderService:
             notes=data.notes,
             coupon_code=data.coupon_code,
             subtotal=subtotal,
-            discount=0.0,
+            discount=discount,
             shipping_fee=shipping_fee,
             total=total,
         )
@@ -87,6 +142,18 @@ class OrderService:
         ).first()
         if not order:
             raise HTTPException(status_code=404, detail="Không tìm thấy đơn hàng")
+        return order
+
+    def get_by_code(self, code: str, user_id: int) -> Order:
+        order = self.db.query(Order).filter(
+            Order.order_code == code,
+            Order.user_id == user_id,
+        ).first()
+        if not order:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Không tìm thấy đơn hàng",
+            )
         return order
 
     def cancel_order(self, order_id: int, user_id: int) -> Order:

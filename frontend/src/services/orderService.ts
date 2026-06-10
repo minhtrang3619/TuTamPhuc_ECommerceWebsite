@@ -1,12 +1,23 @@
 import apiClient from './apiClient'
 import type { Order, ShippingAddress, PaymentMethod, PaginatedResponse } from '@/types'
 
+export interface CreateOrderItemData {
+  product_id: number
+  quantity: number
+  color_name?: string
+  color_hex?: string
+  size?: string
+  price: number
+}
+
 export interface CreateOrderData {
   shipping_address: ShippingAddress
   payment_method: PaymentMethod
   notes?: string
   coupon_code?: string
+  items?: CreateOrderItemData[]
 }
+
 
 export const orderService = {
   create: async (data: CreateOrderData): Promise<Order> => {

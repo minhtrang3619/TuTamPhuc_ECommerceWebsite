@@ -4,7 +4,7 @@ import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { ChevronRight, Leaf, Sparkles, Heart, MessageSquare } from 'lucide-react';
 
 import { PRODUCTS } from '../../data';
-import { useMockCartStore } from '../../store/mockCartStore';
+import { useMockCartStore } from '@/store/mockCartStore';
 import { useAuthStore } from '@/store/authStore';
 import { useWishlistStore } from '@/store/wishlistStore';
 import { formatPrice } from '../../components/ui/ProductCard';
@@ -16,7 +16,7 @@ export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { addItem, openCart, openCheckout } = useMockCartStore();
+  const { addItem, openCart, openCheckout, setBuyNowItem } = useMockCartStore();
   const { isAuthenticated } = useAuthStore();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlistStore();
 
@@ -146,7 +146,7 @@ export default function ProductDetailPage() {
 
   const handleBuyNow = () => {
     if (activeDetailColor) {
-      addItem(product, activeDetailColor, activeDetailSize, 1);
+      setBuyNowItem(product, activeDetailColor, activeDetailSize, 1);
       openCheckout();
     }
   };

@@ -28,6 +28,7 @@ class User(BaseModel):
     customer = relationship('Customer', uselist=False, backref='user')
 
     # Relationships
+    addresses = relationship("Address", back_populates="user", cascade="all, delete-orphan")
     orders = relationship("Order", back_populates="user", lazy="dynamic")
     cart = relationship("Cart", back_populates="user", uselist=False)
     wishlist_items = relationship("WishlistItem", back_populates="user", lazy="dynamic")

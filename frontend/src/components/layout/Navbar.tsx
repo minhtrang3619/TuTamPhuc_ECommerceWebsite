@@ -1,5 +1,5 @@
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { ShoppingCart, Heart, User, Menu, Search, X } from 'lucide-react'
+import { ShoppingCart, Heart, User, Menu, X } from 'lucide-react'
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useMockCartStore } from '@/store/mockCartStore'
@@ -26,11 +26,23 @@ export function Navbar() {
     }
   }, [isAuthenticated, fetchWishlist])
 
-  const navLinks = useMemo(() => [
-    { label: 'Trang Chủ', href: '/' },
-    ...categories.map(c => ({ label: c.name, href: `/san-pham?category=${c.slug}` })),
-    { label: 'Blog', href: '/blog' },
-  ], [categories])
+  const navLinks = useMemo(() => {
+    const categoryOrder = ['đồ lam nam', 'đồ lam nữ', 'pháp phục', 'áo tràng'];
+    const sortedCategories = [...categories].sort((a, b) => {
+      const indexA = categoryOrder.indexOf(a.name.toLowerCase());
+      const indexB = categoryOrder.indexOf(b.name.toLowerCase());
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+      if (indexA !== -1) return -1;
+      if (indexB !== -1) return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    return [
+      { label: 'Trang Chủ', href: '/' },
+      ...sortedCategories.map(c => ({ label: c.name, href: `/san-pham?category=${c.slug}` })),
+      { label: 'Blog', href: '/blog' },
+    ];
+  }, [categories])
 
   const marqueeItems = [
     "Miễn phí vận chuyển cho đơn hàng từ 1.000.000đ",
@@ -85,13 +97,6 @@ export function Navbar() {
 
         {/* Right Actions */}
         <div className="flex items-center gap-2">
-          <button
-            className="p-2 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors duration-300"
-            aria-label="Tìm kiếm"
-          >
-            <Search className="w-5 h-5" />
-          </button>
-
           <Link
             to="/yeu-thich"
             className="relative p-2 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors duration-300"

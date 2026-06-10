@@ -23,201 +23,13 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useWishlistStore } from '../../store/wishlistStore';
-import { authService } from '../../services';
-import { mapApiProductToMockProduct } from '../../utils/productMapper';
-import { PRODUCTS } from '../../data';
+import { authService, addressService, orderService } from '../../services';
+import type { UserAddress } from '../../types';
+import { mapApiProductToMockProduct, getImageUrl } from '../../utils/productMapper';
 import { formatPrice } from '../../components/ui/ProductCard';
 import Toast from '../../components/ui/Toast';
 
-// Fallback products if the mock data in PRODUCTS is empty
-const FALLBACK_PRODUCTS = [
-  {
-    id: 'bo-lam-tinh-tam',
-    name: 'Bộ Lam Tĩnh Tâm',
-    price: 1150000,
-    colors: [{ name: 'Nâu nhạt', hex: '#EADDD7' }, { name: 'Xanh rêu', hex: '#8D9B91' }, { name: 'Trắng ngà', hex: '#F5F5F5' }],
-    sizes: ['S', 'M', 'L', 'XL'],
-    images: ['https://lh3.googleusercontent.com/aida-public/AB6AXuD-i99PGuf24vO5kvxg326vEO7jUuUSLTDT1n1BFFVtkuE9CvzkafJf5hh_pcEax4jWWbA8r5usOW5XIpFoUHtnaRrkonr9-wyhvaXIZK6gTYY6CwI6RCABXDpyPxu0ioSb3YLij-kW940L0YDvEkFYvH3GPQ06avEx77w5QDj7YABPaI4R3UM1Xq76cZrNv2lXRxpAwWH_yy5LNgTcDPgOz-i4opUNNMKLgL6ksKfzWsqjN1LDhNOIe3L2WFbcei39HxceMvxge9Ov'],
-    category: 'Đồ lam nữ'
-  },
-  {
-    id: 'ao-trang-an-nhien',
-    name: 'Áo Tràng An Nhiên',
-    price: 1650000,
-    colors: [{ name: 'Trắng ngà', hex: '#F5F5F5' }, { name: 'Nâu nhạt', hex: '#EADDD7' }],
-    sizes: ['S', 'M', 'L', 'XL'],
-    images: ['https://lh3.googleusercontent.com/aida-public/AB6AXuCGIQZtJgyZL64jeOPXO-SBpVFLOh0hYPaX7T0TbIBnGZFeEyCd2BE8qwij6MFz-KiZs5rHFzFeojkyMTE8awGCPHNB8XVo8wLZooMeMaA4EL2LAMIiOFVP9e9iRBJjBbqSLyOgjxKNzIxr2vg6yf0rTYB_AkPFYhn6DV1zrXQlIsT8Gu1d-iD0IH4fAUJz0540gtOqTmsN9zhmCp-p3YerGiSkBzT0R2IvN5RvRXrVLP01l3la8ccg81L59kyplvWe3FFnVzPivbP5'],
-    category: 'Áo tràng'
-  },
-  {
-    id: 'bo-cu-si-thien-mon',
-    name: 'Bộ Cư Sĩ Thiền Môn',
-    price: 1450000,
-    colors: [{ name: 'Nâu đất', hex: '#5D4037' }, { name: 'Nâu nhạt', hex: '#EADDD7' }],
-    sizes: ['S', 'M', 'L', 'XL'],
-    images: ['https://lh3.googleusercontent.com/aida-public/AB6AXuAnO1Maxeutb-jssEy8FeSFc2z-2xSMGU60H2jUoy58UiARCv_XaPIGNVETe7etHxfzi1baFOLFF1EoOAl0Hw9qyLkkZ8Wo975bLX-MYkY3WwV9tcb7rObSCjcYBJc3ivi6ITGBoRegW0HEKBjw4ZLMzWLgprYYxvNZaqCuiV4E_nyRIMN7Jb_gtXjxDQpywYFWCL_TQs5KsVy4GrScJUsbZaFLDgRfZik96lm4yd591Tp531H80VQdxlP4CZuCZMuyyeco2LDPRHdf'],
-    category: 'Pháp Phục'
-  }
-];
-
-const getProduct = (index: number) => {
-  return PRODUCTS[index] || FALLBACK_PRODUCTS[index] || FALLBACK_PRODUCTS[0];
-};
-
-// Mock orders using actual product references for realistic images
-const MOCK_ORDERS = [
-  {
-    id: 'ORD-77291',
-    date: '2026-05-24',
-    status: 'delivered', // pending | processing | shipping | delivered | returned | cancelled
-    statusText: 'Đã giao thành công',
-    paymentMethod: 'Chuyển khoản ngân hàng',
-    paymentStatus: 'Đã thanh toán',
-    items: [
-      {
-        product: getProduct(0), // Pháp Phục Linen Tự Nhiên
-        color: getProduct(0).colors[0],
-        size: 'M',
-        quantity: 1,
-        price: getProduct(0).price
-      },
-      {
-        product: getProduct(2), // Khăn Lụa Thêu Sen
-        color: getProduct(2).colors[0],
-        size: 'S',
-        quantity: 2,
-        price: getProduct(2).price
-      }
-    ],
-    shippingFee: 30000,
-    discount: 50000,
-    total: getProduct(0).price + (getProduct(2).price * 2) + 30000 - 50000
-  },
-  {
-    id: 'ORD-10928',
-    date: '2026-05-29',
-    status: 'processing', // Chờ lấy hàng
-    statusText: 'Chờ lấy hàng',
-    paymentMethod: 'COD (Thanh toán khi nhận hàng)',
-    paymentStatus: 'Chưa thanh toán',
-    items: [
-      {
-        product: getProduct(1), // Áo Dài Cách Tân Silk Trắng
-        color: getProduct(1).colors[0],
-        size: 'L',
-        quantity: 1,
-        price: getProduct(1).price
-      }
-    ],
-    shippingFee: 30000,
-    discount: 0,
-    total: getProduct(1).price + 30000
-  },
-  {
-    id: 'ORD-55412',
-    date: '2026-05-30',
-    status: 'pending', // Chờ xác nhận
-    statusText: 'Chờ xác nhận',
-    paymentMethod: 'Chuyển khoản ngân hàng',
-    paymentStatus: 'Chưa thanh toán',
-    items: [
-      {
-        product: getProduct(2),
-        color: getProduct(2).colors[0],
-        size: 'M',
-        quantity: 1,
-        price: getProduct(2).price
-      }
-    ],
-    shippingFee: 30000,
-    discount: 0,
-    total: getProduct(2).price + 30000
-  },
-  {
-    id: 'ORD-98271',
-    date: '2026-05-28',
-    status: 'shipping', // Chờ giao hàng
-    statusText: 'Đang vận chuyển',
-    paymentMethod: 'Ví Momo',
-    paymentStatus: 'Đã thanh toán',
-    items: [
-      {
-        product: getProduct(0),
-        color: getProduct(0).colors[1] || getProduct(0).colors[0],
-        size: 'XL',
-        quantity: 1,
-        price: getProduct(0).price
-      }
-    ],
-    shippingFee: 15000,
-    discount: 15000,
-    total: getProduct(0).price + 15000 - 15000
-  },
-  {
-    id: 'ORD-88123',
-    date: '2026-05-20',
-    status: 'cancelled', // Đã hủy
-    statusText: 'Đã hủy',
-    paymentMethod: 'Chuyển khoản ngân hàng',
-    paymentStatus: 'Đã hoàn tiền',
-    items: [
-      {
-        product: getProduct(1),
-        color: getProduct(1).colors[0],
-        size: 'S',
-        quantity: 1,
-        price: getProduct(1).price
-      }
-    ],
-    shippingFee: 30000,
-    discount: 0,
-    total: getProduct(1).price + 30000
-  },
-  {
-    id: 'ORD-44102',
-    date: '2026-05-15',
-    status: 'returned', // Trả hàng
-    statusText: 'Đã trả hàng',
-    paymentMethod: 'COD (Thanh toán khi nhận hàng)',
-    paymentStatus: 'Đã hoàn tiền',
-    items: [
-      {
-        product: getProduct(2),
-        color: getProduct(2).colors[0],
-        size: 'L',
-        quantity: 1,
-        price: getProduct(2).price
-      }
-    ],
-    shippingFee: 30000,
-    discount: 0,
-    total: getProduct(2).price + 30000
-  }
-];
-
-// Mock addresses
-const INITIAL_ADDRESSES = [
-  {
-    id: 1,
-    name: 'Nguyễn Văn Khách',
-    phone: '0987654321',
-    province: 'TP. Hồ Chí Minh',
-    district: 'Quận 1',
-    ward: 'Phường Bến Nghé',
-    street: '12 Lê Lợi',
-    isDefault: true
-  },
-  {
-    id: 2,
-    name: 'Nguyễn Văn Khách (Văn phòng)',
-    phone: '0987654322',
-    province: 'Hà Nội',
-    district: 'Quận Hoàn Kiếm',
-    ward: 'Phường Tràng Tiền',
-    street: '45 Tràng Tiền',
-    isDefault: false
-  }
-];
+// Mock addresses removed
 
 interface Voucher {
   id: string;
@@ -325,6 +137,64 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'favorites' | 'addresses' | 'offers'>('profile');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 
+  // DB Orders state
+  const [dbOrders, setDbOrders] = useState<any[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchMyOrders = async () => {
+      if (activeTab === 'orders' && isAuthenticated) {
+        setLoadingOrders(true);
+        setOrdersError(null);
+        try {
+          const res = await orderService.getMyOrders();
+          setDbOrders(res.items || []);
+        } catch (err: any) {
+          console.error("Lỗi khi tải đơn hàng:", err);
+          setOrdersError(err?.message || "Không thể tải danh sách đơn hàng.");
+        } finally {
+          setLoadingOrders(false);
+        }
+      }
+    };
+    fetchMyOrders();
+  }, [activeTab, isAuthenticated]);
+
+  // Helper mapping for DB statuses
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'pending': return 'Chờ xác nhận';
+      case 'confirmed': return 'Đã xác nhận';
+      case 'processing': return 'Chờ lấy hàng';
+      case 'shipped': return 'Đang vận chuyển';
+      case 'delivered': return 'Đã giao thành công';
+      case 'cancelled': return 'Đã hủy';
+      case 'refunded': return 'Đã hoàn tiền';
+      default: return status;
+    }
+  };
+
+  const getPaymentMethodText = (method: string) => {
+    switch (method) {
+      case 'cod': return 'COD (Nhận hàng thanh toán)';
+      case 'bank_transfer': return 'Chuyển khoản ngân hàng';
+      case 'vnpay': return 'VNPAY';
+      case 'momo': return 'Ví MoMo';
+      default: return method;
+    }
+  };
+
+  const getPaymentStatusText = (status: string) => {
+    switch (status) {
+      case 'pending': return 'Chưa thanh toán';
+      case 'paid': return 'Đã thanh toán';
+      case 'failed': return 'Thanh toán thất bại';
+      case 'refunded': return 'Đã hoàn tiền';
+      default: return status;
+    }
+  };
+
   // Order status sub-filters
   const [orderFilter, setOrderFilter] = useState<'all' | 'pending' | 'processing' | 'shipping' | 'delivered' | 'returned' | 'cancelled'>('all');
 
@@ -390,7 +260,7 @@ export default function ProfilePage() {
   };
 
   // Address list state
-  const [addresses, setAddresses] = useState(INITIAL_ADDRESSES);
+  const [addresses, setAddresses] = useState<UserAddress[]>([]);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [newAddrName, setNewAddrName] = useState('');
   const [newAddrPhone, setNewAddrPhone] = useState('');
@@ -398,6 +268,23 @@ export default function ProfilePage() {
   const [newAddrDistrict, setNewAddrDistrict] = useState('');
   const [newAddrWard, setNewAddrWard] = useState('');
   const [newAddrStreet, setNewAddrStreet] = useState('');
+  const [visibleMapId, setVisibleMapId] = useState<number | null>(null);
+
+  // Fetch addresses on mount/auth
+  useEffect(() => {
+    const fetchAddresses = async () => {
+      if (isAuthenticated) {
+        try {
+          const data = await addressService.getAddresses();
+          setAddresses(data);
+        } catch (err) {
+          console.error("Lỗi khi tải sổ địa chỉ:", err);
+          showToast("Không thể tải sổ địa chỉ giao hàng.", "info");
+        }
+      }
+    };
+    fetchAddresses();
+  }, [isAuthenticated]);
 
   // Toast notification state
   const [toast, setToast] = useState({
@@ -433,7 +320,7 @@ export default function ProfilePage() {
       updateUser(updatedUser);
 
       // Check password fields
-      if (currentPassword || newPassword || confirmPassword) {
+      if (newPassword || confirmPassword) {
         if (!currentPassword || !newPassword || !confirmPassword) {
           showToast('Vui lòng điền đầy đủ các trường để đổi mật khẩu.', 'info');
           return;
@@ -470,51 +357,71 @@ export default function ProfilePage() {
     }
   };
 
-  const handleAddAddress = (e: React.FormEvent) => {
+  const handleAddAddress = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAddrName || !newAddrPhone || !newAddrProvince || !newAddrDistrict || !newAddrWard || !newAddrStreet) {
       showToast('Vui lòng điền đầy đủ thông tin địa chỉ.', 'info');
       return;
     }
-    const newAddress = {
-      id: Date.now(),
-      name: newAddrName,
-      phone: newAddrPhone,
-      province: newAddrProvince,
-      district: newAddrDistrict,
-      ward: newAddrWard,
-      street: newAddrStreet,
-      isDefault: addresses.length === 0
-    };
-    setAddresses([...addresses, newAddress]);
-    setShowAddressForm(false);
-    // Reset forms
-    setNewAddrName('');
-    setNewAddrPhone('');
-    setNewAddrProvince('');
-    setNewAddrDistrict('');
-    setNewAddrWard('');
-    setNewAddrStreet('');
-    showToast('Đã thêm địa chỉ giao hàng mới.');
-  };
-
-  const handleDeleteAddress = (id: number) => {
-    const updated = addresses.filter(addr => addr.id !== id);
-    // If we delete default, make the first one default
-    if (addresses.find(addr => addr.id === id)?.isDefault && updated.length > 0) {
-      updated[0].isDefault = true;
+    try {
+      const isDefault = addresses.length === 0;
+      const newAddress = await addressService.createAddress({
+        name: newAddrName,
+        phone: newAddrPhone,
+        province: newAddrProvince,
+        district: newAddrDistrict,
+        ward: newAddrWard,
+        street: newAddrStreet,
+        isDefault: isDefault
+      });
+      setAddresses(prev => [...prev, newAddress]);
+      setShowAddressForm(false);
+      // Reset forms
+      setNewAddrName('');
+      setNewAddrPhone('');
+      setNewAddrProvince('');
+      setNewAddrDistrict('');
+      setNewAddrWard('');
+      setNewAddrStreet('');
+      showToast('Đã thêm địa chỉ giao hàng mới.');
+    } catch (err: any) {
+      console.error("Lỗi khi thêm địa chỉ:", err);
+      const errMsg = err.response?.data?.detail || 'Thêm địa chỉ thất bại. Vui lòng thử lại.';
+      showToast(errMsg, 'info');
     }
-    setAddresses(updated);
-    showToast('Đã xóa địa chỉ giao hàng.', 'info');
   };
 
-  const handleSetDefaultAddress = (id: number) => {
-    const updated = addresses.map(addr => ({
-      ...addr,
-      isDefault: addr.id === id
-    }));
-    setAddresses(updated);
-    showToast('Đã thiết lập địa chỉ mặc định mới.');
+  const handleDeleteAddress = async (id: number) => {
+    try {
+      await addressService.deleteAddress(id);
+      const deletedWasDefault = addresses.find(addr => addr.id === id)?.isDefault;
+      const updated = addresses.filter(addr => addr.id !== id);
+      if (deletedWasDefault && updated.length > 0) {
+        const refreshed = await addressService.getAddresses();
+        setAddresses(refreshed);
+      } else {
+        setAddresses(updated);
+      }
+      showToast('Đã xóa địa chỉ giao hàng.', 'info');
+    } catch (err) {
+      console.error("Lỗi khi xóa địa chỉ:", err);
+      showToast('Xóa địa chỉ thất bại. Vui lòng thử lại.', 'info');
+    }
+  };
+
+  const handleSetDefaultAddress = async (id: number) => {
+    try {
+      await addressService.setDefaultAddress(id);
+      const updated = addresses.map(addr => ({
+        ...addr,
+        isDefault: addr.id === id
+      }));
+      setAddresses(updated);
+      showToast('Đã thiết lập địa chỉ mặc định mới.');
+    } catch (err) {
+      console.error("Lỗi khi thiết lập địa chỉ mặc định:", err);
+      showToast('Thiết lập địa chỉ mặc định thất bại.', 'info');
+    }
   };
 
   const handleLogout = () => {
@@ -1285,8 +1192,12 @@ export default function ProfilePage() {
                       { key: 'cancelled', label: 'Đã hủy' }
                     ].map((filter) => {
                       const count = filter.key === 'all'
-                        ? MOCK_ORDERS.length
-                        : MOCK_ORDERS.filter(o => o.status === filter.key).length;
+                        ? dbOrders.length
+                        : dbOrders.filter(o => {
+                            if (filter.key === 'shipping') return o.status === 'shipped';
+                            if (filter.key === 'returned') return o.status === 'refunded';
+                            return o.status === filter.key;
+                          }).length;
                       const isActive = orderFilter === filter.key;
                       return (
                         <button
@@ -1310,96 +1221,133 @@ export default function ProfilePage() {
                     })}
                   </div>
 
-                  <div className="space-y-6">
-                    {MOCK_ORDERS.filter(order => orderFilter === 'all' ? true : order.status === orderFilter).map((order) => (
-                      <div
-                        key={order.id}
-                        className="border border-[#d4c3be]/40 rounded-sm overflow-hidden"
-                      >
-                        {/* Order info header */}
-                        <div className="bg-[#ece0dc]/20 px-5 py-3 border-b border-[#d4c3be]/40 flex flex-wrap items-center justify-between gap-3 text-xs">
-                          <div className="flex gap-4">
-                            <div>
-                              <span className="text-on-surface-variant font-medium mr-1.5">Mã đơn:</span>
-                              <span className="font-mono font-bold text-primary">{order.id}</span>
+                  {loadingOrders ? (
+                    <div className="py-12 flex flex-col items-center justify-center text-on-surface-variant/60 gap-3">
+                      <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+                      <p className="text-xs font-medium">Đang tải danh sách đơn hàng...</p>
+                    </div>
+                  ) : ordersError ? (
+                    <div className="text-center py-12 text-red-700 bg-red-50 border border-red-200 rounded-sm">
+                      {ordersError}
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {dbOrders.filter(order => {
+                        if (orderFilter === 'all') return true;
+                        if (orderFilter === 'shipping') return order.status === 'shipped';
+                        if (orderFilter === 'returned') return order.status === 'refunded';
+                        return order.status === orderFilter;
+                      }).map((order) => (
+                        <div
+                          key={order.id}
+                          className="border border-[#d4c3be]/40 rounded-sm overflow-hidden"
+                        >
+                          {/* Order info header */}
+                          <div className="bg-[#ece0dc]/20 px-5 py-3 border-b border-[#d4c3be]/40 flex flex-wrap items-center justify-between gap-3 text-xs">
+                            <div className="flex gap-4">
+                              <div>
+                                <span className="text-on-surface-variant font-medium mr-1.5">Mã đơn:</span>
+                                <span className="font-mono font-bold text-primary">{order.order_code}</span>
+                              </div>
+                              <div>
+                                <span className="text-on-surface-variant font-medium mr-1.5">Ngày mua:</span>
+                                <span className="font-bold">
+                                  {new Date(order.created_at).toLocaleDateString('vi-VN')}
+                                </span>
+                              </div>
                             </div>
-                            <div>
-                              <span className="text-on-surface-variant font-medium mr-1.5">Ngày mua:</span>
-                              <span className="font-bold">{order.date}</span>
+                            <div className="flex items-center gap-1.5 font-bold font-sans">
+                              {order.status === 'delivered' ? (
+                                <span className="text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1 text-[10px] uppercase tracking-wide">
+                                  <CheckCircle size={10} /> {getStatusText(order.status)}
+                                </span>
+                              ) : order.status === 'cancelled' ? (
+                                <span className="text-error bg-error/5 px-2.5 py-0.5 rounded-full border border-error/20 flex items-center gap-1 text-[10px] uppercase tracking-wide">
+                                  {getStatusText(order.status)}
+                                </span>
+                              ) : (
+                                <span className="text-[#8a726b] bg-[#ece0dc]/50 px-2.5 py-0.5 rounded-full border border-[#d4c3be]/30 flex items-center gap-1 text-[10px] uppercase tracking-wide">
+                                  <Clock size={10} /> {getStatusText(order.status)}
+                                </span>
+                              )}
                             </div>
                           </div>
-                          <div className="flex items-center gap-1.5 font-bold">
-                            {order.status === 'delivered' ? (
-                              <span className="text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1 text-[10px] uppercase font-sans tracking-wide">
-                                <CheckCircle size={10} /> {order.statusText}
-                              </span>
-                            ) : order.status === 'cancelled' ? (
-                              <span className="text-error bg-error/5 px-2.5 py-0.5 rounded-full border border-error/20 flex items-center gap-1 text-[10px] uppercase font-sans tracking-wide">
-                                {order.statusText}
-                              </span>
-                            ) : (
-                              <span className="text-[#8a726b] bg-[#ece0dc]/50 px-2.5 py-0.5 rounded-full border border-[#d4c3be]/30 flex items-center gap-1 text-[10px] uppercase font-sans tracking-wide">
-                                <Clock size={10} /> {order.statusText}
-                              </span>
-                            )}
-                          </div>
-                        </div>
 
-                        {/* Order items lists */}
-                        <div className="p-4 space-y-4">
-                          {order.items.map((item, idx) => (
-                            <div key={idx} className="flex gap-4 items-start">
-                              <img
-                                alt={item.product.name}
-                                src={item.product.images[0]}
-                                className="w-12 h-15 object-cover rounded-xs border border-[#d4c3be]/30"
-                              />
-                              <div className="flex-1">
-                                <Link to={`/san-pham/${item.product.id}`} className="font-serif font-bold text-[#442a22] hover:text-primary transition-colors flex items-center gap-1">
-                                  {item.product.name} <ExternalLink size={11} className="opacity-50" />
-                                </Link>
-                                <div className="text-[11px] text-on-surface-variant mt-1">
-                                  <span>Màu: <span className="font-bold">{item.color.name}</span></span>
-                                  <span className="mx-2">•</span>
-                                  <span>Kích cỡ: <span className="font-bold">{item.size}</span></span>
-                                  <span className="mx-2">•</span>
-                                  <span>Số lượng: <span className="font-bold">{item.quantity}</span></span>
+                          {/* Order items lists */}
+                          <div className="p-4 space-y-4">
+                            {order.items.map((item: any, idx: number) => {
+                              const pName = item.product?.name || item.product_snapshot?.name || 'Sản phẩm Từ Tâm Phục';
+                              const pImage = getImageUrl(item.product?.images?.[0]?.url || item.product_snapshot?.image || '');
+                              const pColor = item.product_snapshot?.color || 'Mặc định';
+                              const pSize = item.product_snapshot?.size || item.size || 'Mặc định';
+                              
+                              return (
+                                <div key={idx} className="flex gap-4 items-start">
+                                  {pImage && (
+                                    <img
+                                      alt={pName}
+                                      src={pImage}
+                                      className="w-12 h-15 object-cover rounded-xs border border-[#d4c3be]/30"
+                                      referrerPolicy="no-referrer"
+                                    />
+                                  )}
+                                  <div className="flex-1">
+                                    {item.product?.id ? (
+                                      <Link to={`/san-pham/${item.product.id}`} className="font-serif font-bold text-[#442a22] hover:text-primary transition-colors flex items-center gap-1">
+                                        {pName} <ExternalLink size={11} className="opacity-50" />
+                                      </Link>
+                                    ) : (
+                                      <span className="font-serif font-bold text-[#442a22]">{pName}</span>
+                                    )}
+                                    <div className="text-[11px] text-on-surface-variant mt-1">
+                                      <span>Màu: <span className="font-bold">{pColor}</span></span>
+                                      <span className="mx-2">•</span>
+                                      <span>Kích cỡ: <span className="font-bold">{pSize}</span></span>
+                                      <span className="mx-2">•</span>
+                                      <span>Số lượng: <span className="font-bold">{item.quantity}</span></span>
+                                    </div>
+                                  </div>
+                                  <div className="text-right text-xs font-semibold">
+                                    {formatPrice(item.price)}
+                                  </div>
                                 </div>
-                              </div>
-                              <div className="text-right text-xs font-semibold">
-                                {formatPrice(item.price)}
-                              </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Total costs bottom */}
+                          <div className="bg-[#fcfaf7] px-5 py-3 border-t border-[#eeeeee] flex justify-between items-center text-xs">
+                            <div>
+                              <span className="text-on-surface-variant mr-1">Hình thức thanh toán:</span>
+                              <span className="font-bold text-[#5d4037]">{getPaymentMethodText(order.payment_method)}</span>
+                              <span className="text-on-surface-variant/40 mx-2">•</span>
+                              <span className="text-on-surface-variant mr-1">Thanh toán:</span>
+                              <span className={`font-bold ${order.payment_status === 'paid' ? 'text-emerald-700' : 'text-amber-700'}`}>
+                                {getPaymentStatusText(order.payment_status)}
+                              </span>
                             </div>
-                          ))}
-                        </div>
-
-                        {/* Total costs bottom */}
-                        <div className="bg-[#fcfaf7] px-5 py-3 border-t border-[#eeeeee] flex justify-between items-center text-xs">
-                          <div>
-                            <span className="text-on-surface-variant mr-1">Hình thức thanh toán:</span>
-                            <span className="font-bold text-[#5d4037]">{order.paymentMethod}</span>
-                            <span className="text-on-surface-variant/40 mx-2">•</span>
-                            <span className="text-on-surface-variant mr-1">Thanh toán:</span>
-                            <span className={`font-bold ${order.paymentStatus === 'Đã thanh toán' ? 'text-emerald-700' : 'text-amber-700'}`}>
-                              {order.paymentStatus}
-                            </span>
-                          </div>
-                          <div className="text-right font-serif text-sm">
-                            <span className="text-xs font-sans text-on-surface-variant mr-2">Tổng tiền:</span>
-                            <span className="font-bold text-primary">{formatPrice(order.total)}</span>
+                            <div className="text-right font-serif text-sm">
+                              <span className="text-xs font-sans text-on-surface-variant mr-2">Tổng tiền:</span>
+                              <span className="font-bold text-primary">{formatPrice(order.total)}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
 
-                    {MOCK_ORDERS.filter(order => orderFilter === 'all' ? true : order.status === orderFilter).length === 0 && (
+                    {dbOrders.filter(order => {
+                      if (orderFilter === 'all') return true;
+                      if (orderFilter === 'shipping') return order.status === 'shipped';
+                      if (orderFilter === 'returned') return order.status === 'refunded';
+                      return order.status === orderFilter;
+                    }).length === 0 && (
                       <div className="text-center py-12 text-on-surface-variant/80 bg-[#fcfaf7] border border-[#d4c3be]/20 rounded-sm">
                         Không có đơn hàng nào trong mục này.
                       </div>
                     )}
                   </div>
-                </motion.div>
-              )}
+                )}
+              </motion.div>
+            )}
 
               {/* Tab 3: Addresses Book */}
               {activeTab === 'addresses' && (
@@ -1506,6 +1454,31 @@ export default function ProfilePage() {
                             />
                           </div>
 
+                          {/* Google Map Preview for new address */}
+                          <div className="space-y-2">
+                            <label className="block font-caption text-caption text-on-secondary-fixed-variant uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                              <MapPin size={13} /> Bản đồ định vị địa chỉ mới
+                            </label>
+                            <div className="border border-[#d4c3be]/60 overflow-hidden bg-white shadow-xs">
+                              <div className="relative aspect-video w-full h-[180px] bg-[#e5e3df]">
+                                {[newAddrStreet, newAddrWard, newAddrDistrict, newAddrProvince].some(Boolean) ? (
+                                  <iframe
+                                    title="Google Map Address Book Preview"
+                                    src={`https://maps.google.com/maps?q=${encodeURIComponent([newAddrStreet, newAddrWard, newAddrDistrict, newAddrProvince].filter(Boolean).join(', '))}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                                    className="w-full h-full border-none"
+                                    allowFullScreen
+                                    loading="lazy"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex flex-col items-center justify-center text-on-surface-variant/60 gap-1 text-xs">
+                                    <MapPin size={20} className="opacity-40" />
+                                    Vui lòng nhập các thông tin địa chỉ ở trên để hiển thị bản đồ định vị
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
                           <div className="flex gap-4 justify-end pt-2">
                             <button
                               type="button"
@@ -1531,43 +1504,67 @@ export default function ProfilePage() {
                     {addresses.map((addr) => (
                       <div
                         key={addr.id}
-                        className={`p-5 border rounded-sm flex items-start justify-between gap-4 transition-all ${addr.isDefault ? 'border-primary bg-[#ece0dc]/10' : 'border-[#d4c3be]/40 bg-white'
+                        className={`p-5 border rounded-sm flex flex-col gap-2 transition-all ${addr.isDefault ? 'border-primary bg-[#ece0dc]/10' : 'border-[#d4c3be]/40 bg-white'
                           }`}
                       >
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-serif font-bold text-sm text-[#442a22]">{addr.name}</span>
-                            {addr.isDefault && (
-                              <span className="text-[9px] bg-primary text-white font-bold px-2 py-0.5 rounded-sm uppercase tracking-wide">
-                                Mặc định
-                              </span>
+                        <div className="flex items-start justify-between gap-4 w-full">
+                          <div className="space-y-1.5 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-serif font-bold text-sm text-[#442a22]">{addr.name}</span>
+                              {addr.isDefault && (
+                                <span className="text-[9px] bg-primary text-white font-bold px-2 py-0.5 rounded-sm uppercase tracking-wide">
+                                  Mặc định
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-on-surface-variant font-medium">
+                              Số điện thoại: <span className="font-bold text-on-surface">{addr.phone}</span>
+                            </div>
+                            <div className="text-xs leading-relaxed text-on-surface-variant">
+                              Địa chỉ: <span className="text-on-surface font-semibold">{addr.street}, {addr.ward}, {addr.district}, {addr.province}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col items-end gap-3 text-right">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => setVisibleMapId(visibleMapId === addr.id ? null : addr.id)}
+                                className="text-[10px] text-primary font-bold hover:underline bg-transparent border-none cursor-pointer flex items-center gap-1.5"
+                                title="Xem vị trí trên bản đồ"
+                              >
+                                <MapPin size={12} />
+                                {visibleMapId === addr.id ? 'Ẩn bản đồ' : 'Xem bản đồ'}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteAddress(addr.id)}
+                                className="p-1 text-on-surface-variant hover:text-error transition-colors bg-transparent border-none cursor-pointer"
+                                title="Xóa địa chỉ"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                            {!addr.isDefault && (
+                              <button
+                                onClick={() => handleSetDefaultAddress(addr.id)}
+                                className="text-[10px] text-primary font-bold hover:underline bg-transparent border-none cursor-pointer"
+                              >
+                                Thiết lập mặc định
+                              </button>
                             )}
-                          </div>
-                          <div className="text-xs text-on-surface-variant font-medium">
-                            Số điện thoại: <span className="font-bold text-on-surface">{addr.phone}</span>
-                          </div>
-                          <div className="text-xs leading-relaxed text-on-surface-variant">
-                            Địa chỉ: <span className="text-on-surface font-semibold">{addr.street}, {addr.ward}, {addr.district}, {addr.province}</span>
                           </div>
                         </div>
 
-                        <div className="flex flex-col items-end gap-3 text-right">
-                          <button
-                            onClick={() => handleDeleteAddress(addr.id)}
-                            className="p-1 text-on-surface-variant hover:text-error transition-colors bg-transparent border-none cursor-pointer"
-                            title="Xóa địa chỉ"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                          {!addr.isDefault && (
-                            <button
-                              onClick={() => handleSetDefaultAddress(addr.id)}
-                              className="text-[10px] text-primary font-bold hover:underline bg-transparent border-none cursor-pointer"
-                            >
-                              Thiết lập mặc định
-                            </button>
-                          )}
-                        </div>
+                        {/* Interactive Google Map embed for saved address */}
+                        {visibleMapId === addr.id && (
+                          <div className="mt-2 border border-[#d4c3be]/40 rounded-xs overflow-hidden h-[180px] bg-[#e5e3df] w-full">
+                            <iframe
+                              title={`Google Map Address ${addr.id}`}
+                              src={`https://maps.google.com/maps?q=${encodeURIComponent(`${addr.street}, ${addr.ward}, ${addr.district}, ${addr.province}`)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                              className="w-full h-full border-none"
+                              loading="lazy"
+                            />
+                          </div>
+                        )}
                       </div>
                     ))}
 

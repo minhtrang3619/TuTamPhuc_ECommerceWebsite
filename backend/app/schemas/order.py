@@ -25,11 +25,24 @@ class OrderItemResponse(BaseSchema):
     product_snapshot: Optional[Dict[str, Any]] = None
 
 
+class OrderItemCreate(BaseSchema):
+    product_id: int
+    quantity: int
+    color_name: Optional[str] = None
+    color_hex: Optional[str] = None
+    size: Optional[str] = None
+    price: float
+
+
 class OrderCreate(BaseSchema):
     shipping_address: ShippingAddressSchema
     payment_method: PaymentMethod
     notes: Optional[str] = None
     coupon_code: Optional[str] = None
+    items: Optional[List[OrderItemCreate]] = None
+    discount: Optional[float] = 0.0
+    shipping_fee: Optional[float] = 30000.0
+
 
 
 class OrderStatusUpdate(BaseSchema):

@@ -4,5 +4,6 @@ export { cartService } from './cartService'
 export { orderService } from './orderService'
 export { wishlistService } from './wishlistService'
 export { customerService } from './customerService'
+export { addressService } from './addressService'
 export { default as apiClient } from './apiClient'
 

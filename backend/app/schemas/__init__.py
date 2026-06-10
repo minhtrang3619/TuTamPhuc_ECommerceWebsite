@@ -15,6 +15,7 @@ from app.schemas.order import (
 from app.schemas.cart import CartResponse, CartItemResponse, AddToCartRequest, UpdateCartItemRequest
 from app.schemas.review import ReviewCreate, ReviewResponse, PaginatedReviews
 from app.schemas.blog import BlogPostCreate, BlogPostUpdate, BlogPostResponse, PaginatedBlogPosts
+from app.schemas.address import AddressCreate, AddressUpdate, AddressResponse
 
 __all__ = [
     "UserRegister", "UserLogin", "UserUpdate", "ChangePassword",
@@ -27,4 +28,5 @@ __all__ = [
     "CartResponse", "CartItemResponse", "AddToCartRequest", "UpdateCartItemRequest",
     "ReviewCreate", "ReviewResponse", "PaginatedReviews",
     "BlogPostCreate", "BlogPostUpdate", "BlogPostResponse", "PaginatedBlogPosts",
+    "AddressCreate", "AddressUpdate", "AddressResponse",
 ]

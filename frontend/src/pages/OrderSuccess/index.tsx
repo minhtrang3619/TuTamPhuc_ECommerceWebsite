@@ -5,10 +5,16 @@ import { motion } from 'framer-motion'
 import { Sprout, ShoppingBag, ClipboardList, ShieldCheck, MapPin, Phone, User as UserIcon } from 'lucide-react'
 import { orderService } from '@/services'
 import { formatPrice } from '@/components/ui/ProductCard'
+import { getImageUrl } from '@/utils/productMapper'
+
 
 export default function OrderSuccessPage() {
   const [searchParams] = useSearchParams()
   const orderCode = searchParams.get('code') || ''
+  const paymentParam = searchParams.get('payment') || 'bank_transfer'
+  const nameParam = searchParams.get('name') || 'Nguyễn An Nhiên'
+  const phoneParam = searchParams.get('phone') || '0987654321'
+  const addressParam = searchParams.get('address') || '12 Chùa Bộc, Quang Trung, Đống Đa, Hà Nội'
 
   // Scroll to top on page load
   useEffect(() => {
@@ -57,11 +63,11 @@ export default function OrderSuccessPage() {
     order_code: orderCode || `TTP-${Math.floor(100000 + Math.random() * 900000)}`,
     created_at: new Date().toISOString(),
     shipping_address: {
-      full_name: 'Nguyễn An Nhiên',
-      phone: '0987654321',
-      address: '12 Chùa Bộc, Quang Trung, Đống Đa, Hà Nội',
+      full_name: nameParam,
+      phone: phoneParam,
+      address: addressParam,
     },
-    payment_method: 'bank_transfer',
+    payment_method: paymentParam,
     payment_status: 'pending',
     status: 'pending',
     items: [
@@ -326,8 +332,8 @@ export default function OrderSuccessPage() {
                 {currentOrder.items.map((item: any) => (
                   <div key={item.id} className="flex gap-4 pt-3 first:pt-0 items-start">
                     <img
-                      alt={item.product.name}
-                      src={item.product.images[0]?.url || item.product.images[0]}
+                      alt={item.product?.name || item.product_snapshot?.name || 'Sản phẩm'}
+                      src={getImageUrl(item.product?.images?.[0]?.url || item.product?.images?.[0] || item.product_snapshot?.image)}
                       className="w-14 aspect-[3/4] object-cover bg-surface-container rounded-xs border border-[#eeeeee]"
                       referrerPolicy="no-referrer"
                     />

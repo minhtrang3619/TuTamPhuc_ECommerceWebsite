@@ -3,21 +3,51 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, CheckCircle2, ShieldCheck, Truck, ClipboardList, Leaf, ChevronDown, ChevronUp, MapPin, Edit3, Check } from 'lucide-react';
 import { OrderInfo } from '../../mockTypes';
-import { useMockCartStore } from '../../store/mockCartStore';
+import { useMockCartStore } from '@/store/mockCartStore';
 import { formatPrice } from './ProductCard';
 import MapDistance from './MapDistance';
 import { useAuthStore } from '../../store/authStore';
+import { addressService, orderService } from '../../services';
+import type { UserAddress } from '../../types';
+
+const parseAddressString = (addressStr: string) => {
+  const parts = addressStr.split(',').map(p => p.trim());
+  let street = addressStr;
+  let ward = 'Mặc định';
+  let district = 'Mặc định';
+  let province = 'Mặc định';
+
+  if (parts.length >= 4) {
+    province = parts[parts.length - 1];
+    district = parts[parts.length - 2];
+    ward = parts[parts.length - 3];
+    street = parts.slice(0, parts.length - 3).join(', ');
+  } else if (parts.length === 3) {
+    province = parts[2];
+    district = parts[1];
+    ward = parts[0];
+  } else if (parts.length === 2) {
+    province = parts[1];
+    district = parts[0];
+  }
+  return { street, ward, district, province };
+};
+
 
 export default function CheckoutModal() {
   const {
     cart,
+    buyNowItem,
     isCheckoutOpen,
     closeCheckout,
     clearCart,
+    clearBuyNowItem,
   } = useMockCartStore();
 
+  const checkoutItems = buyNowItem ? [buyNowItem] : cart;
+
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const [defaultAddress, setDefaultAddress] = useState('12 Chùa Bộc, Quang Trung, Đống Đa, Hà Nội');
   const [isEditingAddress, setIsEditingAddress] = useState(false);
 
@@ -33,21 +63,73 @@ export default function CheckoutModal() {
   });
 
   useEffect(() => {
-    if (isCheckoutOpen) {
-      setForm(prev => ({
-        ...prev,
-        name: prev.name || user?.full_name || 'Khách Hàng Từ Tâm',
-        phone: prev.phone || user?.phone || '0912345678',
-        email: prev.email || user?.email || 'customer@gmail.com',
-        address: prev.address || defaultAddress,
-      }));
-    }
-  }, [isCheckoutOpen, user, defaultAddress]);
+    const fetchDefaultAddress = async () => {
+      if (isCheckoutOpen && isAuthenticated) {
+        try {
+          const data: UserAddress[] = await addressService.getAddresses();
+          const defaultAddrObj = data.find(addr => addr.isDefault);
+          if (defaultAddrObj) {
+            const formatted = `${defaultAddrObj.street}, ${defaultAddrObj.ward}, ${defaultAddrObj.district}, ${defaultAddrObj.province}`;
+            setDefaultAddress(formatted);
+            setForm(prev => ({
+              ...prev,
+              name: prev.name || defaultAddrObj.name || user?.full_name || 'Khách Hàng Từ Tâm',
+              phone: prev.phone || defaultAddrObj.phone || user?.phone || '0912345678',
+              email: prev.email || user?.email || 'customer@gmail.com',
+              address: prev.address || formatted,
+            }));
+          } else if (data.length > 0) {
+            const firstAddrObj = data[0];
+            const formatted = `${firstAddrObj.street}, ${firstAddrObj.ward}, ${firstAddrObj.district}, ${firstAddrObj.province}`;
+            setDefaultAddress(formatted);
+            setForm(prev => ({
+              ...prev,
+              name: prev.name || firstAddrObj.name || user?.full_name || 'Khách Hàng Từ Tâm',
+              phone: prev.phone || firstAddrObj.phone || user?.phone || '0912345678',
+              email: prev.email || user?.email || 'customer@gmail.com',
+              address: prev.address || formatted,
+            }));
+          } else {
+            // No addresses in book, fall back to user profile info
+            setForm(prev => ({
+              ...prev,
+              name: prev.name || user?.full_name || 'Khách Hàng Từ Tâm',
+              phone: prev.phone || user?.phone || '0912345678',
+              email: prev.email || user?.email || 'customer@gmail.com',
+              address: prev.address || user?.customer?.address || defaultAddress,
+            }));
+          }
+        } catch (err) {
+          console.error("Lỗi khi tải địa chỉ mặc định:", err);
+          setForm(prev => ({
+            ...prev,
+            name: prev.name || user?.full_name || 'Khách Hàng Từ Tâm',
+            phone: prev.phone || user?.phone || '0912345678',
+            email: prev.email || user?.email || 'customer@gmail.com',
+            address: prev.address || user?.customer?.address || defaultAddress,
+          }));
+        }
+      } else if (isCheckoutOpen) {
+        // Guest user or not authenticated
+        setForm(prev => ({
+          ...prev,
+          name: prev.name || 'Khách Hàng Từ Tâm',
+          phone: prev.phone || '0912345678',
+          email: prev.email || 'customer@gmail.com',
+          address: prev.address || defaultAddress,
+        }));
+      }
+    };
+
+    fetchDefaultAddress();
+  }, [isCheckoutOpen, isAuthenticated, user]);
 
   const [errors, setErrors] = useState<Partial<Record<keyof OrderInfo, string>>>({});
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const subTotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const subTotal = checkoutItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
 
   const shippingCosts = {
     standard: { name: 'Giao hàng nhanh (2-3 ngày)', price: 30000 },
@@ -106,26 +188,121 @@ export default function CheckoutModal() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
 
-    // Generate unique order code
-    const orderCode = `TTP-ORDER-${Math.floor(100000 + Math.random() * 900000)}`;
+    setIsSubmitting(true);
+    setSubmitError(null);
 
-    // Clear cart and close checkout modal
-    clearCart();
-    closeCheckout();
+    try {
+      const parsedAddress = parseAddressString(form.address);
+      const items = checkoutItems.map(item => ({
+        product_id: item.product.dbId || parseInt(item.product.id),
+        quantity: item.quantity,
+        color_name: item.color.name,
+        color_hex: item.color.hex,
+        size: item.size,
+        price: item.product.price,
+      }));
 
-    // Redirect to Order Success page
-    navigate(`/order-success?code=${orderCode}`);
+      const orderData = {
+        shipping_address: {
+          full_name: form.name,
+          phone: form.phone,
+          address: form.address,
+          ward: parsedAddress.ward,
+          district: parsedAddress.district,
+          province: parsedAddress.province,
+        },
+        payment_method: form.paymentMethod,
+        notes: form.notes || undefined,
+        coupon_code: promoVoucher || undefined,
+        items: items,
+        discount: promoDiscount + shipDiscount,
+        shipping_fee: actualShippingFee,
+      };
+
+      const createdOrder = await orderService.create(orderData);
+
+      // Clear appropriate items and close checkout modal
+      if (buyNowItem) {
+        clearBuyNowItem();
+      } else {
+        clearCart();
+      }
+      closeCheckout();
+
+      // Redirect to Order Success page
+      navigate(`/order-success?code=${createdOrder.order_code}&payment=${createdOrder.payment_method}&name=${encodeURIComponent(createdOrder.shipping_address.full_name)}&phone=${encodeURIComponent(createdOrder.shipping_address.phone)}&address=${encodeURIComponent(createdOrder.shipping_address.address)}`);
+    } catch (err: any) {
+      console.error("Lỗi khi tạo đơn hàng:", err);
+      const errMsg = err?.response?.data?.detail || err?.message || 'Đã có lỗi xảy ra khi xử lý đơn hàng. Vui lòng thử lại.';
+      setSubmitError(errMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCompleteAll = () => {
-    clearCart();
+    if (buyNowItem) {
+      clearBuyNowItem();
+    } else {
+      clearCart();
+    }
     setIsSuccess(false);
     closeCheckout();
   };
+
+  if (!isCheckoutOpen) return null;
+
+  if (!isAuthenticated) {
+    return (
+      <AnimatePresence>
+        {isCheckoutOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={closeCheckout}
+              className="fixed inset-0 bg-black/45 backdrop-blur-xs"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative bg-white p-8 max-w-md w-full rounded-sm shadow-xl border border-[#d4c3be]/40 z-10 text-center font-sans animate-in fade-in duration-300"
+            >
+              <h3 className="font-serif text-lg font-bold text-primary mb-3">Đăng Nhập Để Tiếp Tục</h3>
+              <p className="text-xs text-on-surface-variant mb-6 font-sans">
+                Vui lòng đăng nhập tài khoản của bạn để tiến hành đặt hàng và lưu trữ thông tin đơn hàng.
+              </p>
+              <div className="flex gap-4 font-sans">
+                <button
+                  type="button"
+                  onClick={closeCheckout}
+                  className="flex-1 py-2.5 border border-[#d4c3be] text-[#5d4037] text-xs font-bold rounded-xs cursor-pointer hover:bg-[#eeeeee]/50 transition-colors"
+                >
+                  Quay lại
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeCheckout();
+                    navigate('/login', { state: { from: window.location.pathname } });
+                  }}
+                  className="flex-1 py-2.5 bg-primary text-white text-xs font-bold rounded-xs cursor-pointer hover:bg-[#2c160e] transition-colors"
+                >
+                  Đăng nhập
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    );
+  }
 
   return (
     <AnimatePresence>
@@ -391,11 +568,25 @@ export default function CheckoutModal() {
                       </div>
                     </div>
 
+                    {submitError && (
+                      <p className="text-xs text-red-700 bg-red-50 border border-red-200 p-3 rounded-xs text-center font-medium animate-in fade-in duration-300">
+                        {submitError}
+                      </p>
+                    )}
+
                     <button
                       type="submit"
-                      className="w-full py-3.5 mt-4 bg-primary hover:bg-[#2c160e] text-white text-[11px] tracking-widest uppercase font-bold transition-all rounded-xs flex justify-center items-center gap-2 cursor-pointer shadow-md"
+                      disabled={isSubmitting}
+                      className={`w-full py-3.5 mt-4 bg-primary hover:bg-[#2c160e] text-white text-[11px] tracking-widest uppercase font-bold transition-all rounded-xs flex justify-center items-center gap-2 cursor-pointer shadow-md ${isSubmitting ? 'opacity-75 cursor-not-allowed' : ''}`}
                     >
-                      Xác nhận đặt hàng
+                      {isSubmitting ? (
+                        <>
+                          <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Đang xử lý...
+                        </>
+                      ) : (
+                        'Xác nhận đặt hàng'
+                      )}
                     </button>
                   </form>
 
@@ -408,7 +599,7 @@ export default function CheckoutModal() {
 
                       {/* Items loop */}
                       <div className="space-y-4 max-h-[220px] overflow-y-auto mb-6 pr-1.5 scrollbar-thin">
-                        {cart.map((item) => (
+                        {checkoutItems.map((item) => (
                           <div key={item.id} className="flex gap-3 text-xs items-start">
                             <img
                               alt={item.product.name}
@@ -517,7 +708,7 @@ export default function CheckoutModal() {
                           <Leaf className="text-primary shrink-0 mt-0.5" size={14} />
                           <div>
                             <span className="block font-bold text-primary mb-0.5">Gieo Mầm Từ Tâm:</span>
-                            <span>Đơn hàng này trích 10% lợi nhuận để cúng dường các chùa và tu viện giúp đỡ các em nhỏ mồ côi và người già neo đơn.</span>
+                            <span>Đơn hàng này trích 5% từ doanh thu để cúng dường các chùa và tu viện giúp đỡ các em nhỏ mồ côi và người già neo đơn.</span>
                           </div>
                         </div>
                       </div>
@@ -579,7 +770,7 @@ export default function CheckoutModal() {
 
                     <div className="flex justify-between">
                       <span>Đóng góp quỹ chùa & tu viện:</span>
-                      <span className="font-bold text-primary">10% Lợi nhuận</span>
+                      <span className="font-bold text-primary">5% Doanh thu</span>
                     </div>
 
                     <div className="flex justify-between">
