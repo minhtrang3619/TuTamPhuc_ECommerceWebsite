@@ -1,6 +1,8 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.orm import Session
+from app.models.customer import Customer
+from app.schemas.customer import CustomerUpdate
 
 from app.database.session import get_db
 from app.core.dependencies import get_current_user, require_admin, require_super_admin
@@ -14,12 +16,38 @@ router = APIRouter(prefix="/users", tags=["Users"])
 @router.patch("/me", response_model=UserPublic)
 def update_profile(
     data: UserUpdate,
+    customer_data: CustomerUpdate = Body(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Cập nhật thông tin cá nhân."""
+    """Cập nhật thông tin cá nhân và thông tin khách hàng chi tiết."""
+    # Cập nhật User fields
     for field, value in data.model_dump(exclude_none=True).items():
         setattr(current_user, field, value)
+
+    # Cập nhật hoặc tạo Customer
+    if current_user.customer:
+        for f, v in customer_data.model_dump(exclude_none=True).items():
+            setattr(current_user.customer, f, v)
+    else:
+        # Check if customer record already exists by email
+        email_to_check = current_user.email
+        existing_customer = db.query(Customer).filter(Customer.email == email_to_check).first()
+        if existing_customer:
+            current_user.customer_id = existing_customer.id
+            for f, v in customer_data.model_dump(exclude_none=True).items():
+                setattr(existing_customer, f, v)
+        else:
+            c_dict = customer_data.model_dump()
+            if not c_dict.get("full_name"):
+                c_dict["full_name"] = current_user.full_name
+            if not c_dict.get("email"):
+                c_dict["email"] = current_user.email
+            new_customer = Customer(**c_dict)
+            db.add(new_customer)
+            db.flush()
+            current_user.customer_id = new_customer.id
+
     db.commit()
     db.refresh(current_user)
     return current_user

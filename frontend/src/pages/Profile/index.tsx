@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useWishlistStore } from '../../store/wishlistStore';
+import { authService } from '../../services';
 import { mapApiProductToMockProduct } from '../../utils/productMapper';
 import { PRODUCTS } from '../../data';
 import { formatPrice } from '../../components/ui/ProductCard';
@@ -341,7 +342,7 @@ export default function ProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar || DEFAULT_AVATAR);
 
   // Shipping Address & Google Map states
-  const [shippingAddress, setShippingAddress] = useState('70 Lê Lợi, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh');
+  const [shippingAddress, setShippingAddress] = useState(user?.customer?.address || '70 Lê Lợi, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh');
   const [mapSearch, setMapSearch] = useState('');
   const [mapZoom, setMapZoom] = useState(15);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
@@ -352,6 +353,16 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showCurrentPw, setShowCurrentPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
+
+  useEffect(() => {
+    if (!isEditingProfile && user) {
+      setFullName(user.full_name || 'Khách Hàng');
+      setEmail(user.email || 'khachhang@example.com');
+      setPhone(user.phone || '0987654321');
+      setAvatarUrl(user.avatar || DEFAULT_AVATAR);
+      setShippingAddress(user.customer?.address || '70 Lê Lợi, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh');
+    }
+  }, [user, isEditingProfile]);
 
   const handleLocateUser = () => {
     setIsLoadingLocation(true);
@@ -365,14 +376,14 @@ export default function ProfilePage() {
         },
         () => {
           setTimeout(() => {
-            setShippingAddress('70 Lê Lợi, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh');
+            setShippingAddress(user?.customer?.address || '70 Lê Lợi, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh');
             setIsLoadingLocation(false);
             showToast('Không thể truy cập GPS. Đang sử dụng địa chỉ mặc định.', 'info');
           }, 1000);
         }
       );
     } else {
-      setShippingAddress('70 Lê Lợi, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh');
+      setShippingAddress(user?.customer?.address || '70 Lê Lợi, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh');
       setIsLoadingLocation(false);
       showToast('Trình duyệt của bạn không hỗ trợ định vị.', 'info');
     }
@@ -399,40 +410,63 @@ export default function ProfilePage() {
     setToast({ isVisible: true, message, type });
   };
 
-  const handleUpdateProfile = (e: React.FormEvent) => {
+  const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Update profile details
-    updateUser({
-      full_name: fullName,
-      email,
-      phone,
-      avatar: avatarUrl
-    });
+    try {
+      // 1. Call API to update profile and customer details on backend
+      const updatedUser = await authService.updateProfile(
+        {
+          full_name: fullName,
+          phone: phone,
+          avatar: avatarUrl,
+        },
+        {
+          full_name: fullName,
+          phone: phone,
+          address: shippingAddress,
+          avatar: avatarUrl,
+        }
+      );
 
-    // Check password fields
-    if (currentPassword || newPassword || confirmPassword) {
-      if (!currentPassword || !newPassword || !confirmPassword) {
-        showToast('Vui lòng điền đầy đủ các trường để đổi mật khẩu.', 'info');
-        return;
+      // 2. Update local state
+      updateUser(updatedUser);
+
+      // Check password fields
+      if (currentPassword || newPassword || confirmPassword) {
+        if (!currentPassword || !newPassword || !confirmPassword) {
+          showToast('Vui lòng điền đầy đủ các trường để đổi mật khẩu.', 'info');
+          return;
+        }
+        if (newPassword !== confirmPassword) {
+          showToast('Mật khẩu mới nhập lại không trùng khớp.', 'info');
+          return;
+        }
+        if (newPassword.length < 6) {
+          showToast('Mật khẩu mới phải từ 6 ký tự trở lên.', 'info');
+          return;
+        }
+
+        // Call change password API
+        await authService.changePassword({
+          current_password: currentPassword,
+          new_password: newPassword,
+        });
+
+        // Reset password inputs
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        showToast('Thông tin cá nhân & mật khẩu đã được cập nhật thành công!');
+        setIsEditingProfile(false);
+      } else {
+        showToast('Thông tin tài khoản đã được cập nhật thành công!');
+        setIsEditingProfile(false);
       }
-      if (newPassword !== confirmPassword) {
-        showToast('Mật khẩu mới nhập lại không trùng khớp.', 'info');
-        return;
-      }
-      if (newPassword.length < 6) {
-        showToast('Mật khẩu mới phải từ 6 ký tự trở lên.', 'info');
-        return;
-      }
-      // Reset password inputs
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      showToast('Thông tin cá nhân & mật khẩu đã được cập nhật thành công!');
-      setIsEditingProfile(false);
-    } else {
-      showToast('Thông tin tài khoản đã được cập nhật thành công!');
-      setIsEditingProfile(false);
+    } catch (err: any) {
+      console.error("Lỗi khi cập nhật thông tin cá nhân:", err);
+      const errMsg = err.response?.data?.detail || 'Cập nhật thông tin thất bại. Vui lòng thử lại sau.';
+      showToast(errMsg, 'info');
     }
   };
 

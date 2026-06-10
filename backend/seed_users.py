@@ -46,6 +46,43 @@ def seed_users():
         else:
             print(f"Customer account already exists: {customer_email}")
 
+        db.flush()
+
+        # Seed Customers for existing Users that don't have them
+        from app.models.customer import Customer
+        
+        # Let's seed for customer@gmail.com
+        if customer_user and not customer_user.customer:
+            new_cust = Customer(
+                full_name=customer_user.full_name,
+                email=customer_user.email,
+                phone="0987654321",
+                address="70 Lê Lợi, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh",
+                tier="Tiêu chuẩn",
+                is_active=True
+            )
+            db.add(new_cust)
+            db.flush()
+            customer_user.customer_id = new_cust.id
+            print(f"Created Customer profile for: {customer_email}")
+
+        # Let's also create customer record for trang@gmail.com
+        trang_email = "trang@gmail.com"
+        trang_user = db.query(User).filter(User.email == trang_email).first()
+        if trang_user and not trang_user.customer:
+            new_cust = Customer(
+                full_name=trang_user.full_name,
+                email=trang_user.email,
+                phone="0123456789",
+                address="70 Lê Lợi, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh",
+                tier="Thành viên Vàng",
+                is_active=True
+            )
+            db.add(new_cust)
+            db.flush()
+            trang_user.customer_id = new_cust.id
+            print(f"Created Customer profile for: {trang_email}")
+
         db.commit()
         print("Seeding completed successfully!")
     except Exception as e:

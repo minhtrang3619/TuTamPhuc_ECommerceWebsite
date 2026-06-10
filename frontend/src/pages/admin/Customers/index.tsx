@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   Search, 
   ChevronRight,
@@ -8,64 +8,70 @@ import {
   ChevronRight as ChevronRightIcon,
   X
 } from 'lucide-react'
-
-interface CustomerItem {
-  name: string
-  email: string
-  role: string // Customer Tier
-  date: string
-  status: string
-  img: string
-}
+import { customerService } from '@/services'
+import type { Customer } from '@/types'
 
 export default function AdminCustomers() {
   const [searchTerm, setSearchTerm] = useState('')
-  const [customers, setCustomers] = useState<CustomerItem[]>([
-    { name: "Minh Thu Tran", email: "minhthu@zenmail.vn", role: "Thành viên Vàng", date: "12/01/2024", status: "Hoạt động", img: "https://avatar.vercel.sh/minh" },
-    { name: "Hoang Nguyen", email: "hoang.n@lotus.com", role: "Tiêu chuẩn", date: "05/02/2024", status: "Hoạt động", img: "https://avatar.vercel.sh/hoang" },
-    { name: "Le Anh Vu", email: "vule@minimalist.vn", role: "Cao cấp", date: "22/03/2024", status: "Ngưng hoạt động", img: "https://avatar.vercel.sh/vu" },
-    { name: "Diep My", email: "diepmy@cloud.vn", role: "Tiêu chuẩn", date: "01/04/2024", status: "Hoạt động", img: "https://avatar.vercel.sh/diep" },
-    { name: "Tuan Anh", email: "tuan.admin@ttphuc.vn", role: "Tiêu chuẩn", date: "15/04/2024", status: "Hoạt động", img: "https://avatar.vercel.sh/tuan" }
-  ])
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [selectedCustomer, setSelectedCustomer] = useState<CustomerItem | null>(null)
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [tempTier, setTempTier] = useState('')
 
-  const toggleStatus = (name: string) => {
-    setCustomers(prev => prev.map(c => {
-      if (c.name === name) {
-        return { ...c, status: c.status === 'Hoạt động' ? 'Ngưng hoạt động' : 'Hoạt động' }
-      }
-      return c
-    }))
+  const fetchCustomers = async () => {
+    try {
+      setIsLoading(true)
+      const data = await customerService.getAll()
+      setCustomers(data)
+    } catch (err) {
+      console.error("Lỗi khi tải danh sách khách hàng:", err)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const handleOpenEdit = (customer: CustomerItem) => {
+  useEffect(() => {
+    fetchCustomers()
+  }, [])
+
+  const toggleStatus = async (id: number, currentStatus: boolean) => {
+    try {
+      const updated = await customerService.update(id, { is_active: !currentStatus })
+      setCustomers(prev => prev.map(c => c.id === id ? updated : c))
+    } catch (err) {
+      console.error("Lỗi khi thay đổi trạng thái khách hàng:", err)
+    }
+  }
+
+  const handleOpenEdit = (customer: Customer) => {
     setSelectedCustomer(customer)
-    setTempTier(customer.role)
+    setTempTier(customer.tier || 'Tiêu chuẩn')
     setIsModalOpen(true)
   }
 
-  const handleSaveTier = () => {
+  const handleSaveTier = async () => {
     if (selectedCustomer) {
-      setCustomers(prev => prev.map(c => {
-        if (c.name === selectedCustomer.name) {
-          return { ...c, role: tempTier }
-        }
-        return c
-      }))
-      setIsModalOpen(false)
-      setSelectedCustomer(null)
+      try {
+        const updated = await customerService.update(selectedCustomer.id, { tier: tempTier })
+        setCustomers(prev => prev.map(c => c.id === selectedCustomer.id ? updated : c))
+        setIsModalOpen(false)
+        setSelectedCustomer(null)
+      } catch (err) {
+        console.error("Lỗi khi cập nhật hạng thành viên:", err)
+      }
     }
   }
 
   const filteredCustomers = customers.filter(c => 
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.role.toLowerCase().includes(searchTerm.toLowerCase())
+    (c.tier || 'Tiêu chuẩn').toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%238a726b'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.03 0-4.43-.82-6.14-2.88C7.55 15.8 9.68 15 12 15s4.45.8 6.14 2.12C16.43 19.18 14.03 20 12 20z'/%3E%3C/svg%3E";
 
   return (
     <div className="page-transition space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -94,76 +100,83 @@ export default function AdminCustomers() {
       {/* Table Container */}
       <div className="bg-surface-container-lowest shadow-[0_32px_64px_-12px_rgba(93,64,55,0.06)] rounded-xl overflow-hidden border border-outline-variant/10">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-surface-container-low/50">
-                <th className="px-8 py-5 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[11px]">Thông tin khách hàng</th>
-                <th className="px-8 py-5 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[11px]">Hạng thành viên</th>
-                <th className="px-8 py-5 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[11px]">Ngày tham gia</th>
-                <th className="px-8 py-5 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[11px]">Trạng thái</th>
-                <th className="px-8 py-5 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[11px] text-right">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant/10">
-              {filteredCustomers.map((user, idx) => {
-                const isAct = user.status === 'Hoạt động'
-                return (
-                  <tr key={idx} className="hover:bg-surface-container-low/30 transition-colors group">
-                    <td className="px-8 py-4">
-                      <div className="flex items-center gap-3">
-                        <img 
-                          src={user.img} 
-                          alt={user.name} 
-                          className="w-10 h-10 rounded-full bg-secondary-container"
-                        />
-                        <div>
-                          <p className="font-body-md text-on-surface font-medium group-hover:text-primary transition-colors">{user.name}</p>
-                          <p className="font-caption text-on-surface-variant opacity-70 text-xs">{user.email}</p>
+          {isLoading ? (
+            <div className="py-20 text-center font-body-md text-on-surface-variant/60">
+              Đang tải danh sách khách hàng...
+            </div>
+          ) : (
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-surface-container-low/50">
+                  <th className="px-8 py-5 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[11px]">Thông tin khách hàng</th>
+                  <th className="px-8 py-5 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[11px]">Hạng thành viên</th>
+                  <th className="px-8 py-5 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[11px]">Ngày tham gia</th>
+                  <th className="px-8 py-5 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[11px]">Trạng thái</th>
+                  <th className="px-8 py-5 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest text-[11px] text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-outline-variant/10">
+                {filteredCustomers.map((user) => {
+                  const isAct = user.is_active
+                  const displayDate = user.created_at ? new Date(user.created_at).toLocaleDateString('vi-VN') : '---'
+                  return (
+                    <tr key={user.id} className="hover:bg-surface-container-low/30 transition-colors group">
+                      <td className="px-8 py-4">
+                        <div className="flex items-center gap-3">
+                          <img 
+                            src={user.avatar || DEFAULT_AVATAR} 
+                            alt={user.full_name} 
+                            className="w-10 h-10 rounded-full bg-secondary-container object-cover"
+                          />
+                          <div>
+                            <p className="font-body-md text-on-surface font-medium group-hover:text-primary transition-colors">{user.full_name}</p>
+                            <p className="font-caption text-on-surface-variant opacity-70 text-xs">{user.email}</p>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-8 py-4">
-                      <span className="font-label-md text-on-surface-variant text-sm">{user.role}</span>
-                    </td>
-                    <td className="px-8 py-4">
-                      <span className="font-caption text-on-surface-variant text-xs">{user.date}</span>
-                    </td>
-                    <td className="px-8 py-4">
-                      <span className={`px-3 py-1 rounded-full font-label-md text-[11px] ${
-                        isAct ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                      }`}>
-                        {user.status}
-                      </span>
-                    </td>
-                    <td className="px-8 py-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button 
-                          onClick={() => handleOpenEdit(user)}
-                          className="font-label-md text-label-md text-primary border border-primary/20 px-3 py-1 hover:bg-primary hover:text-white transition-all rounded-sm text-xs"
-                        >
-                          Chỉnh sửa
-                        </button>
-                        <button 
-                          onClick={() => toggleStatus(user.name)}
-                          className="font-label-md text-label-md text-on-surface-variant hover:text-red-600 transition-all p-1"
-                          title={isAct ? "Chặn khách hàng" : "Mở chặn khách hàng"}
-                        >
-                          {isAct ? <Ban size={18} /> : <UserCheck size={18} className="text-green-600" />}
-                        </button>
-                      </div>
+                      </td>
+                      <td className="px-8 py-4">
+                        <span className="font-label-md text-on-surface-variant text-sm">{user.tier || 'Tiêu chuẩn'}</span>
+                      </td>
+                      <td className="px-8 py-4">
+                        <span className="font-caption text-on-surface-variant text-xs">{displayDate}</span>
+                      </td>
+                      <td className="px-8 py-4">
+                        <span className={`px-3 py-1 rounded-full font-label-md text-[11px] ${
+                          isAct ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                        }`}>
+                          {isAct ? 'Hoạt động' : 'Ngưng hoạt động'}
+                        </span>
+                      </td>
+                      <td className="px-8 py-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button 
+                            onClick={() => handleOpenEdit(user)}
+                            className="font-label-md text-label-md text-primary border border-primary/20 px-3 py-1 hover:bg-primary hover:text-white transition-all rounded-sm text-xs"
+                          >
+                            Chỉnh sửa
+                          </button>
+                          <button 
+                            onClick={() => toggleStatus(user.id, user.is_active)}
+                            className="font-label-md text-label-md text-on-surface-variant hover:text-red-600 transition-all p-1"
+                            title={isAct ? "Chặn khách hàng" : "Mở chặn khách hàng"}
+                          >
+                            {isAct ? <Ban size={18} /> : <UserCheck size={18} className="text-green-600" />}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+                {filteredCustomers.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-8 py-12 text-center text-on-surface-variant/60 font-body-md">
+                      Không tìm thấy khách hàng nào.
                     </td>
                   </tr>
-                )
-              })}
-              {filteredCustomers.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-8 py-12 text-center text-on-surface-variant/60 font-body-md">
-                    Không tìm thấy khách hàng nào.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
         {/* Pagination */}
         <div className="px-8 py-6 flex justify-between items-center border-t border-outline-variant/10">
@@ -197,12 +210,12 @@ export default function AdminCustomers() {
             {/* Simple UI Info Card */}
             <div className="bg-surface-container-low p-4 rounded-lg mb-6 flex items-center gap-3 border border-outline-variant/10">
               <img 
-                src={selectedCustomer.img} 
-                alt={selectedCustomer.name} 
-                className="w-12 h-12 rounded-full"
+                src={selectedCustomer.avatar || DEFAULT_AVATAR} 
+                alt={selectedCustomer.full_name} 
+                className="w-12 h-12 rounded-full object-cover"
               />
               <div>
-                <p className="font-body-md text-on-surface font-semibold">{selectedCustomer.name}</p>
+                <p className="font-body-md text-on-surface font-semibold">{selectedCustomer.full_name}</p>
                 <p className="font-caption text-on-surface-variant text-xs">{selectedCustomer.email}</p>
               </div>
             </div>

@@ -11,6 +11,15 @@ export interface User {
   avatar?: string
   role: UserRole
   is_active: boolean
+  customer?: {
+    id: number
+    full_name: string
+    email: string
+    phone?: string
+    address?: string
+    avatar?: string
+    is_active?: boolean
+  }
   created_at: string
   updated_at: string
 }
@@ -234,5 +243,21 @@ export interface ChatMessage {
   sender: 'user' | 'assistant'
   text: string
   timestamp: Date
+}
+
+// ========================
+// Customer Types
+// ========================
+export interface Customer {
+  id: number
+  full_name: string
+  email: string
+  phone?: string
+  address?: string
+  avatar?: string
+  tier: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
 }
 

@@ -3,8 +3,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useAuth } from '@/hooks'
-import { Eye, EyeOff } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { Eye, EyeOff, Sprout, ArrowRight, LogIn } from 'lucide-react'
+import { useState } from 'react'
 
 const registerSchema = z.object({
   full_name: z.string().min(2, 'Tên tối thiểu 2 ký tự'),
@@ -33,108 +33,100 @@ export default function RegisterPage() {
     registerUser(data)
   }
 
-  // Subtle Mouse parallax for background image
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      const bg = document.querySelector('.parallax-bg') as HTMLElement
-      if (bg) {
-        const moveX = (e.clientX - window.innerWidth / 2) * 0.005
-        const moveY = (e.clientY - window.innerHeight / 2) * 0.005
-        bg.style.transform = `scale(1.01) translate(${moveX}px, ${moveY}px)`
-      }
-    }
-    document.addEventListener('mousemove', handleMouseMove)
-    return () => document.removeEventListener('mousemove', handleMouseMove)
-  }, [])
-
   return (
-    <main className="relative min-h-screen w-full flex items-center justify-center md:justify-end overflow-y-auto overflow-x-hidden selection:bg-primary-fixed-dim selection:text-primary py-8 md:py-0">
-      {/* Background Imagery */}
-      <div className="absolute inset-0 z-0">
-        <img 
-          alt="Từ Tâm Phục Zen Background" 
-          className="parallax-bg w-full h-full object-cover transition-transform duration-100 ease-out" 
-          src="https://lh3.googleusercontent.com/aida-public/AB6AXuAN8xrbMNIfKSjtZ0ZNO-wVosXj_SAeJ4ZbmL2-vGDfeLT7UcE1qAtKkV3dRkvicPusML1TgTTKTyGZKaU3C2lpSiQGWyyrdHGLHW1Sq2nyaLQwD8lRsQ28E0G6HNBSx3zJ5SVIui5BoL8-NVE47XYX5fqj2B9UYP5JXXZr6g8GPVbUxRHZ5_crK4WY-OtcBoe0DGvQV_LvUmG_RzcuuyGHyj55TrwUd-7YSIEAhIpzyoNasvg1d7pvXwbISmUQdDXIffw6fglep9vA"
+    <main className="min-h-screen flex items-center justify-center relative bg-surface selection:bg-primary-fixed-dim selection:text-primary overflow-x-hidden">
+      {/* Background Image Container (Lotus Visual Anchor) */}
+      <div className="hidden lg:block absolute inset-y-0 right-0 w-1/2 overflow-hidden">
+        <div 
+          className="absolute inset-0 z-10" 
+          style={{ background: 'linear-gradient(to right, #f9f9f9 40%, rgba(249, 249, 249, 0) 100%)' }}
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-background/40 to-background/10 md:to-transparent"></div>
+        <img 
+          alt="Lotus flower in vase" 
+          className="h-full w-full object-cover" 
+          src="https://lh3.googleusercontent.com/aida-public/AB6AXuD71yqX0giiVPBm0w6lNT2Gde2C2_wH_3PSBEBTxuPPcFuNm8mED_y1yb7gBOwtr6fQDRHUgo1sDtIQ4zcS4w47FpeDW0ZdQOsfGKMZpgks6GPsMLsyT9FThRD-O_utCPHMVP9L8AvZLQx3fMcum2at9xvsviD9kB4BGXOteeXFtcvVH_2bqvI1-lK4OUQCioulfn0l0wPTt5Xj80R3taiKeKYOKGf4j18E62-KyNP0SGAjtVxE2Fp_Pmlr9k10qQ9mQW0iqdVHEFTy=w1920"
+        />
       </div>
       
-      {/* Register Card Section */}
-      <section className="relative z-10 w-full max-w-[480px] px-margin-mobile md:mr-[10%] animate-in fade-in slide-in-from-bottom-4 duration-1000 my-auto">
-        <div className="bg-white/70 backdrop-blur-md p-8 md:p-10 rounded-xl shadow-[0_32px_64px_-12px_rgba(93,64,55,0.08)] border border-white/40 max-h-[90vh] overflow-y-auto">
-          
-          {/* Brand Anchor */}
-          <header className="mb-8 text-center">
-            <h1 className="font-headline-sm text-headline-sm text-primary tracking-widest mb-1">TỪ TÂM PHỤC</h1>
-            <p className="font-caption text-caption text-on-surface-variant uppercase tracking-[0.2em]">Sống trọn vẹn từng khoảnh khắc</p>
-          </header>
-          
-          {/* Form Title */}
-          <div className="mb-6">
-            <h2 className="font-headline-md text-headline-md text-on-surface mb-1">Đăng ký</h2>
-            <p className="font-body-md text-body-md text-on-surface-variant">Tạo tài khoản mới tại Từ Tâm Phục.</p>
+      {/* Registration Container */}
+      <div className="w-full max-w-[1280px] px-margin-mobile md:px-margin-desktop z-20 flex justify-start">
+        <div className="w-full lg:w-1/2 max-w-lg bg-surface/80 backdrop-blur-sm lg:bg-transparent py-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+          {/* Brand Header */}
+          <div className="mb-12">
+            <h1 className="font-headline-sm text-headline-sm text-primary tracking-widest mb-2">Từ Tâm Phục</h1>
+            <p className="font-body-md text-body-md text-on-surface-variant opacity-80">Kiến tạo bình yên qua từng sợi vải.</p>
           </div>
           
-          {/* Form */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <div className="space-y-5">
-              
-              {/* Name Input */}
-              <div className="relative group">
-                <label className="font-caption text-caption text-on-surface-variant block mb-0.5 group-focus-within:text-primary transition-colors">Họ và tên</label>
-                <input 
-                  {...register('full_name')}
-                  type="text" 
-                  placeholder="Nguyễn Văn A" 
-                  className="w-full border-0 border-b border-outline-variant bg-transparent px-0 py-1 font-body-md text-body-md placeholder-outline-variant/50 transition-all duration-300 focus:border-primary focus:ring-0"
-                />
-                {errors.full_name && (
-                  <p className="text-xs text-error mt-1">{errors.full_name.message}</p>
-                )}
-              </div>
-
-              {/* Email Input */}
-              <div className="relative group">
-                <label className="font-caption text-caption text-on-surface-variant block mb-0.5 group-focus-within:text-primary transition-colors">Email của bạn</label>
-                <input 
-                  {...register('email')}
-                  type="email" 
-                  placeholder="email@example.com" 
-                  className="w-full border-0 border-b border-outline-variant bg-transparent px-0 py-1 font-body-md text-body-md placeholder-outline-variant/50 transition-all duration-300 focus:border-primary focus:ring-0"
-                />
-                {errors.email && (
-                  <p className="text-xs text-error mt-1">{errors.email.message}</p>
-                )}
-              </div>
-
-              {/* Phone Input */}
-              <div className="relative group">
-                <label className="font-caption text-caption text-on-surface-variant block mb-0.5 group-focus-within:text-primary transition-colors">Số điện thoại (tùy chọn)</label>
-                <input 
-                  {...register('phone')}
-                  type="tel" 
-                  placeholder="0901234567" 
-                  className="w-full border-0 border-b border-outline-variant bg-transparent px-0 py-1 font-body-md text-body-md placeholder-outline-variant/50 transition-all duration-300 focus:border-primary focus:ring-0"
-                />
-                {errors.phone && (
-                  <p className="text-xs text-error mt-1">{errors.phone.message}</p>
-                )}
-              </div>
-              
-              {/* Password Input */}
-              <div className="relative group">
-                <label className="font-caption text-caption text-on-surface-variant block mb-0.5 group-focus-within:text-primary transition-colors">Mật khẩu</label>
+          {/* Registration Title */}
+          <div className="mb-10">
+            <h2 className="font-headline-md text-headline-md text-primary mb-4">Tạo tài khoản mới</h2>
+            <p className="font-body-md text-body-md text-on-surface-variant">Tham gia cùng cộng đồng Từ Tâm Phục để nhận ưu đãi riêng cho bạn.</p>
+          </div>
+          
+          {/* Registration Form */}
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+            {/* Full Name */}
+            <div className="group relative">
+              <label className="font-caption text-caption text-on-surface-variant uppercase tracking-wider mb-2 block group-focus-within:text-primary transition-colors" htmlFor="full_name">Họ và tên</label>
+              <input 
+                {...register('full_name')}
+                className="w-full bg-transparent border-t-0 border-x-0 border-b border-outline-variant py-3 font-body-md text-body-md text-on-surface transition-all duration-300 focus:border-primary focus:ring-0 focus:outline-none placeholder:text-on-surface-variant/30" 
+                id="full_name" 
+                placeholder="Nguyễn Văn An" 
+                type="text"
+              />
+              {errors.full_name && (
+                <p className="text-xs text-error mt-1">{errors.full_name.message}</p>
+              )}
+            </div>
+            
+            {/* Email */}
+            <div className="group relative">
+              <label className="font-caption text-caption text-on-surface-variant uppercase tracking-wider mb-2 block group-focus-within:text-primary transition-colors" htmlFor="email">Email</label>
+              <input 
+                {...register('email')}
+                className="w-full bg-transparent border-t-0 border-x-0 border-b border-outline-variant py-3 font-body-md text-body-md text-on-surface transition-all duration-300 focus:border-primary focus:ring-0 focus:outline-none placeholder:text-on-surface-variant/30" 
+                id="email" 
+                placeholder="example@tutamphuc.vn" 
+                type="email"
+              />
+              {errors.email && (
+                <p className="text-xs text-error mt-1">{errors.email.message}</p>
+              )}
+            </div>
+            
+            {/* Phone Number */}
+            <div className="group relative">
+              <label className="font-caption text-caption text-on-surface-variant uppercase tracking-wider mb-2 block group-focus-within:text-primary transition-colors" htmlFor="phone">Số điện thoại</label>
+              <input 
+                {...register('phone')}
+                className="w-full bg-transparent border-t-0 border-x-0 border-b border-outline-variant py-3 font-body-md text-body-md text-on-surface transition-all duration-300 focus:border-primary focus:ring-0 focus:outline-none placeholder:text-on-surface-variant/30" 
+                id="phone" 
+                placeholder="090 123 4567" 
+                type="tel"
+              />
+              {errors.phone && (
+                <p className="text-xs text-error mt-1">{errors.phone.message}</p>
+              )}
+            </div>
+            
+            {/* Passwords Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+              {/* Password */}
+              <div className="group relative">
+                <label className="font-caption text-caption text-on-surface-variant uppercase tracking-wider mb-2 block group-focus-within:text-primary transition-colors" htmlFor="password">Mật khẩu</label>
                 <div className="relative">
                   <input 
                     {...register('password')}
-                    type={showPassword ? "text" : "password"}
+                    className="w-full bg-transparent border-t-0 border-x-0 border-b border-outline-variant py-3 font-body-md text-body-md text-on-surface pr-8 transition-all duration-300 focus:border-primary focus:ring-0 focus:outline-none placeholder:text-on-surface-variant/30" 
+                    id="password" 
                     placeholder="••••••••" 
-                    className="w-full border-0 border-b border-outline-variant bg-transparent px-0 py-1 font-body-md text-body-md placeholder-outline-variant/50 transition-all duration-300 focus:border-primary focus:ring-0"
+                    type={showPassword ? "text" : "password"}
                   />
                   <button 
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-0 bottom-1 text-on-surface-variant hover:text-primary transition-colors"
+                    className="absolute right-0 bottom-3 text-on-surface-variant hover:text-primary transition-colors"
                   >
                     {showPassword ? <EyeOff size={18} strokeWidth={1.5} /> : <Eye size={18} strokeWidth={1.5} />}
                   </button>
@@ -143,21 +135,22 @@ export default function RegisterPage() {
                   <p className="text-xs text-error mt-1">{errors.password.message}</p>
                 )}
               </div>
-
-              {/* Confirm Password Input */}
-              <div className="relative group">
-                <label className="font-caption text-caption text-on-surface-variant block mb-0.5 group-focus-within:text-primary transition-colors">Xác nhận mật khẩu</label>
+              
+              {/* Confirm Password */}
+              <div className="group relative">
+                <label className="font-caption text-caption text-on-surface-variant uppercase tracking-wider mb-2 block group-focus-within:text-primary transition-colors" htmlFor="confirm_password">Xác nhận mật khẩu</label>
                 <div className="relative">
                   <input 
                     {...register('confirm_password')}
-                    type={showConfirmPassword ? "text" : "password"}
+                    className="w-full bg-transparent border-t-0 border-x-0 border-b border-outline-variant py-3 font-body-md text-body-md text-on-surface pr-8 transition-all duration-300 focus:border-primary focus:ring-0 focus:outline-none placeholder:text-on-surface-variant/30" 
+                    id="confirm_password" 
                     placeholder="••••••••" 
-                    className="w-full border-0 border-b border-outline-variant bg-transparent px-0 py-1 font-body-md text-body-md placeholder-outline-variant/50 transition-all duration-300 focus:border-primary focus:ring-0"
+                    type={showConfirmPassword ? "text" : "password"}
                   />
                   <button 
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-0 bottom-1 text-on-surface-variant hover:text-primary transition-colors"
+                    className="absolute right-0 bottom-3 text-on-surface-variant hover:text-primary transition-colors"
                   >
                     {showConfirmPassword ? <EyeOff size={18} strokeWidth={1.5} /> : <Eye size={18} strokeWidth={1.5} />}
                   </button>
@@ -168,37 +161,58 @@ export default function RegisterPage() {
               </div>
             </div>
             
+            {/* Terms */}
+            <div className="flex items-start space-x-3 pt-2">
+              <input 
+                className="mt-1 h-4 w-4 rounded-sm border-outline text-primary focus:ring-primary transition-all cursor-pointer bg-transparent" 
+                id="terms" 
+                name="terms" 
+                type="checkbox"
+              />
+              <label className="font-caption text-caption text-on-surface-variant leading-relaxed select-none cursor-pointer" htmlFor="terms">
+                Tôi đồng ý với các Điều khoản và Chính sách của cửa hàng.
+              </label>
+            </div>
+            
             {/* Submit Button */}
-            <button 
-              type="submit" 
-              disabled={isRegistering}
-              className="w-full py-4 bg-primary text-on-primary font-label-md text-label-md rounded-sm tracking-[0.15em] uppercase hover:bg-on-primary-fixed-variant transition-all duration-500 shadow-lg shadow-primary/10 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {isRegistering ? (
-                <>
-                  <span className="w-4 h-4 rounded-full border-2 border-on-primary border-t-transparent animate-spin"></span>
-                  Đang đăng ký...
-                </>
-              ) : 'Đăng ký'}
-            </button>
+            <div className="pt-6">
+              <button 
+                type="submit" 
+                disabled={isRegistering}
+                className="w-full md:w-auto px-16 py-4 border border-primary text-primary font-label-md text-label-md tracking-[0.1em] hover:tracking-[0.2em] hover:bg-primary/10 transition-all duration-500 ease-out group flex items-center justify-center space-x-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isRegistering ? (
+                  <>
+                    <span className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin"></span>
+                    <span>ĐANG ĐĂNG KÝ...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>ĐĂNG KÝ</span>
+                    <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
+              </button>
+            </div>
           </form>
           
-          {/* Footer/Link */}
-          <footer className="mt-8 pt-6 border-t border-outline-variant/30 text-center">
-            <p className="font-body-md text-body-md text-on-surface-variant">
-              Đã có tài khoản? 
-              <Link to="/login" className="text-primary font-medium hover:underline underline-offset-4 decoration-primary/30 transition-all ml-1">
-                Đăng nhập
-              </Link>
-            </p>
-          </footer>
+          {/* Footer Links */}
+          <div className="mt-12 pt-8 border-t border-outline-variant/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <Link 
+              to="/login" 
+              className="font-label-md text-label-md text-primary flex items-center space-x-2 hover:opacity-70 transition-opacity"
+            >
+              <span>Đã có tài khoản? Đăng nhập tại đây</span>
+              <LogIn size={20} />
+            </Link>
+          </div>
         </div>
-        
-        {/* Secondary Decorative Elements */}
-        <div className="mt-6 text-center opacity-40">
-          <p className="font-caption text-caption text-on-surface-variant italic">"Trải nghiệm mua sắm an tâm tại Từ Tâm Phục"</p>
-        </div>
-      </section>
+      </div>
+      
+      {/* Decorative Floating Element */}
+      <div className="hidden lg:block absolute bottom-12 left-12 opacity-30">
+        <Sprout size={120} strokeWidth={0.5} className="text-primary-fixed-dim" />
+      </div>
     </main>
   )
 }

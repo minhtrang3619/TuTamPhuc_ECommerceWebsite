@@ -3,6 +3,7 @@ from typing import Optional
 from datetime import datetime
 from app.schemas.base import BaseSchema, TimestampSchema
 from app.models.user import UserRole
+from app.schemas.customer import CustomerRead
 
 
 # ── Request schemas ──────────────────────────────────────────
@@ -52,6 +53,7 @@ class UserPublic(BaseSchema):
     avatar: Optional[str] = None
     role: UserRole
     is_active: bool
+    customer: Optional[CustomerRead] = None
     created_at: datetime
     updated_at: datetime
 

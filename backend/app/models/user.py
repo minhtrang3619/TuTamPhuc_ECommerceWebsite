@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, String, Boolean, Enum
+from sqlalchemy import Column, String, Boolean, Enum, Integer, ForeignKey
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
 
@@ -23,6 +23,9 @@ class User(BaseModel):
     avatar = Column(String(500), nullable=True)
     role = Column(Enum(UserRole), default=UserRole.CUSTOMER, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
+    # New relationship to Customer
+    customer_id = Column(Integer, ForeignKey('customers.id'), nullable=True, unique=True)
+    customer = relationship('Customer', uselist=False, backref='user')
 
     # Relationships
     orders = relationship("Order", back_populates="user", lazy="dynamic")
