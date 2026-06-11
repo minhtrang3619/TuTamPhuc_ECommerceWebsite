@@ -1196,6 +1196,7 @@ export default function ProfilePage() {
                         : dbOrders.filter(o => {
                             if (filter.key === 'shipping') return o.status === 'shipped';
                             if (filter.key === 'returned') return o.status === 'refunded';
+                            if (filter.key === 'processing') return o.status === 'processing' || o.status === 'confirmed';
                             return o.status === filter.key;
                           }).length;
                       const isActive = orderFilter === filter.key;
@@ -1236,6 +1237,7 @@ export default function ProfilePage() {
                         if (orderFilter === 'all') return true;
                         if (orderFilter === 'shipping') return order.status === 'shipped';
                         if (orderFilter === 'returned') return order.status === 'refunded';
+                        if (orderFilter === 'processing') return order.status === 'processing' || order.status === 'confirmed';
                         return order.status === orderFilter;
                       }).map((order) => (
                         <div
@@ -1346,6 +1348,7 @@ export default function ProfilePage() {
                       if (orderFilter === 'all') return true;
                       if (orderFilter === 'shipping') return order.status === 'shipped';
                       if (orderFilter === 'returned') return order.status === 'refunded';
+                      if (orderFilter === 'processing') return order.status === 'processing' || order.status === 'confirmed';
                       return order.status === orderFilter;
                     }).length === 0 && (
                       <div className="text-center py-12 text-on-surface-variant/80 bg-[#fcfaf7] border border-[#d4c3be]/20 rounded-sm">

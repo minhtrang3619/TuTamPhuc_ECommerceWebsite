@@ -10,13 +10,21 @@ import {
   Clock, 
   XCircle, 
   FileText,
-  Leaf
+  Leaf,
+  X,
+  Camera,
+  Image,
+  Landmark,
+  Truck,
+  Store,
+  ChevronDown
 } from 'lucide-react';
 import { orderService } from '@/services';
 import { formatPrice } from '@/components/ui/ProductCard';
 import { getImageUrl } from '@/utils/productMapper';
 import type { Order } from '@/types';
 import Toast from '@/components/ui/Toast';
+
 
 // Helper functions (same as Profile)
 const getStatusText = (status: string) => {
@@ -52,6 +60,15 @@ const getPaymentStatusText = (status: string) => {
   }
 };
 
+const getReturnRequestStatusText = (status: string) => {
+  switch (status) {
+    case 'pending': return 'Đang chờ duyệt';
+    case 'approved': return 'Đã chấp nhận';
+    case 'rejected': return 'Đã từ chối';
+    default: return status;
+  }
+};
+
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -60,11 +77,13 @@ export default function OrderDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
   const [toast, setToast] = useState({
     isVisible: false,
     message: '',
     type: 'success' as 'success' | 'info'
   });
+
 
   const showToast = (message: string, type: 'success' | 'info' = 'success') => {
     setToast({ isVisible: true, message, type });
@@ -214,7 +233,78 @@ export default function OrderDetailPage() {
                 )}
               </div>
             )}
+
+            {/* Return / Refund Button Logic */}
+            {order.status === 'delivered' && !order.return_request && (
+              <div>
+                <button
+                  onClick={() => setShowReturnModal(true)}
+                  className="px-4 py-2 bg-primary text-white text-[11px] font-bold uppercase tracking-wider rounded-xs hover:bg-[#2c160e] transition-colors cursor-pointer border-none whitespace-nowrap"
+                >
+                  Trả hàng / Hoàn tiền
+                </button>
+              </div>
+            )}
+
           </div>
+
+          {/* Return Request Details (if exists) */}
+          {order.return_request && (
+            <div className="bg-white border border-[#d4c3be]/40 rounded-sm p-5 shadow-xs">
+              <h3 className="font-serif text-sm font-bold text-primary uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-[#eeeeee] pb-2">
+                <FileText size={16} /> Thông tin yêu cầu Trả hàng / Hoàn tiền
+              </h3>
+              <div className="space-y-3 text-sm text-on-surface-variant">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium text-on-surface">Trạng thái yêu cầu:</span>
+                  <span className={`font-bold px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-wider border ${
+                    order.return_request.status === 'pending'
+                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                      : order.return_request.status === 'approved'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-red-50 text-red-700 border-red-200'
+                  }`}>
+                    {getReturnRequestStatusText(order.return_request.status)}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-[#eeeeee]/60">
+                  <div>
+                    <p><span className="font-semibold text-on-surface">Lý do:</span> {order.return_request.reason}</p>
+                    {order.return_request.description && (
+                      <p className="mt-1"><span className="font-semibold text-on-surface">Chi tiết thêm:</span> {order.return_request.description}</p>
+                    )}
+                    <p className="mt-1">
+                      <span className="font-semibold text-on-surface">Hình thức trả hàng:</span>{' '}
+                      {order.return_request.shipping_method === 'pickup' ? 'Shipper lấy tận nơi' : 'Tự mang ra bưu cục'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-on-surface mb-1">Thông tin hoàn tiền:</p>
+                    <div className="bg-[#fcfaf7] p-2.5 rounded-xs border border-[#d4c3be]/30 text-xs">
+                      <p><span className="font-medium">Ngân hàng:</span> {order.return_request.bank_name}</p>
+                      <p><span className="font-medium">Số tài khoản:</span> {order.return_request.account_number}</p>
+                      <p><span className="font-medium">Chủ tài khoản:</span> {order.return_request.account_holder}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="pt-2">
+                  <p className="font-semibold text-on-surface mb-2">Ảnh minh chứng:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {order.return_request.images?.map((url: string, index: number) => (
+                      <a href={getImageUrl(url)} key={index} target="_blank" rel="noopener noreferrer" className="block relative group">
+                        <img
+                          src={getImageUrl(url)}
+                          alt={`Minh chứng ${index + 1}`}
+                          className="w-16 h-16 object-cover rounded-xs border border-[#d4c3be]/40 hover:opacity-90 transition-opacity"
+                        />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Shipping Info */}
@@ -407,6 +497,18 @@ export default function OrderDetailPage() {
         )}
       </AnimatePresence>
       
+      {/* Return/Refund Modal */}
+      <AnimatePresence>
+        {showReturnModal && (
+          <ReturnRefundModal
+            order={order}
+            onClose={() => setShowReturnModal(false)}
+            onSuccess={(updatedOrder) => setOrder(updatedOrder)}
+            showToast={showToast}
+          />
+        )}
+      </AnimatePresence>
+      
       {/* Toast Component */}
       <Toast
         message={toast.message}
@@ -417,3 +519,397 @@ export default function OrderDetailPage() {
     </main>
   );
 }
+
+// ────────────────────────────────────────────────────────────
+// Return & Refund Modal Component
+// ────────────────────────────────────────────────────────────
+interface ReturnRefundModalProps {
+  order: Order;
+  onClose: () => void;
+  onSuccess: (updatedOrder: Order) => void;
+  showToast: (message: string, type?: 'success' | 'info') => void;
+}
+
+function ReturnRefundModal({ order, onClose, onSuccess, showToast }: ReturnRefundModalProps) {
+  const [reason, setReason] = useState('Sản phẩm bị lỗi kỹ thuật (đường chỉ, vải...)');
+  const [description, setDescription] = useState('');
+  const [images, setImages] = useState<string[]>([]);
+  const [shippingMethod, setShippingMethod] = useState('pickup');
+  const [bankName, setBankName] = useState('');
+  const [isBankDropdownOpen, setIsBankDropdownOpen] = useState(false);
+  const [accountNumber, setAccountNumber] = useState('');
+  const [accountHolder, setAccountHolder] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const files = Array.from(e.target.files);
+    
+    setUploading(true);
+    setValidationError(null);
+    try {
+      const urls: string[] = [];
+      for (const file of files) {
+        const res = await orderService.uploadReturnEvidence(file);
+        urls.push(res.url);
+      }
+      setImages(prev => [...prev, ...urls]);
+    } catch (err) {
+      console.error(err);
+      showToast('Không thể tải ảnh lên. Vui lòng thử lại.', 'info');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setValidationError(null);
+
+    // Validation
+    if (!reason) {
+      setValidationError('Vui lòng chọn lý do trả hàng.');
+      return;
+    }
+    if (images.length < 2) {
+      setValidationError('Vui lòng cung cấp ít nhất 2 ảnh minh chứng rõ nét về tình trạng sản phẩm.');
+      return;
+    }
+    if (!bankName || bankName === 'Chọn ngân hàng') {
+      setValidationError('Vui lòng chọn ngân hàng nhận hoàn tiền.');
+      return;
+    }
+    if (!accountNumber.trim() || !accountHolder.trim()) {
+      setValidationError('Vui lòng điền đầy đủ số tài khoản và tên chủ tài khoản ngân hàng.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const returnData = {
+        reason,
+        description: description.trim() || undefined,
+        images,
+        shipping_method: shippingMethod,
+        bank_name: bankName.trim(),
+        account_number: accountNumber.trim(),
+        account_holder: accountHolder.trim().toUpperCase(),
+      };
+      
+      const newReturnRequest = await orderService.submitReturnRequest(order.id, returnData);
+      
+      // Update order state in parent
+      const updatedOrder = {
+        ...order,
+        return_request: newReturnRequest
+      };
+      onSuccess(updatedOrder);
+      showToast('Gửi yêu cầu trả hàng / hoàn tiền thành công!');
+      onClose();
+    } catch (err: any) {
+      console.error(err);
+      setValidationError(err?.response?.data?.detail || 'Không thể gửi yêu cầu trả hàng. Vui lòng thử lại sau.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/55 backdrop-blur-xs overflow-y-auto">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 15 }}
+        transition={{ duration: 0.3 }}
+        className="bg-[#fcfaf7] border border-[#d4c3be]/40 rounded-sm shadow-xl max-w-2xl w-full p-6 md:p-8 my-8 relative max-h-[90vh] overflow-y-auto font-sans"
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-on-surface-variant hover:text-primary transition-colors bg-transparent border-none cursor-pointer"
+        >
+          <X size={20} />
+        </button>
+
+        <h2 className="font-serif text-xl md:text-2xl font-bold text-primary mb-2">
+          Yêu Cầu Trả Hàng / Hoàn Tiền
+        </h2>
+        <p className="text-xs md:text-sm text-on-surface-variant mb-6 pb-4 border-b border-[#eeeeee]">
+          Chúng tôi rất tiếc vì trải nghiệm này. Hãy để Từ Tâm Phục hỗ trợ bạn điều chỉnh lại sự hài lòng.
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-6 text-xs md:text-sm">
+          {/* Return Reason */}
+          <div>
+            <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2 block">
+              Lý do trả hàng <span className="text-error">*</span>
+            </label>
+            <div className="relative">
+              <select
+                value={reason}
+                onChange={e => setReason(e.target.value)}
+                className="w-full bg-transparent border-0 border-b border-[#d4c3be] py-2.5 pr-8 text-on-surface focus:border-primary focus:ring-0 outline-none transition-colors appearance-none font-medium cursor-pointer"
+              >
+                <option value="Sản phẩm bị lỗi kỹ thuật (đường chỉ, vải...)">Sản phẩm bị lỗi kỹ thuật (đường chỉ, vải...)</option>
+                <option value="Không đúng kích cỡ (quá rộng/chật)">Không đúng kích cỡ (quá rộng/chật)</option>
+                <option value="Giao sai mẫu mã hoặc màu sắc">Giao sai mẫu mã hoặc màu sắc</option>
+                <option value="Sản phẩm khác với mô tả trên website">Sản phẩm khác với mô tả trên website</option>
+                <option value="Khác...">Khác...</option>
+              </select>
+              <ChevronDown className="absolute right-0 bottom-2.5 pointer-events-none opacity-40" size={18} />
+            </div>
+          </div>
+
+          {/* Additional Details */}
+          <div>
+            <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2 block">
+              Chi tiết thêm (không bắt buộc)
+            </label>
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              className="w-full bg-[#f3f3f3]/60 border-0 border-b border-[#d4c3be] p-3 focus:bg-white focus:border-primary focus:ring-0 outline-none transition-all duration-300 rounded-xs"
+              placeholder="Chia sẻ thêm với chúng tôi về vấn đề của bạn..."
+              rows={3}
+            />
+          </div>
+
+          {/* Evidence Photos */}
+          <div>
+            <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider block">
+              Hình ảnh minh chứng <span className="text-error">*</span>
+            </label>
+            <p className="text-[11px] text-on-surface-variant/70 mb-3">
+              Vui lòng cung cấp ít nhất 2 ảnh rõ nét về tình trạng sản phẩm.
+            </p>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <label 
+                htmlFor="evidence-upload" 
+                className={`aspect-square border border-dashed border-[#d4c3be] rounded-sm flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-[#ece0dc]/10 transition-colors group ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+              >
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  className="hidden"
+                  id="evidence-upload"
+                  disabled={uploading || submitting}
+                  onChange={handleFileChange}
+                />
+                <Camera className="text-primary group-hover:scale-115 transition-transform mb-1.5" size={24} />
+                <span className="text-[10px] font-bold uppercase opacity-60 text-center px-1">
+                  {uploading ? 'Đang tải...' : 'Tải ảnh lên'}
+                </span>
+              </label>
+
+              {images.map((url, index) => (
+                <div key={index} className="aspect-square bg-[#f3f3f3] rounded-sm relative group overflow-hidden border border-[#d4c3be]/40">
+                  <img src={getImageUrl(url)} className="w-full h-full object-cover" alt={`Minh chứng ${index + 1}`} />
+                  <button
+                    type="button"
+                    onClick={() => setImages(prev => prev.filter((_, i) => i !== index))}
+                    className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/85 transition-colors border-none cursor-pointer text-xs"
+                  >
+                    &times;
+                  </button>
+                </div>
+              ))}
+
+              {Array.from({ length: Math.max(0, 3 - images.length) }).map((_, idx) => (
+                <div key={idx} className="aspect-square bg-[#f3f3f3]/40 rounded-sm flex items-center justify-center border border-[#d4c3be]/20">
+                  <Image className="opacity-20 text-on-surface-variant" size={24} />
+                </div>
+              ))}
+            </div>
+            
+            {images.length > 0 && (
+              <p className="text-[10px] text-on-surface-variant/80 mt-1.5">
+                Đã chọn: <span className="font-bold">{images.length}</span> ảnh (Cần tối thiểu 2 ảnh).
+              </p>
+            )}
+          </div>
+
+          {/* Shipping Method */}
+          <div>
+            <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-3 block">
+              Hình thức trả hàng <span className="text-error">*</span>
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Pickup */}
+              <div 
+                onClick={() => setShippingMethod('pickup')}
+                className={`p-4 border rounded-sm cursor-pointer transition-all flex flex-col justify-between ${
+                  shippingMethod === 'pickup' 
+                    ? 'border-primary bg-[#fdfcfb] shadow-xs' 
+                    : 'border-[#d4c3be]/60 hover:bg-[#f3f3f3]/40'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Truck size={18} className="text-primary" />
+                    <span className="text-xs font-bold uppercase tracking-wider">Shipper lấy tận nơi</span>
+                  </div>
+                  {shippingMethod === 'pickup' && <CheckCircle size={16} className="text-primary" />}
+                </div>
+                <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                  Đơn vị vận chuyển sẽ đến địa chỉ của bạn trong 24-48h tới.
+                </p>
+              </div>
+
+              {/* Dropoff */}
+              <div 
+                onClick={() => setShippingMethod('dropoff')}
+                className={`p-4 border rounded-sm cursor-pointer transition-all flex flex-col justify-between ${
+                  shippingMethod === 'dropoff' 
+                    ? 'border-primary bg-[#fdfcfb] shadow-xs' 
+                    : 'border-[#d4c3be]/60 hover:bg-[#f3f3f3]/40'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Store size={18} className="text-primary" />
+                    <span className="text-xs font-bold uppercase tracking-wider">Tự mang ra bưu cục</span>
+                  </div>
+                  {shippingMethod === 'dropoff' && <CheckCircle size={16} className="text-primary" />}
+                </div>
+                <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                  Gửi hàng tại bưu cục gần nhất thuộc mạng lưới VNPost/GHTK/GHN (Giao Hàng Nhanh).
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Refund Bank Info */}
+          <div className="bg-[#fcfaf7] border border-[#d4c3be]/40 p-5 rounded-sm">
+            <h3 className="text-xs font-bold text-primary uppercase tracking-wider mb-4 pb-2 border-b border-[#eeeeee] flex items-center gap-2">
+              <Landmark size={16} /> Phương thức hoàn tiền
+            </h3>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="relative">
+                  <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1 block">
+                    Tên ngân hàng <span className="text-error">*</span>
+                  </label>
+                  
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsBankDropdownOpen(prev => !prev)}
+                      className="w-full bg-transparent border-0 border-b border-[#d4c3be] py-2 text-left outline-none transition-colors flex items-center justify-between cursor-pointer text-xs"
+                    >
+                      <span className={bankName ? 'text-on-surface font-medium' : 'text-on-surface-variant/50'}>
+                        {bankName || 'Chọn ngân hàng'}
+                      </span>
+                      <ChevronDown className="opacity-40 text-on-surface" size={18} />
+                    </button>
+                    
+                    <AnimatePresence>
+                      {isBankDropdownOpen && (
+                        <>
+                          {/* Invisible backdrop to close dropdown on click outside */}
+                          <div 
+                            className="fixed inset-0 z-10" 
+                            onClick={() => setIsBankDropdownOpen(false)}
+                          />
+                          <motion.div
+                            initial={{ opacity: 0, y: 5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 5 }}
+                            transition={{ duration: 0.15 }}
+                            className="absolute left-0 right-0 mt-1 bg-white border border-[#d4c3be]/40 rounded-xs shadow-lg z-20 max-h-[320px] overflow-y-auto"
+                          >
+                            {[
+                              'Vietcombank', 'Techcombank', 'BIDV', 'VietinBank', 'MB Bank', 'Agribank', 'VPBank', 'Sacombank', 'ACB', 'TPBank',
+                              'HDBank', 'VIB', 'SHB', 'LPBank', 'MSB', 'OCB', 'SeABank', 'Eximbank', 'SCB', 'BAC A BANK',
+                              'BaoViet Bank', 'DongA Bank', 'Kienlongbank', 'Nam A Bank', 'NCB', 'PG Bank', 'PVcomBank', 'Saigonbank',
+                              'VietABank', 'Vietbank', 'BVBank', 'GPBank', 'OceanBank', 'CBBank', 'Shinhan Bank', 'HSBC',
+                              'Woori Bank', 'UOB', 'Standard Chartered', 'Public Bank'
+                            ].map(bank => (
+                              <button
+                                key={bank}
+                                type="button"
+                                onClick={() => {
+                                  setBankName(bank);
+                                  setIsBankDropdownOpen(false);
+                                }}
+                                className={`w-full text-left px-4 py-2.5 hover:bg-[#ece0dc]/20 transition-colors text-xs border-none cursor-pointer ${
+                                  bankName === bank ? 'bg-[#ece0dc]/10 font-bold text-primary' : 'text-on-surface'
+                                }`}
+                              >
+                                {bank}
+                              </button>
+                            ))}
+                          </motion.div>
+                        </>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1 block">
+                    Số tài khoản <span className="text-error">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={accountNumber}
+                    onChange={e => setAccountNumber(e.target.value)}
+                    placeholder="Nhập số tài khoản"
+                    className="w-full bg-transparent border-0 border-b border-[#d4c3be] py-2 text-xs focus:border-primary focus:ring-0 outline-none transition-colors"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1 block">
+                  Tên chủ tài khoản <span className="text-error">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={accountHolder}
+                  onChange={e => setAccountHolder(e.target.value.toUpperCase())}
+                  placeholder="VIET NAM TU TAM PHUC"
+                  className="w-full bg-transparent border-0 border-b border-[#d4c3be] py-2 text-xs uppercase tracking-widest focus:border-primary focus:ring-0 outline-none transition-colors"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Validation & Error Display */}
+          {validationError && (
+            <p className="text-xs font-bold text-error bg-red-50 border border-red-200 p-3 rounded-xs leading-relaxed">
+              {validationError}
+            </p>
+          )}
+
+          {/* Actions */}
+          <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-[#eeeeee]">
+            <p className="text-[10px] text-on-surface-variant/80 max-w-sm text-center sm:text-left leading-relaxed">
+              Bằng cách gửi yêu cầu, bạn đồng ý với các Chính sách đổi trả và hoàn tiền của Từ Tâm Phục.
+            </p>
+            <div className="flex w-full sm:w-auto gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={submitting}
+                className="w-1/2 sm:w-auto px-6 py-3 border border-outline-variant hover:bg-[#ece0dc]/20 text-on-secondary-fixed-variant font-semibold text-xs tracking-wider uppercase transition-colors cursor-pointer bg-transparent rounded-xs"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="submit"
+                disabled={submitting || uploading}
+                className="w-1/2 sm:w-auto px-6 py-3 bg-primary text-white font-semibold text-xs tracking-wider uppercase hover:bg-[#2c160e] transition-colors cursor-pointer border-none rounded-xs disabled:opacity-50"
+              >
+                {submitting ? 'Đang gửi...' : 'Gửi yêu cầu'}
+              </button>
+            </div>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+

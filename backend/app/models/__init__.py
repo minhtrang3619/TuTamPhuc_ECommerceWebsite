@@ -4,6 +4,7 @@ from app.models.user import User, UserRole
 from app.models.category import Category
 from app.models.product import Product, ProductImage, ProductVariant, ProductStatus
 from app.models.order import Order, OrderItem, OrderStatus, PaymentStatus, PaymentMethod
+from app.models.return_request import ReturnRequest, ReturnRequestStatus
 from app.models.cart import Cart, CartItem
 from app.models.wishlist import WishlistItem
 from app.models.review import Review
@@ -23,4 +24,5 @@ __all__ = [
     "BlogPost", "BlogStatus",
     "Customer",
     "Address",
+    "ReturnRequest", "ReturnRequestStatus",
 ]

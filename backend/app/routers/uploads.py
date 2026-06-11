@@ -1,7 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, UploadFile, File
 
-from app.core.dependencies import require_shop_staff_or_admin
+from app.core.dependencies import require_shop_staff_or_admin, get_current_user
 from app.services.upload_service import UploadService
 from app.models.user import User
 
@@ -30,3 +30,14 @@ async def upload_multiple_images(
     service = UploadService()
     urls = await service.upload_multiple(files, folder)
     return {"urls": urls}
+
+
+@router.post("/return-evidence", response_model=dict)
+async def upload_return_evidence(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    """Upload ảnh minh chứng trả hàng (dành cho khách hàng)."""
+    service = UploadService()
+    url = await service.upload_image(file, "returns")
+    return {"url": url}

@@ -1,5 +1,5 @@
 import apiClient from './apiClient'
-import type { Order, ShippingAddress, PaymentMethod, PaginatedResponse } from '@/types'
+import type { Order, ShippingAddress, PaymentMethod, PaginatedResponse, ReturnRequest, ReturnRequestCreate, ReturnRequestStatus } from '@/types'
 
 export interface CreateOrderItemData {
   product_id: number
@@ -49,14 +49,47 @@ export const orderService = {
 
   // Admin
   getAllOrders: async (page = 1, status?: string): Promise<PaginatedResponse<Order>> => {
-    const response = await apiClient.get<PaginatedResponse<Order>>('/admin/orders', {
-      params: { page, status },
+    const response = await apiClient.get<PaginatedResponse<Order>>('/orders', {
+      params: { page, order_status: status },
     })
     return response.data
   },
 
-  updateStatus: async (id: number, status: string): Promise<Order> => {
-    const response = await apiClient.patch<Order>(`/admin/orders/${id}/status`, { status })
+  updateStatus: async (id: number, status?: string, paymentStatus?: string): Promise<Order> => {
+    const response = await apiClient.patch<Order>(`/orders/${id}/status`, {
+      status,
+      payment_status: paymentStatus,
+    })
+    return response.data
+  },
+
+  // Return & Refund
+  uploadReturnEvidence: async (file: File): Promise<{ url: string }> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await apiClient.post<{ url: string }>('/uploads/return-evidence', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+    return response.data
+  },
+
+  submitReturnRequest: async (orderId: number, data: ReturnRequestCreate): Promise<ReturnRequest> => {
+    const response = await apiClient.post<ReturnRequest>(`/orders/${orderId}/return`, data)
+    return response.data
+  },
+
+  getReturnRequests: async (page = 1): Promise<PaginatedResponse<ReturnRequest>> => {
+    const response = await apiClient.get<PaginatedResponse<ReturnRequest>>('/orders/returns', {
+      params: { page },
+    })
+    return response.data
+  },
+
+  updateReturnRequestStatus: async (returnId: number, status: ReturnRequestStatus): Promise<ReturnRequest> => {
+    const response = await apiClient.patch<ReturnRequest>(`/orders/returns/${returnId}/status`, { status })
     return response.data
   },
 }
+

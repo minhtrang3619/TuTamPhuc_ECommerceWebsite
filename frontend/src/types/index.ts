@@ -133,6 +133,8 @@ export interface ShippingAddress {
   ward: string
   district: string
   province: string
+  charity_message?: string
+  is_charity_anonymous?: boolean
 }
 
 export interface OrderItem {
@@ -160,7 +162,39 @@ export interface Order {
   notes?: string
   created_at: string
   updated_at: string
+  return_request?: ReturnRequest
 }
+
+// ========================
+// Return & Refund Types
+// ========================
+export type ReturnRequestStatus = 'pending' | 'approved' | 'rejected'
+
+export interface ReturnRequest {
+  id: number
+  order_id: number
+  reason: string
+  description?: string
+  images: string[]
+  shipping_method: string
+  bank_name: string
+  account_number: string
+  account_holder: string
+  status: ReturnRequestStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface ReturnRequestCreate {
+  reason: string
+  description?: string
+  images: string[]
+  shipping_method: string
+  bank_name: string
+  account_number: string
+  account_holder: string
+}
+
 
 // ========================
 // Review Types

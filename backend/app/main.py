@@ -5,7 +5,6 @@ from contextlib import asynccontextmanager
 import os
 
 from app.core.config import settings
-from app.database.session import engine, Base
 from app.routers import api_router
 
 
@@ -17,6 +16,7 @@ async def lifespan(app: FastAPI):
     os.makedirs(f"{settings.UPLOAD_DIR}/products", exist_ok=True)
     os.makedirs(f"{settings.UPLOAD_DIR}/avatars", exist_ok=True)
     os.makedirs(f"{settings.UPLOAD_DIR}/blog", exist_ok=True)
+    os.makedirs(f"{settings.UPLOAD_DIR}/returns", exist_ok=True)
     yield
     # Shutdown
 

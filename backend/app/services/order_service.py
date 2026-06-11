@@ -3,10 +3,12 @@ import uuid
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.models.order import Order, OrderItem, OrderStatus
+from app.models.order import Order, OrderItem, OrderStatus, PaymentStatus
+from app.models.return_request import ReturnRequest, ReturnRequestStatus
 from app.models.cart import Cart
 from app.models.product import Product
 from app.schemas.order import OrderCreate, PaginatedOrders
+from app.schemas.return_request import ReturnRequestCreate
 
 
 class OrderService:
@@ -186,11 +188,78 @@ class OrderService:
             total_pages=math.ceil(total / page_size) if total > 0 else 0,
         )
 
-    def update_status(self, order_id: int, new_status: OrderStatus) -> Order:
+    def update_status(self, order_id: int, new_status: OrderStatus = None, new_payment_status: PaymentStatus = None) -> Order:
         order = self.db.query(Order).filter(Order.id == order_id).first()
         if not order:
             raise HTTPException(status_code=404, detail="Đơn hàng không tồn tại")
-        order.status = new_status
+        if new_status is not None:
+            order.status = new_status
+        if new_payment_status is not None:
+            order.payment_status = new_payment_status
         self.db.commit()
         self.db.refresh(order)
         return order
+
+    def create_return_request(self, order_id: int, user_id: int, data: ReturnRequestCreate) -> ReturnRequest:
+        order = self.db.query(Order).filter(Order.id == order_id, Order.user_id == user_id).first()
+        if not order:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Không tìm thấy đơn hàng",
+            )
+        if order.status != OrderStatus.DELIVERED:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Chỉ có thể yêu cầu trả hàng cho đơn hàng đã giao thành công",
+            )
+        if order.return_request:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Đơn hàng này đã có yêu cầu trả hàng trước đó",
+            )
+
+        db_request = ReturnRequest(
+            order_id=order.id,
+            reason=data.reason,
+            description=data.description,
+            images=data.images,
+            shipping_method=data.shipping_method,
+            bank_name=data.bank_name,
+            account_number=data.account_number,
+            account_holder=data.account_holder,
+            status=ReturnRequestStatus.PENDING,
+        )
+        self.db.add(db_request)
+        self.db.commit()
+        self.db.refresh(db_request)
+        return db_request
+
+    def get_return_requests(self, page: int = 1, page_size: int = 20) -> dict:
+        query = self.db.query(ReturnRequest).order_by(ReturnRequest.created_at.desc())
+        total = query.count()
+        items = query.offset((page - 1) * page_size).limit(page_size).all()
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": math.ceil(total / page_size) if total > 0 else 0,
+        }
+
+    def update_return_request_status(self, return_id: int, new_status: ReturnRequestStatus) -> ReturnRequest:
+        db_request = self.db.query(ReturnRequest).filter(ReturnRequest.id == return_id).first()
+        if not db_request:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Không tìm thấy yêu cầu trả hàng",
+            )
+        db_request.status = new_status
+        if new_status == ReturnRequestStatus.APPROVED:
+            db_request.order.status = OrderStatus.REFUNDED
+            db_request.order.payment_status = PaymentStatus.REFUNDED
+            for item in db_request.order.items:
+                if item.product:
+                    item.product.stock += item.quantity
+        self.db.commit()
+        self.db.refresh(db_request)
+        return db_request

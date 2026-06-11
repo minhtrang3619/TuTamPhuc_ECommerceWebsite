@@ -3,6 +3,7 @@ from datetime import datetime
 from app.schemas.base import BaseSchema
 from app.schemas.product import ProductBrief, ProductVariantResponse
 from app.schemas.user import UserBrief
+from app.schemas.return_request import ReturnRequestResponse
 from app.models.order import OrderStatus, PaymentStatus, PaymentMethod
 
 
@@ -48,7 +49,8 @@ class OrderCreate(BaseSchema):
 
 
 class OrderStatusUpdate(BaseSchema):
-    status: OrderStatus
+    status: Optional[OrderStatus] = None
+    payment_status: Optional[PaymentStatus] = None
 
 
 class OrderResponse(BaseSchema):
@@ -66,6 +68,7 @@ class OrderResponse(BaseSchema):
     total: float
     notes: Optional[str] = None
     coupon_code: Optional[str] = None
+    return_request: Optional[ReturnRequestResponse] = None
     created_at: datetime
     updated_at: datetime
 

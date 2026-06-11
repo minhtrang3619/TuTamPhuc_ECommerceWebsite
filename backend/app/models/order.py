@@ -55,6 +55,7 @@ class Order(BaseModel):
     # Relationships
     user = relationship("User", back_populates="orders")
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
+    return_request = relationship("ReturnRequest", back_populates="order", uselist=False, cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Order id={self.id} code={self.order_code} status={self.status}>"
