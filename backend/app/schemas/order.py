@@ -13,6 +13,8 @@ class ShippingAddressSchema(BaseSchema):
     ward: str
     district: str
     province: str
+    charity_message: Optional[str] = None
+    is_charity_anonymous: Optional[bool] = False
 
 
 class OrderItemResponse(BaseSchema):

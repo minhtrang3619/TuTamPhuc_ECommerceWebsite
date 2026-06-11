@@ -214,6 +214,8 @@ export default function CheckoutModal() {
           ward: parsedAddress.ward,
           district: parsedAddress.district,
           province: parsedAddress.province,
+          charity_message: form.charityMessage,
+          is_charity_anonymous: form.isCharityAnonymous,
         },
         payment_method: form.paymentMethod,
         notes: form.notes || undefined,

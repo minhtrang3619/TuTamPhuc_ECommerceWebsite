@@ -193,13 +193,13 @@ export default function AdminProducts() {
     } else if (format === 'list') {
       if (selectedText) {
         const lines = selectedText.split('\n')
-        prefix = '<ul>\n'
-        replacement = lines.map(line => `  <li>${line}</li>`).join('\n')
-        suffix = '\n</ul>'
+        prefix = '<ul>'
+        replacement = lines.map(line => `<li>${line}</li>`).join('')
+        suffix = '</ul>'
       } else {
-        prefix = '<ul>\n  <li>'
+        prefix = '<ul><li>'
         replacement = ''
-        suffix = '</li>\n</ul>'
+        suffix = '</li></ul>'
       }
     }
 
@@ -1102,7 +1102,7 @@ export default function AdminProducts() {
                         </p>
                         {formData.description ? (
                           <div 
-                            className="font-sans text-xs text-on-surface-variant/80 tracking-wide leading-relaxed prose prose-stone max-w-none [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-2 [&_li]:my-0.5 [&_strong]:font-semibold [&_em]:italic"
+                            className="font-sans text-xs text-on-surface-variant/80 tracking-wide leading-relaxed prose prose-stone max-w-none [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-2 [&_li]:my-0.5 [&_strong]:font-semibold [&_em]:italic whitespace-pre-line"
                             dangerouslySetInnerHTML={{ __html: formData.description }}
                           />
                         ) : (

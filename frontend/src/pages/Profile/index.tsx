@@ -1240,10 +1240,15 @@ export default function ProfilePage() {
                       }).map((order) => (
                         <div
                           key={order.id}
-                          className="border border-[#d4c3be]/40 rounded-sm overflow-hidden"
+                          onClick={(e) => {
+                            if (!(e.target as HTMLElement).closest('a')) {
+                              navigate(`/don-hang/${order.id}`);
+                            }
+                          }}
+                          className="border border-[#d4c3be]/40 rounded-sm overflow-hidden cursor-pointer hover:border-primary transition-colors group"
                         >
                           {/* Order info header */}
-                          <div className="bg-[#ece0dc]/20 px-5 py-3 border-b border-[#d4c3be]/40 flex flex-wrap items-center justify-between gap-3 text-xs">
+                          <div className="bg-[#ece0dc]/20 px-5 py-3 border-b border-[#d4c3be]/40 flex flex-wrap items-center justify-between gap-3 text-xs group-hover:bg-[#ece0dc]/40 transition-colors">
                             <div className="flex gap-4">
                               <div>
                                 <span className="text-on-surface-variant font-medium mr-1.5">Mã đơn:</span>
@@ -1270,6 +1275,9 @@ export default function ProfilePage() {
                                   <Clock size={10} /> {getStatusText(order.status)}
                                 </span>
                               )}
+                              <span className="text-primary ml-2 group-hover:underline text-[10px] uppercase font-bold tracking-wide">
+                                Xem chi tiết ›
+                              </span>
                             </div>
                           </div>
 
