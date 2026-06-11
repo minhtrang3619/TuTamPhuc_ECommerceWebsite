@@ -1303,7 +1303,7 @@ export default function ProfilePage() {
                                   )}
                                   <div className="flex-1">
                                     {item.product?.id ? (
-                                      <Link to={`/san-pham/${item.product.id}`} className="font-serif font-bold text-[#442a22] hover:text-primary transition-colors flex items-center gap-1">
+                                      <Link to={`/san-pham/${item.product.slug}`} className="font-serif font-bold text-[#442a22] hover:text-primary transition-colors flex items-center gap-1">
                                         {pName} <ExternalLink size={11} className="opacity-50" />
                                       </Link>
                                     ) : (

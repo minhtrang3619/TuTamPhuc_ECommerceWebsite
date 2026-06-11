@@ -37,6 +37,8 @@ def get_order(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if current_user.role.value in ["admin", "shop_staff", "customer_service"]:
+        return OrderService(db).get_by_id(order_id)
     return OrderService(db).get_by_id(order_id, current_user.id)
 
 

@@ -94,7 +94,14 @@ export default function ProductDetailPage() {
   };
 
   const handleConsult = () => {
-    showToast('Yêu cầu tư vấn đã được gửi! Nhân viên CSKH sẽ kết nối với bạn qua chat trong giây lát.', 'info');
+    if (!isAuthenticated) {
+      showToast('Vui lòng đăng nhập để được tư vấn!', 'info');
+      setTimeout(() => {
+        navigate('/login', { state: { from: '/tin-nhan', productToConsult: product } });
+      }, 1500);
+      return;
+    }
+    navigate('/tin-nhan', { state: { productToConsult: product } });
   };
 
   // Toast alert state

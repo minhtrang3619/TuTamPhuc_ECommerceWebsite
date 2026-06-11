@@ -1,5 +1,5 @@
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { ShoppingCart, Heart, User, Menu, X } from 'lucide-react'
+import { ShoppingCart, Heart, User, Menu, X, MessageSquare } from 'lucide-react'
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useMockCartStore } from '@/store/mockCartStore'
@@ -96,7 +96,17 @@ export function Navbar() {
         </ul>
 
         {/* Right Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
+          <Link
+            to="/tin-nhan"
+            className="relative p-2 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors duration-300"
+            aria-label="Tin nhắn"
+          >
+            <MessageSquare className="w-5 h-5" />
+            {isAuthenticated && (
+              <span className="absolute top-1.5 right-1.5 bg-red-500 w-2 h-2 rounded-full border border-white"></span>
+            )}
+          </Link>
           <Link
             to="/yeu-thich"
             className="relative p-2 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors duration-300"

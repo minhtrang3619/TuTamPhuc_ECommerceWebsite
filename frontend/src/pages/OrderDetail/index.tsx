@@ -379,7 +379,7 @@ export default function OrderDetailPage() {
                     )}
                     <div className="flex-1">
                       {item.product?.id ? (
-                        <Link to={`/san-pham/${item.product.id}`} className="font-serif font-bold text-sm text-[#442a22] hover:text-primary transition-colors block mb-1">
+                        <Link to={`/san-pham/${item.product.slug}`} className="font-serif font-bold text-sm text-[#442a22] hover:text-primary transition-colors block mb-1">
                           {pName}
                         </Link>
                       ) : (

@@ -22,6 +22,7 @@ const BlogDetailPage = lazy(() => import('@/pages/BlogDetail'))
 const WishlistPage = lazy(() => import('@/pages/Wishlist'))
 const NotFoundPage = lazy(() => import('@/pages/NotFound'))
 const OrderSuccessPage = lazy(() => import('@/pages/OrderSuccess'))
+const ChatPage = lazy(() => import('@/pages/Chat'))
 
 // Admin pages
 const AdminDashboard = lazy(() => import('@/pages/admin/Dashboard'))
@@ -66,6 +67,7 @@ export function AppRoutes() {
             <Route path="/don-hang" element={<OrdersPage />} />
             <Route path="/don-hang/:id" element={<OrderDetailPage />} />
             <Route path="/yeu-thich" element={<WishlistPage />} />
+            <Route path="/tin-nhan" element={<ChatPage />} />
           </Route>
         </Route>
 

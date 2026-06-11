@@ -137,11 +137,11 @@ class OrderService:
             total_pages=math.ceil(total / page_size) if total > 0 else 0,
         )
 
-    def get_by_id(self, order_id: int, user_id: int) -> Order:
-        order = self.db.query(Order).filter(
-            Order.id == order_id,
-            Order.user_id == user_id,
-        ).first()
+    def get_by_id(self, order_id: int, user_id: int = None) -> Order:
+        query = self.db.query(Order).filter(Order.id == order_id)
+        if user_id is not None:
+            query = query.filter(Order.user_id == user_id)
+        order = query.first()
         if not order:
             raise HTTPException(status_code=404, detail="Không tìm thấy đơn hàng")
         return order
