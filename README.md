@@ -52,6 +52,8 @@ Trước khi bắt đầu, hãy đảm bảo bạn đã cài đặt:
      ```bash
      python -m venv venv
      .\venv\Scripts\activate
+     uvicorn app.main:app --reload
+
      ```
    - Trên macOS/Linux:
      ```bash

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tư Vấn Tận Tâm - Từ Tâm Phục</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&amp;family=Playfair+Display:ital,wght@0,400..900;1,400..900&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary": "#21333a",
+                        "surface-container-highest": "#e2e2e2",
+                        "error": "#ba1a1a",
+                        "surface-container-lowest": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "on-error": "#ffffff",
+                        "outline": "#827470",
+                        "secondary-container": "#ece0dc",
+                        "on-surface-variant": "#504441",
+                        "secondary-fixed": "#ece0dc",
+                        "inverse-surface": "#2f3131",
+                        "primary-container": "#5d4037",
+                        "surface-variant": "#e2e2e2",
+                        "primary": "#442a22",
+                        "surface-container": "#eeeeee",
+                        "on-background": "#1a1c1c",
+                        "tertiary-container": "#384a51",
+                        "surface-container-high": "#e8e8e8",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed": "#d2e6ef",
+                        "secondary": "#655d5a",
+                        "primary-fixed": "#ffdbd0",
+                        "on-primary-fixed": "#2c160e",
+                        "surface-dim": "#dadada",
+                        "on-tertiary-container": "#a5b9c1",
+                        "on-secondary-fixed": "#201a18",
+                        "outline-variant": "#d4c3be",
+                        "on-secondary-fixed-variant": "#4c4542",
+                        "on-surface": "#1a1c1c",
+                        "background": "#f9f9f9",
+                        "on-tertiary-fixed-variant": "#374951",
+                        "inverse-primary": "#e7bdb1",
+                        "surface-container-low": "#f3f3f3",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed-dim": "#cfc4c0",
+                        "on-secondary-container": "#6b6360",
+                        "surface": "#f9f9f9",
+                        "inverse-on-surface": "#f1f1f1",
+                        "primary-fixed-dim": "#e7bdb1",
+                        "on-primary-fixed-variant": "#5d4037",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed-dim": "#b6cad2",
+                        "surface-bright": "#f9f9f9",
+                        "on-primary-container": "#d4ada1",
+                        "surface-tint": "#77574d",
+                        "on-tertiary-fixed": "#0b1e24",
+                        "on-primary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin-desktop": "64px",
+                        "section-gap": "120px",
+                        "margin-mobile": "24px",
+                        "gutter": "24px",
+                        "unit": "8px",
+                        "container-max": "1280px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Montserrat"],
+                        "headline-sm": ["Playfair Display"],
+                        "display-lg-mobile": ["Playfair Display"],
+                        "label-md": ["Montserrat"],
+                        "headline-md": ["Playfair Display"],
+                        "display-lg": ["Playfair Display"],
+                        "body-md": ["Montserrat"],
+                        "caption": ["Montserrat"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "1.8", "fontWeight": "400"}],
+                        "headline-sm": ["24px", {"lineHeight": "1.4", "fontWeight": "500"}],
+                        "display-lg-mobile": ["32px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                        "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0.1em", "fontWeight": "500"}],
+                        "headline-md": ["32px", {"lineHeight": "1.3", "fontWeight": "500"}],
+                        "display-lg": ["48px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "caption": ["12px", {"lineHeight": "1.4", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .chat-container {
+            height: calc(100vh - 140px);
+        }
+        .glass-bubble {
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #d4c3be;
+            border-radius: 10px;
+        }
+        @media (max-width: 768px) {
+            .chat-container {
+                height: calc(100vh - 120px);
+            }
+        }
+    </style>
+</head>
+<body class="bg-background font-body-md text-on-surface overflow-hidden">
+<!-- TopAppBar -->
+<nav class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md shadow-[0_32px_64px_-12px_rgba(68,42,34,0.06)]">
+<div class="flex justify-between items-center w-full px-margin-desktop py-4 max-w-container-max mx-auto">
+<div class="font-headline-sm text-headline-sm text-primary tracking-tight">Từ Tâm Phục</div>
+<div class="hidden md:flex items-center gap-10">
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors duration-300" href="#">BỘ SƯU TẬP</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors duration-300" href="#">CÂU CHUYỆN</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors duration-300" href="#">PHÁP PHỤC</a>
+<a class="font-label-md text-label-md text-primary border-b border-primary pb-1" href="#">HỖ TRỢ</a>
+</div>
+<div class="flex items-center gap-6">
+<button class="material-symbols-outlined text-primary scale-100 active:scale-[0.98] transition-transform duration-500 ease-out">shopping_bag</button>
+<button class="material-symbols-outlined text-primary scale-100 active:scale-[0.98] transition-transform duration-500 ease-out">person</button>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="pt-24 h-screen max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop flex gap-gutter">
+<!-- Central Chat Window -->
+<section class="flex-grow flex flex-col bg-surface shadow-sm rounded-xl overflow-hidden relative border border-outline-variant/30">
+<!-- Chat Header (Internal) -->
+<header class="px-6 py-4 border-b border-outline-variant/30 bg-surface/50 backdrop-blur-sm z-10 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">spa</span>
+</div>
+<div>
+<h2 class="font-headline-sm text-body-md font-bold text-primary">Cố Vấn Từ Tâm</h2>
+<p class="text-caption text-on-surface-variant flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-green-500"></span> Trực tuyến
+                        </p>
+</div>
+</div>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">more_vert</button>
+</header>
+<!-- Chat History Area -->
+<div class="flex-grow relative overflow-hidden">
+<!-- Lotus Background Overlay -->
+<div class="absolute inset-0 z-0 opacity-20 pointer-events-none">
+<img alt="Lotus" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida/AP1WRLsnw0F-XzOGofrZk5PGcf_jxBbjfhW6aK-OzK2L51g5o5A1hUY3e8MVb3khRbhFPn2kWrq1rV7d2nTq8KOTqji_8esI53WkOdmhWySFvnamX860rGloMjKd-YAPQiTc1UGD5P2ePyGy1xwtS2bXTe0kLA3y-IvnWQNRjiCOQzBeiZri5ACaTfSAHtywz6-yXRQC0gAw4ngtOJ_XraOLKa_3gqTuCuqhtuVeCkQsYQvyYRxYC6xOFNTE8pGK"/>
+</div>
+<div class="absolute inset-0 z-10 p-6 overflow-y-auto space-y-6 custom-scrollbar" id="chat-messages">
+<!-- Timestamp -->
+<div class="flex justify-center">
+<span class="px-4 py-1 rounded-full bg-secondary-container/50 text-caption text-on-secondary-container uppercase tracking-widest">Hôm nay</span>
+</div>
+<!-- Bot Message -->
+<div class="flex items-start gap-3 max-w-[80%]">
+<div class="w-8 h-8 rounded-full bg-primary-fixed flex-shrink-0 flex items-center justify-center text-primary mt-1">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">spa</span>
+</div>
+<div class="glass-bubble bg-surface/60 border border-white/40 p-4 rounded-2xl rounded-tl-none shadow-sm">
+<p class="font-body-md text-on-surface">Chào bạn, Từ Tâm Phục xin nghe. Tôi có thể hỗ trợ gì cho hành trình tìm kiếm sự tĩnh lặng của bạn hôm nay?</p>
+<span class="text-[10px] text-on-surface-variant mt-1 block">10:02 AM</span>
+</div>
+</div>
+<!-- User Message -->
+<div class="flex items-start gap-3 flex-row-reverse self-end ml-auto max-w-[80%]">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex-shrink-0 flex items-center justify-center text-secondary mt-1">
+<span class="material-symbols-outlined text-[18px]">person</span>
+</div>
+<div class="bg-primary/90 text-white p-4 rounded-2xl rounded-tr-none shadow-sm">
+<p class="font-body-md">Chào bạn, mình đang quan tâm đến bộ Áo Tràng An Nhiên. Chất liệu lụa này có dễ bị nhăn khi ngồi thiền lâu không?</p>
+<span class="text-[10px] opacity-70 mt-1 block text-right">10:05 AM</span>
+</div>
+</div>
+<!-- Bot Message -->
+<div class="flex items-start gap-3 max-w-[80%]">
+<div class="w-8 h-8 rounded-full bg-primary-fixed flex-shrink-0 flex items-center justify-center text-primary mt-1">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">spa</span>
+</div>
+<div class="glass-bubble bg-surface/60 border border-white/40 p-4 rounded-2xl rounded-tl-none shadow-sm">
+<p class="font-body-md text-on-surface">Một câu hỏi rất hay ạ. Lụa tơ tằm phối linen của dòng An Nhiên được dệt với mật độ sợi cao, giúp giữ form dáng rất tốt. Sau khi tọa thiền, bạn chỉ cần treo nhẹ là các nếp gấp tự nhiên sẽ giãn ra mà không cần là ủi nhiều.</p>
+<span class="text-[10px] text-on-surface-variant mt-1 block">10:06 AM</span>
+</div>
+</div>
+<!-- Typing Indicator (Optional Mockup) -->
+<div class="flex items-start gap-3 max-w-[80%] opacity-0 animate-pulse" id="typing-indicator">
+<div class="w-8 h-8 rounded-full bg-primary-fixed flex-shrink-0 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[18px]">spa</span>
+</div>
+<div class="glass-bubble bg-surface/60 border border-white/40 px-4 py-2 rounded-2xl rounded-tl-none shadow-sm flex gap-1">
+<div class="w-1 h-1 bg-primary rounded-full animate-bounce"></div>
+<div class="w-1 h-1 bg-primary rounded-full animate-bounce delay-100"></div>
+<div class="w-1 h-1 bg-primary rounded-full animate-bounce delay-200"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Input Area -->
+<footer class="p-6 border-t border-outline-variant/30 bg-surface/50 backdrop-blur-md">
+<div class="flex items-center gap-4 bg-white/60 border border-outline-variant/30 rounded-full px-6 py-3 focus-within:border-primary transition-colors shadow-inner">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">sentiment_satisfied</button>
+<input class="flex-grow bg-transparent border-none focus:ring-0 text-body-md font-body-md placeholder:text-on-surface-variant/50" placeholder="Nhắn gửi lời tâm tình..." type="text"/>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">attach_file</button>
+<div class="h-6 w-[1px] bg-outline-variant/50"></div>
+<button class="material-symbols-outlined text-primary hover:opacity-80 transition-opacity" style="font-variation-settings: 'FILL' 1;">send</button>
+</div>
+</footer>
+</section>
+<!-- Right Sidebar (Consultation Info) -->
+<aside class="hidden lg:flex flex-col w-[340px] gap-6 overflow-y-auto custom-scrollbar pb-10">
+<!-- Product Card -->
+<div class="bg-surface border border-outline-variant/30 rounded-xl p-6 shadow-sm">
+<h3 class="font-headline-sm text-label-md text-primary mb-4 tracking-widest uppercase border-b border-outline-variant/20 pb-2">Đang Tư Vấn</h3>
+<div class="group overflow-hidden rounded-lg mb-4">
+<img alt="Áo Tràng An Nhiên" class="w-full aspect-square object-cover transition-transform duration-700 group-hover:scale-105" data-alt="A premium high-resolution studio photograph of a traditional Vietnamese meditation robe, known as Ao Trang, in a soft off-white silk and linen blend. The garment is draped elegantly over a wooden stand, set against a warm beige background with soft, cinematic lighting that highlights the delicate texture and weave of the natural fabric. The mood is serene, minimalist, and luxury-oriented, following a Zen aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBj_tG3utAPFPFQN1yVToIm9A2oaYQhiqYzS8Hits69ZieRKe0MOauw41TzisdGANDcr0rZXS1LsETAVj5CO_wEs0c_IE8jwm5Eia7urEcNBWCwATsYc5tC-xWoF_QQ6F5oF2cD-q8ZwQ4Vh3ogL1VyTWi-6ijRcfpLVcDTZSbt6LKZRcIwDyjWpe_t3ogfxsq67OaBXlU8Eqvp846rxLwr56jOEPaKSY9UejEY-ML-vaZoG_ueuCMxR8200Vnd9ZDk0tNXwOAlSQOT"/>
+</div>
+<div class="space-y-1">
+<h4 class="font-headline-sm text-headline-sm text-primary">Áo Tràng An Nhiên</h4>
+<p class="font-body-md text-secondary font-semibold">1.250.000đ</p>
+</div>
+<button class="mt-6 w-full border border-primary text-primary py-3 px-6 rounded-full font-label-md text-label-md hover:bg-primary-container/10 active:scale-[0.98] transition-all duration-300">
+                    XEM CHI TIẾT
+                </button>
+</div>
+<!-- Fabric Care Tips -->
+<div class="bg-secondary-container/30 border border-outline-variant/20 rounded-xl p-6">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">eco</span>
+<h3 class="font-headline-sm text-label-md text-primary tracking-widest uppercase">Chăm Sóc Vải</h3>
+</div>
+<ul class="space-y-4">
+<li class="flex gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">wash</span>
+<span class="text-caption leading-relaxed">Nên giặt tay bằng nước mát với xà phòng trung tính để bảo vệ sợi tơ.</span>
+</li>
+<li class="flex gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">dry_cleaning</span>
+<span class="text-caption leading-relaxed">Tránh phơi trực tiếp dưới ánh nắng gắt; nên để khô tự nhiên trong bóng râm.</span>
+</li>
+<li class="flex gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">iron</span>
+<span class="text-caption leading-relaxed">Là ủi ở nhiệt độ thấp hoặc dùng bàn là hơi nước khi vải còn hơi ẩm.</span>
+</li>
+</ul>
+</div>
+<!-- Customer Note -->
+<div class="bg-surface-container-low p-6 rounded-xl border border-outline-variant/10">
+<p class="text-caption italic text-on-surface-variant/80">"Pháp phục không chỉ là y áo, mà là sự chánh niệm hiển lộ qua từng đường tơ."</p>
+</div>
+</aside>
+</main>
+<!-- Footer Mobile (Suppressed as per rules for task focus, but kept empty for spacing) -->
+<div class="h-6"></div>
+<script>
+        // Simple Interaction for Chat Input
+        const input = document.querySelector('input');
+        const sendBtn = document.querySelector('button[style*="FILL"]');
+        const chatWindow = document.getElementById('chat-messages');
+
+        const appendMessage = (text, isUser = true) => {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = isUser ? "flex items-start gap-3 flex-row-reverse self-end ml-auto max-w-[80%]" : "flex items-start gap-3 max-w-[80%]";
+            
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            msgDiv.innerHTML = isUser ? `
+                <div class="w-8 h-8 rounded-full bg-secondary-container flex-shrink-0 flex items-center justify-center text-secondary mt-1">
+                    <span class="material-symbols-outlined text-[18px]">person</span>
+                </div>
+                <div class="bg-primary/90 text-white p-4 rounded-2xl rounded-tr-none shadow-sm">
+                    <p class="font-body-md">${text}</p>
+                    <span class="text-[10px] opacity-70 mt-1 block text-right">${time}</span>
+                </div>
+            ` : `
+                <div class="w-8 h-8 rounded-full bg-primary-fixed flex-shrink-0 flex items-center justify-center text-primary mt-1">
+                    <span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">spa</span>
+                </div>
+                <div class="glass-bubble bg-surface/60 border border-white/40 p-4 rounded-2xl rounded-tl-none shadow-sm">
+                    <p class="font-body-md text-on-surface">${text}</p>
+                    <span class="text-[10px] text-on-surface-variant mt-1 block">${time}</span>
+                </div>
+            `;
+            
+            chatWindow.appendChild(msgDiv);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        };
+
+        sendBtn.addEventListener('click', () => {
+            if(input.value.trim()) {
+                appendMessage(input.value);
+                const val = input.value;
+                input.value = '';
+                
+                // Show typing indicator
+                const indicator = document.getElementById('typing-indicator');
+                indicator.classList.remove('opacity-0');
+                indicator.parentElement.appendChild(indicator); // Move to bottom
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+
+                setTimeout(() => {
+                    indicator.classList.add('opacity-0');
+                    if(val.toLowerCase().includes('size')) {
+                        appendMessage("Dạ bộ này bên mình có đủ size từ S đến XL ạ. Bạn có thể cho mình xin chiều cao cân nặng để mình tư vấn chính xác nhất không?", false);
+                    } else {
+                        appendMessage("Dạ vâng ạ, bộ này rất phù hợp cho những khóa tu dài ngày vì chất vải cực kỳ thoáng khí.", false);
+                    }
+                }, 1500);
+            }
+        });
+
+        input.addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') sendBtn.click();
+        });
+
+        // Initialize scroll position
+        window.onload = () => {
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        };
+    </script>
+</body></html>

@@ -62,7 +62,7 @@ def require_admin_or_customer_service(current_user: User = Depends(get_current_u
 
 
 def require_shop_staff_or_admin(current_user: User = Depends(get_current_user)) -> User:
-    if current_user.role not in [UserRole.ADMIN, UserRole.STAFF, UserRole.SHOP_STAFF]:
+    if current_user.role not in [UserRole.ADMIN, UserRole.STAFF, UserRole.SHOP_STAFF, UserRole.CUSTOMER_SERVICE]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Không đủ quyền truy cập",

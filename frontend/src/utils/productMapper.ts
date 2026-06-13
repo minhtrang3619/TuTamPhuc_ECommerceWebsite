@@ -5,7 +5,7 @@ export const getImageUrl = (url: string) => {
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:')) {
     return url
   }
-  const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+  const BASE_URL = import.meta.env.VITE_API_URL || ''
   return `${BASE_URL.replace(/\/$/, '')}/${url.replace(/^\//, '')}`
 }
 

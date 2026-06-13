@@ -36,6 +36,7 @@ interface ProductItem {
   category: string
   price: number
   stock: number
+  material: string
   seller: string
   status: string
   image: string
@@ -46,7 +47,7 @@ export default function AdminProducts() {
   const [activeTab, setActiveTab] = useState<'products' | 'categories'>('products')
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('Tất cả bộ sưu tập')
-  const [sellerFilter, setSellerFilter] = useState('Tất cả người bán')
+  const [stockFilter, setStockFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('Mọi trạng thái')
 
   const [products, setProducts] = useState<ProductItem[]>([])
@@ -65,6 +66,7 @@ export default function AdminProducts() {
         category: p.category?.name || 'Chưa phân loại',
         price: p.price,
         stock: p.stock,
+        material: p.short_description || p.tags?.[0] || 'Linen tự nhiên',
         seller: 'Từ Tâm Chính',
         status: p.status === 'active' ? 'Đang bán' : (p.status === 'out_of_stock' ? 'Hết hàng' : 'Bản nháp'),
         image: getImageUrl(p.images?.[0]?.url),
@@ -145,9 +147,20 @@ export default function AdminProducts() {
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.sku.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesCategory = categoryFilter === 'Tất cả bộ sưu tập' || p.category === categoryFilter
-    const matchesSeller = sellerFilter === 'Tất cả người bán' || p.seller === sellerFilter
+    
+    let matchesStock = true
+    const stockNum = typeof p.stock === 'number' ? p.stock : Number(p.stock)
+
+    if (stockFilter === 'out' || stockFilter === 'Hết hàng (0)') {
+      matchesStock = stockNum === 0
+    } else if (stockFilter === 'low' || stockFilter === 'Sắp hết hàng < 10' || stockFilter === 'Sắp hết hàng (< 10)') {
+      matchesStock = !isNaN(stockNum) && stockNum > 0 && stockNum < 10
+    } else if (stockFilter === 'instock' || stockFilter === 'Còn hàng ≥ 10' || stockFilter === 'Còn hàng (≥ 10)') {
+      matchesStock = !isNaN(stockNum) && stockNum >= 10
+    }
+
     const matchesStatus = statusFilter === 'Mọi trạng thái' || p.status === statusFilter
-    return matchesSearch && matchesCategory && matchesSeller && matchesStatus
+    return matchesSearch && matchesCategory && matchesStock && matchesStatus
   })
 
   const totalStock = filteredProducts.reduce((acc, curr) => acc + curr.stock, 0)
@@ -435,6 +448,13 @@ export default function AdminProducts() {
       return
     }
 
+    const trimmedSku = formData.sku.trim();
+    const isDuplicateSku = products.some(p => p.id !== formData.id && p.sku.trim().toLowerCase() === trimmedSku.toLowerCase());
+    if (isDuplicateSku) {
+      alert(`Lỗi: Mã sản phẩm (SKU) "${trimmedSku}" đã tồn tại. Vui lòng nhập mã SKU khác.`);
+      return;
+    }
+
     try {
       setIsSaving(true)
 
@@ -658,10 +678,17 @@ export default function AdminProducts() {
                   <input 
                     value={formData.sku}
                     onChange={(e) => setFormData({...formData, sku: e.target.value})}
-                    className="w-full border-0 border-b border-outline-variant bg-transparent focus:ring-0 focus:border-primary py-2 font-body-md text-sm transition-all" 
+                    className={`w-full border-0 border-b bg-transparent focus:ring-0 py-2 font-body-md text-sm transition-all ${
+                      formData.sku.trim() !== '' && products.some(p => p.id !== formData.id && p.sku.trim().toLowerCase() === formData.sku.trim().toLowerCase())
+                        ? 'border-error focus:border-error text-error' 
+                        : 'border-outline-variant focus:border-primary'
+                    }`} 
                     placeholder="TTP-001" 
                     type="text"
                   />
+                  {formData.sku.trim() !== '' && products.some(p => p.id !== formData.id && p.sku.trim().toLowerCase() === formData.sku.trim().toLowerCase()) && (
+                    <p className="text-xs text-error mt-1">Mã sản phẩm (SKU) này đã tồn tại trong hệ thống.</p>
+                  )}
                 </div>
                 <div>
                   <label className="font-caption text-xs text-outline uppercase tracking-wider block mb-2 font-medium">Danh mục</label>
@@ -925,6 +952,12 @@ export default function AdminProducts() {
                       alert('Vui lòng điền đầy đủ tên, SKU và giá bán.')
                       return
                     }
+                    const trimmedSku = formData.sku.trim();
+                    const isDuplicateSku = products.some(p => p.id !== formData.id && p.sku.trim().toLowerCase() === trimmedSku.toLowerCase());
+                    if (isDuplicateSku) {
+                      alert(`Lỗi: Mã sản phẩm (SKU) "${trimmedSku}" đã tồn tại. Vui lòng nhập mã SKU khác.`);
+                      return;
+                    }
                     setIsSaveConfirmModalOpen(true)
                   }}
                   disabled={isSaving}
@@ -1035,6 +1068,12 @@ export default function AdminProducts() {
                       setIsPreviewOpen(false);
                       if (!formData.name || !formData.sku || formData.price <= 0) {
                         alert('Vui lòng điền đầy đủ tên, SKU và giá bán.');
+                        return;
+                      }
+                      const trimmedSku = formData.sku.trim();
+                      const isDuplicateSku = products.some(p => p.id !== formData.id && p.sku.trim().toLowerCase() === trimmedSku.toLowerCase());
+                      if (isDuplicateSku) {
+                        alert(`Lỗi: Mã sản phẩm (SKU) "${trimmedSku}" đã tồn tại. Vui lòng nhập mã SKU khác.`);
                         return;
                       }
                       setIsSaveConfirmModalOpen(true);
@@ -1327,16 +1366,16 @@ export default function AdminProducts() {
         </div>
 
         <div className="bg-surface-container-low p-4 rounded-lg flex flex-col gap-2">
-          <label className="text-[10px] uppercase tracking-tighter text-on-surface-variant opacity-60">Lọc theo người bán</label>
+          <label className="text-[10px] uppercase tracking-tighter text-on-surface-variant opacity-60">Lọc theo tồn kho</label>
           <select 
-            value={sellerFilter}
-            onChange={(e) => setSellerFilter(e.target.value)}
+            value={stockFilter}
+            onChange={(e) => setStockFilter(e.target.value)}
             className="bg-transparent border-none p-0 focus:ring-0 text-sm font-medium text-primary cursor-pointer w-full"
           >
-            <option>Tất cả người bán</option>
-            <option>Từ Tâm Chính</option>
-            <option>Hiệp hội Lụa Hà Nội</option>
-            <option>Nghệ nhân vải đay</option>
+            <option value="all">Tất cả mức tồn kho</option>
+            <option value="out">Hết hàng (0)</option>
+            <option value="low">Sắp hết hàng &lt; 10</option>
+            <option value="instock">Còn hàng &ge; 10</option>
           </select>
         </div>
 
@@ -1373,7 +1412,7 @@ export default function AdminProducts() {
                 <th className="px-6 py-4 font-label-md text-on-surface-variant opacity-80 uppercase tracking-widest text-[11px] border-b border-outline-variant/30">Danh mục</th>
                 <th className="px-6 py-4 font-label-md text-on-surface-variant opacity-80 uppercase tracking-widest text-[11px] border-b border-outline-variant/30">Giá</th>
                 <th className="px-6 py-4 font-label-md text-on-surface-variant opacity-80 uppercase tracking-widest text-[11px] border-b border-outline-variant/30">Kho</th>
-                <th className="px-6 py-4 font-label-md text-on-surface-variant opacity-80 uppercase tracking-widest text-[11px] border-b border-outline-variant/30">Người bán</th>
+                <th className="px-6 py-4 font-label-md text-on-surface-variant opacity-80 uppercase tracking-widest text-[11px] border-b border-outline-variant/30">Chất liệu</th>
                 <th className="px-6 py-4 font-label-md text-on-surface-variant opacity-80 uppercase tracking-widest text-[11px] border-b border-outline-variant/30">Trạng thái</th>
                 <th className="px-6 py-4 font-label-md text-on-surface-variant opacity-80 uppercase tracking-widest text-[11px] border-b border-outline-variant/30 text-right">Thao tác</th>
               </tr>
@@ -1413,7 +1452,7 @@ export default function AdminProducts() {
                       <span className={`text-primary ${product.stock === 0 ? 'text-red-500 font-bold' : ''}`}>{product.stock}</span>
                       <p className={`text-[10px] uppercase ${stockColor}`}>{stockStatus}</p>
                     </td>
-                    <td className="px-6 py-6 font-body-md text-on-surface-variant text-sm">{product.seller}</td>
+                    <td className="px-6 py-6 font-body-md text-on-surface-variant text-sm">{product.material}</td>
                     <td className="px-6 py-6">
                       <span className={`px-3 py-1 text-[11px] rounded-full font-label-md ${
                         product.status === 'Đang bán' 

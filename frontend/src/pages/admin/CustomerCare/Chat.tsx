@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   Search, 
   Send, 
@@ -12,12 +12,15 @@ import {
   Award,
   Plus
 } from 'lucide-react'
+import apiClient from '@/services/apiClient'
+import { getImageUrl } from '@/utils/productMapper'
 
 interface Message {
   id: number
   sender: 'customer' | 'agent'
   text: string
   time: string
+  imageUrl?: string
 }
 
 interface Conversation {
@@ -45,94 +48,82 @@ interface Conversation {
 
 export default function AdminCustomerChat() {
   const [searchTerm, setSearchTerm] = useState('')
-  const [conversations, setConversations] = useState<Conversation[]>([
-    {
-      id: 1,
-      name: 'Lê Hoài Nam',
-      initials: 'L',
-      lastMessage: 'Cảm ơn shop, chất liệu linen rất thoáng...',
-      time: '14:20',
-      statusText: 'Đang xem sản phẩm...',
-      tier: 'Hạng Thượng Hải',
-      email: 'nam.lh@email.com',
-      phone: '090 ••• ••88',
-      address: 'Quận 2, TP. Hồ Chí Minh',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC9SmNu0ic8AxjtdwDV1EEOObvJfF2w7yaneFIXAmaBI2MsJW7SR0492N0We_ehoIjNJ_dyPsaQD-CholDFELo-yASo5coAn-DAPGMWkgOVbOQXBfwVy5lwn2rtftsuGwCzh4asMLh-6avftUUuFfbm_bbZTtiyALgLuL_dPhYDKQxh05DzqezL9ep7ce9Tl9tz7GtN_p2Okyuc_tdYGfkm6I0kQNeN7iV3Fla7tIJsT6gxMz0cVz04K_baalF7gOqWRLFhOZIc4gSm',
-      recentOrders: [
-        { id: '#TTP-8921', status: 'Hoàn thành', item: 'Áo Lụa Tự Nhiên - M', price: '1.250.000đ' },
-        { id: '#TTP-8402', date: '12/09/2023', status: 'Đã hoàn thành', item: 'Bộ Trà Đạo Gốm Thủ Công', price: '2.800.000đ' }
-      ],
-      messages: [
-        { id: 1, sender: 'customer', text: 'Chào shop, mình nhận được áo hôm qua rồi. Chất vải lụa tơ tằm thật sự tuyệt vời, cảm giác nhẹ nhàng như mây lướt trên da.', time: '14:18' },
-        { id: 2, sender: 'agent', text: 'Từ Tâm Phục rất vui khi nghe bạn hài lòng. Chất liệu này được dệt thủ công để giữ trọn vẹn sự thông thoáng cho những buổi thiền trà. Bạn có cần hỗ trợ gì thêm về cách bảo quản không ạ?', time: '14:20' },
-        { id: 3, sender: 'customer', text: 'Cảm ơn shop, chất liệu linen rất thoáng, mình muốn hỏi thêm về mẫu quần ống rộng phối cùng.', time: '14:22' }
-      ]
-    },
-    {
-      id: 2,
-      name: 'Nguyễn An Nhiên',
-      initials: 'N',
-      lastMessage: 'Tôi muốn đổi kích cỡ áo Pháp phục...',
-      time: '13:45',
-      unread: true,
-      statusText: 'Đang chờ phản hồi',
-      tier: 'Thành viên mới',
-      email: 'nhien.na@email.com',
-      phone: '093 ••• ••11',
-      address: 'Hoàn Kiếm, Hà Nội',
-      recentOrders: [
-        { id: '#TTP-8109', status: 'Đang xử lý', item: 'Áo Tràng Đay Thiền - S', price: '2.450.000đ' }
-      ],
-      messages: [
-        { id: 1, sender: 'customer', text: 'Tôi muốn đổi kích cỡ áo Pháp phục vừa nhận hôm qua từ size M sang size S.', time: '13:45' }
-      ]
-    },
-    {
-      id: 3,
-      name: 'Trần Thanh Vân',
-      initials: 'T',
-      lastMessage: 'Sản phẩm tuyệt vời, mình sẽ ủng hộ tiếp.',
-      time: 'Hôm qua',
-      statusText: 'Đã hoàn thành tư vấn',
-      tier: 'Hạng Bạch Kim',
-      email: 'van.tt@email.com',
-      phone: '097 ••• ••33',
-      address: 'Hải Châu, Đà Nẵng',
-      recentOrders: [
-        { id: '#TTP-7911', status: 'Hoàn thành', item: 'Khăn Choàng Lụa Họa Sen', price: '1.890.000đ' }
-      ],
-      messages: [
-        { id: 1, sender: 'customer', text: 'Sản phẩm tuyệt vời, mình sẽ ủng hộ tiếp.', time: 'Hôm qua' }
-      ]
-    }
-  ])
-
-  const [activeId, setActiveId] = useState(1)
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [activeId, setActiveId] = useState<number | null>(null)
   const [inputText, setInputText] = useState('')
+
+  const fetchConversations = async () => {
+    try {
+      const res = await apiClient.get('/chat/conversations')
+      const data = res.data || []
+      
+      const mapped: Conversation[] = data.map((c: any) => ({
+        ...c,
+        messages: (c.messages || []).map((m: any) => ({
+          id: m.id,
+          sender: m.sender_id === c.id ? 'customer' : 'agent',
+          text: m.text,
+          time: new Date(m.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+          imageUrl: m.image_url
+        }))
+      }))
+
+      setConversations(mapped)
+
+      if (mapped.length > 0 && activeId === null) {
+        setActiveId(mapped[0].id)
+      }
+    } catch (err) {
+      console.error("Lỗi khi tải danh sách hội thoại:", err)
+    }
+  }
+
+  // Poll for conversation list and messages
+  useEffect(() => {
+    fetchConversations()
+    const interval = setInterval(fetchConversations, 4000)
+    return () => clearInterval(interval)
+  }, [activeId])
+
+  // Mark messages as read when activeId changes
+  useEffect(() => {
+    if (activeId !== null) {
+      apiClient.get(`/chat/conversations/${activeId}/messages`)
+        .then(() => {
+          fetchConversations()
+        })
+        .catch(err => console.error("Lỗi khi đánh dấu đã đọc:", err))
+    }
+  }, [activeId])
 
   const activeChat = conversations.find(c => c.id === activeId) || conversations[0]
 
-  const handleSendMessage = () => {
-    if (!inputText.trim()) return
-    const newMessage: Message = {
-      id: activeChat.messages.length + 1,
-      sender: 'agent',
-      text: inputText,
-      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
-    }
+  if (!activeChat) {
+    return (
+      <div className="flex h-[calc(100vh-12rem)] border border-outline-variant/20 rounded-xl overflow-hidden bg-white shadow-sm items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 bg-primary/5 rounded-full flex items-center justify-center mx-auto text-primary opacity-60">
+            <Leaf size={24} />
+          </div>
+          <p className="text-on-surface-variant text-sm font-serif italic">Hộp thư trống. Hiện chưa có cuộc trò chuyện nào từ khách hàng.</p>
+        </div>
+      </div>
+    )
+  }
 
-    setConversations(prev => prev.map(c => {
-      if (c.id === activeChat.id) {
-        return {
-          ...c,
-          lastMessage: inputText,
-          time: newMessage.time,
-          messages: [...c.messages, newMessage]
-        }
+  const handleSendMessage = async () => {
+    if (!inputText.trim()) return
+    try {
+      const payload = {
+        text: inputText,
+        customer_id: activeChat.id
       }
-      return c
-    }))
-    setInputText('')
+      await apiClient.post('/chat/messages', payload)
+      setInputText('')
+      fetchConversations()
+    } catch (err) {
+      console.error("Lỗi khi gửi tin nhắn:", err)
+    }
   }
 
   const filteredConversations = conversations.filter(c => 
@@ -235,6 +226,16 @@ export default function AdminCustomerChat() {
                   </div>
                 )}
                 <div className={`space-y-1 ${isAgent ? 'text-right' : ''}`}>
+                  {m.imageUrl && (
+                    <div className={`mb-2 max-w-xs rounded-lg overflow-hidden border border-outline-variant/10 shadow-sm bg-white ${isAgent ? 'ml-auto' : ''}`}>
+                      <img 
+                        src={getImageUrl(m.imageUrl)} 
+                        alt="Đính kèm" 
+                        className="w-full h-auto object-contain max-h-60"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                  )}
                   <div className={`p-4 rounded-xl text-sm leading-relaxed shadow-sm ${
                     isAgent 
                       ? 'bg-primary-container text-white rounded-tr-none' 

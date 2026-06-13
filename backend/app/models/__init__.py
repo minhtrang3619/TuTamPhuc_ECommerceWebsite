@@ -11,6 +11,7 @@ from app.models.review import Review
 from app.models.blog import BlogPost, BlogStatus
 from app.models.customer import Customer
 from app.models.address import Address
+from app.models.chat_message import ChatMessage
 
 __all__ = [
     "BaseModel",
@@ -25,4 +26,5 @@ __all__ = [
     "Customer",
     "Address",
     "ReturnRequest", "ReturnRequestStatus",
+    "ChatMessage",
 ]
