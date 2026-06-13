@@ -27,19 +27,23 @@ export function Navbar() {
   }, [isAuthenticated, fetchWishlist])
 
   const navLinks = useMemo(() => {
-    const categoryOrder = ['đồ lam nam', 'đồ lam nữ', 'pháp phục', 'áo tràng'];
-    const sortedCategories = [...categories].sort((a, b) => {
-      const indexA = categoryOrder.indexOf(a.name.toLowerCase());
-      const indexB = categoryOrder.indexOf(b.name.toLowerCase());
-      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-      if (indexA !== -1) return -1;
-      if (indexB !== -1) return 1;
-      return a.name.localeCompare(b.name);
-    });
+    // Chỉ hiển thị đúng 3 danh mục, label viết hoa chuẩn
+    const allowedNav = [
+      { slug: 'do-lam', label: 'Đồ Lam' },
+      { slug: 'phap-phuc', label: 'Pháp Phục' },
+      { slug: 'ao-trang', label: 'Áo Tràng' },
+    ];
+
+    const filtered = allowedNav
+      .map(nav => {
+        const cat = categories.find(c => c.slug === nav.slug);
+        return cat ? { label: nav.label, href: `/san-pham?category=${cat.slug}` } : null;
+      })
+      .filter(Boolean) as { label: string; href: string }[];
 
     return [
       { label: 'Trang Chủ', href: '/' },
-      ...sortedCategories.map(c => ({ label: c.name, href: `/san-pham?category=${c.slug}` })),
+      ...filtered,
       { label: 'Blog', href: '/blog' },
     ];
   }, [categories])

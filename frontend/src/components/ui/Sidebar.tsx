@@ -1,5 +1,5 @@
 import { Sparkles, Trash2 } from 'lucide-react';
-import { COLORS } from '../../data';
+import { COLOR_FAMILIES } from '@/utils/colorUtils';
 
 interface SidebarProps {
   selectedCategories: string[];
@@ -8,7 +8,6 @@ interface SidebarProps {
   setSelectedColors: (colors: string[]) => void;
   selectedSizes: string[];
   setSelectedSizes: (sizes: string[]) => void;
-  colors?: { name: string; hex: string }[];
   categories?: { name: string; slug: string }[];
   onClearAll: () => void;
 }
@@ -20,11 +19,10 @@ export default function Sidebar({
   setSelectedColors,
   selectedSizes,
   setSelectedSizes,
-  colors = COLORS,
   categories = [],
   onClearAll,
 }: SidebarProps) {
-  
+
   const handleCategoryChange = (category: string) => {
     if (selectedCategories.includes(category)) {
       setSelectedCategories(selectedCategories.filter((c) => c !== category));
@@ -33,13 +31,11 @@ export default function Sidebar({
     }
   };
 
-  const handleColorToggle = (colorHex: string) => {
-    const hexLower = colorHex.toLowerCase();
-    const isSelected = selectedColors.map(c => c.toLowerCase()).includes(hexLower);
-    if (isSelected) {
-      setSelectedColors(selectedColors.filter((c) => c.toLowerCase() !== hexLower));
+  const handleColorToggle = (familyId: string) => {
+    if (selectedColors.includes(familyId)) {
+      setSelectedColors(selectedColors.filter((c) => c !== familyId));
     } else {
-      setSelectedColors([...selectedColors, colorHex]);
+      setSelectedColors([...selectedColors, familyId]);
     }
   };
 
@@ -58,7 +54,7 @@ export default function Sidebar({
 
   return (
     <aside className="w-full md:w-64 shrink-0 flex flex-col gap-6 font-sans">
-      
+
       {/* Title with Clear Badge */}
       <div className="flex justify-between items-center">
         <h3 className="text-xs uppercase tracking-widest font-bold text-primary flex items-center gap-1.5">
@@ -101,34 +97,38 @@ export default function Sidebar({
 
       <div className="w-full h-px bg-[#eeeeee] my-2" />
 
-      {/* Color Swatch Filter */}
+      {/* Color Family Filter */}
       <div>
         <h4 className="text-[11px] uppercase tracking-widest font-semibold text-primary mb-3">Màu sắc</h4>
         <div className="flex flex-wrap gap-3">
-          {colors.map((color) => {
-            const isSelected = selectedColors.map(c => c.toLowerCase()).includes(color.hex.toLowerCase());
+          {COLOR_FAMILIES.map((family) => {
+            const isSelected = selectedColors.includes(family.id);
             return (
               <button
-                key={color.hex}
-                onClick={() => handleColorToggle(color.hex)}
+                key={family.id}
+                onClick={() => handleColorToggle(family.id)}
                 className={`group relative w-7 h-7 rounded-full border flex items-center justify-center transition-all ${
-                  isSelected ? 'border-primary ring-2 ring-primary/20 scale-105' : 'border-[#d4c3be]'
+                  isSelected ? 'border-primary ring-2 ring-primary/20 scale-110' : 'border-[#d4c3be]'
                 } hover:border-primary cursor-pointer`}
-                title={color.name}
+                title={family.name}
               >
                 <span
-                  className="w-5 h-5 rounded-full block border border-[rgba(0,0,0,0.03)]"
-                  style={{ backgroundColor: color.hex }}
+                  className="w-5 h-5 rounded-full block border border-[rgba(0,0,0,0.08)]"
+                  style={{ backgroundColor: family.hex }}
                 />
-                
-                {/* Popover on hover */}
-                <span className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-primary text-white text-[9px] py-0.5 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-sm font-semibold">
-                  {color.name}
+                {/* Tooltip */}
+                <span className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-primary text-white text-[9px] py-0.5 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-sm font-semibold z-10">
+                  {family.name}
                 </span>
               </button>
             );
           })}
         </div>
+        {selectedColors.length > 0 && (
+          <p className="mt-2 text-[10px] text-on-surface-variant/60 font-medium">
+            Đang lọc: {selectedColors.map(id => COLOR_FAMILIES.find(f => f.id === id)?.name).filter(Boolean).join(', ')}
+          </p>
+        )}
       </div>
 
       <div className="w-full h-px bg-[#eeeeee] my-2" />

@@ -13,6 +13,7 @@ import { useMockCartStore } from '@/store/mockCartStore';
 import apiClient from '@/services/apiClient';
 import { mapApiProductToMockProduct } from '@/utils/productMapper';
 import { categoryService } from '@/services/categoryService';
+import { productMatchesColorFamilies } from '@/utils/colorUtils';
 
 export default function ProductListPage() {
   const navigate = useNavigate();
@@ -55,19 +56,33 @@ export default function ProductListPage() {
   const categoryParam = searchParams.get('category');
   const activeCategorySlug = slug || categoryParam;
 
+  // Map parent slug → danh sách tên con (hiển thị cả nam lẫn nữ)
+  const parentCategoryMap: Record<string, string[]> = {
+    'do-lam':   ['Đồ Lam Nam', 'Đồ Lam Nữ'],
+    'phap-phuc': ['Pháp Phục Nam', 'Pháp Phục Nữ'],
+    'ao-trang': ['Áo Tràng', 'Áo Tràng Nam', 'Áo Tràng Nữ'],
+  };
+
+
   useEffect(() => {
     if (activeCategorySlug && categories.length > 0) {
-      const match = categories.find(c => c.slug === activeCategorySlug);
-      if (match) {
-        setSelectedCategories([match.name]);
+      // Nếu là parent slug → mở rộng ra các danh mục con
+      if (parentCategoryMap[activeCategorySlug]) {
+        setSelectedCategories(parentCategoryMap[activeCategorySlug]);
       } else {
-        setSelectedCategories([]);
+        const match = categories.find(c => c.slug === activeCategorySlug);
+        if (match) {
+          setSelectedCategories([match.name]);
+        } else {
+          setSelectedCategories([]);
+        }
       }
       setCurrentPage(1);
     } else if (!activeCategorySlug) {
       setSelectedCategories([]);
     }
   }, [activeCategorySlug, categories]);
+
 
   // Toast alert state
   const [toast, setToast] = useState<{ message: string; isVisible: boolean; type?: 'success' | 'info' }>({
@@ -80,18 +95,21 @@ export default function ProductListPage() {
     setToast({ message, isVisible: true, type });
   };
 
-  // Extract unique colors present in all loaded products
-  const availableColors = useMemo(() => {
-    const colorMap = new Map();
-    dbProducts.forEach((product) => {
-      (product.colors || []).forEach((c) => {
-        if (c && c.hex) {
-          colorMap.set(c.hex.toLowerCase(), c);
-        }
-      });
-    });
-    return Array.from(colorMap.values());
-  }, [dbProducts]);
+
+  // Chỉ hiển thị đúng 7 danh mục trong Sidebar theo thứ tự yêu cầu
+  const sidebarCategories = useMemo(() => {
+    const sidebarOrder = [
+      'do-lam-nam',
+      'do-lam-nu',
+      'phap-phuc-nam',
+      'phap-phuc-nu',
+      'ao-trang-nam',
+      'ao-trang-nu',
+    ];
+    return sidebarOrder
+      .map(slug => categories.find(c => c.slug === slug))
+      .filter(Boolean) as typeof categories;
+  }, [categories]);
 
   // Filter and sort products list
   const filteredProducts = useMemo(() => {
@@ -109,11 +127,9 @@ export default function ProductListPage() {
         if (!selectedCategories.includes(product.category)) return false;
       }
 
-      // 3. Colors filter
+      // 3. Colors filter — theo nhóm màu (color family)
       if (selectedColors.length > 0) {
-        const productColorsHex = product.colors.map(col => col.hex.toLowerCase());
-        const hasOverlayColor = productColorsHex.some(hex => selectedColors.map(c => c.toLowerCase()).includes(hex));
-        if (!hasOverlayColor) return false;
+        if (!productMatchesColorFamilies(product.colors, selectedColors)) return false;
       }
 
       // 4. Sizes filter
@@ -184,7 +200,7 @@ export default function ProductListPage() {
         <div className="flex flex-col md:flex-row gap-10 items-start">
           {/* Sidebar filter component column */}
           <Sidebar
-            categories={categories}
+            categories={sidebarCategories}
             selectedCategories={selectedCategories}
             setSelectedCategories={(c) => {
               setSelectedCategories(c);
@@ -200,7 +216,6 @@ export default function ProductListPage() {
               setSelectedSizes(sizes);
               setCurrentPage(1);
             }}
-            colors={availableColors}
             onClearAll={handleClearAllFilters}
           />
 
