@@ -12,6 +12,7 @@ from app.models.blog import BlogPost, BlogStatus
 from app.models.customer import Customer
 from app.models.address import Address
 from app.models.chat_message import ChatMessage
+from app.models.support_ticket import SupportTicket
 
 __all__ = [
     "BaseModel",
@@ -27,4 +28,6 @@ __all__ = [
     "Address",
     "ReturnRequest", "ReturnRequestStatus",
     "ChatMessage",
+    "SupportTicket",
 ]
+

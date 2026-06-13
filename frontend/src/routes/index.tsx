@@ -39,7 +39,6 @@ const AdminPromotions = lazy(() => import('@/pages/admin/Promotions'));
 const AdminCustomerStats = lazy(() => import('@/pages/admin/CustomerCare/Stats'))
 const AdminCustomerChat = lazy(() => import('@/pages/admin/CustomerCare/Chat'))
 const AdminCustomerReviews = lazy(() => import('@/pages/admin/CustomerCare/Reviews'))
-const AdminCustomerSupport = lazy(() => import('@/pages/admin/CustomerCare/Support'))
 
 
 export function AppRoutes() {
@@ -89,7 +88,6 @@ export function AppRoutes() {
             <Route path="/admin/cskh-thong-ke" element={<AdminCustomerStats />} />
             <Route path="/admin/cskh-tin-nhan" element={<AdminCustomerChat />} />
             <Route path="/admin/cskh-danh-gia" element={<AdminCustomerReviews />} />
-            <Route path="/admin/cskh-ho-tro" element={<AdminCustomerSupport />} />
           </Route>
         </Route>
 

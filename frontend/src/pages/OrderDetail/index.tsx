@@ -17,9 +17,10 @@ import {
   Landmark,
   Truck,
   Store,
-  ChevronDown
+  ChevronDown,
+  Star
 } from 'lucide-react';
-import { orderService } from '@/services';
+import { orderService, apiClient } from '@/services';
 import { formatPrice } from '@/components/ui/ProductCard';
 import { getImageUrl } from '@/utils/productMapper';
 import type { Order } from '@/types';
@@ -83,6 +84,64 @@ export default function OrderDetailPage() {
     message: '',
     type: 'success' as 'success' | 'info'
   });
+
+  // Product Review states
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewProductId, setReviewProductId] = useState<number | null>(null);
+  const [reviewProductName, setReviewProductName] = useState('');
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewTitle, setReviewTitle] = useState('');
+  const [reviewContent, setReviewContent] = useState('');
+  const [reviewIsAnonymous, setReviewIsAnonymous] = useState(false);
+  const [reviewOrderItemId, setReviewOrderItemId] = useState<number | null>(null);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewHoverRating, setReviewHoverRating] = useState<number | null>(null);
+
+  const handleOpenReviewModal = (productId: number, productName: string, orderItemId: number) => {
+    setReviewProductId(productId);
+    setReviewProductName(productName);
+    setReviewRating(5);
+    setReviewTitle('');
+    setReviewContent('');
+    setReviewIsAnonymous(false);
+    setReviewOrderItemId(orderItemId);
+    setShowReviewModal(true);
+  };
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reviewProductId) return;
+
+    setIsSubmittingReview(true);
+    try {
+      await apiClient.post(`/products/${reviewProductId}/reviews`, {
+        rating: reviewRating,
+        title: reviewTitle.trim() || undefined,
+        content: reviewContent.trim() || undefined,
+        is_anonymous: reviewIsAnonymous,
+        order_item_id: reviewOrderItemId || undefined,
+      });
+      showToast('Đã gửi đánh giá sản phẩm thành công!');
+      setShowReviewModal(false);
+      if (order && reviewOrderItemId) {
+        setOrder({
+          ...order,
+          items: order.items.map((item: any) => {
+            if (item.id === reviewOrderItemId) {
+              return { ...item, is_reviewed: true };
+            }
+            return item;
+          })
+        });
+      }
+    } catch (err: any) {
+      console.error("Lỗi khi gửi đánh giá:", err);
+      const errMsg = err.response?.data?.detail || 'Không thể gửi đánh giá. Vui lòng thử lại sau.';
+      showToast(errMsg, 'info');
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
 
   const showToast = (message: string, type: 'success' | 'info' = 'success') => {
@@ -389,6 +448,27 @@ export default function OrderDetailPage() {
                         <span>Phân loại: <span className="font-bold text-on-surface">{pColor}, {pSize}</span></span>
                         <span className="inline-block mt-1 sm:mt-0">Số lượng: <span className="font-bold text-on-surface">{item.quantity}</span></span>
                       </div>
+                      {order.status === 'delivered' && (item.product?.id || item.product_id) && (
+                        item.is_reviewed ? (
+                          <button
+                            type="button"
+                            disabled
+                            className="mt-2 px-3 py-1 border border-[#d4c3be] text-on-surface-variant/40 font-semibold text-[10px] uppercase tracking-wider bg-transparent rounded-xs flex items-center gap-1 w-fit cursor-not-allowed opacity-60"
+                          >
+                            <CheckCircle size={11} className="text-emerald-600/60" />
+                            Đã đánh giá
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenReviewModal(item.product?.id || item.product_id, pName, item.id)}
+                            className="mt-2 px-3 py-1 border border-primary text-primary hover:bg-[#ece0dc]/30 font-semibold text-[10px] uppercase tracking-wider transition-colors cursor-pointer bg-transparent rounded-xs flex items-center gap-1 w-fit"
+                          >
+                            <Star size={11} fill="currentColor" />
+                            Đánh giá sản phẩm
+                          </button>
+                        )
+                      )}
                     </div>
                     <div className="text-right">
                       <div className="font-bold text-primary">{formatPrice(item.price)}</div>
@@ -506,6 +586,135 @@ export default function OrderDetailPage() {
             onSuccess={(updatedOrder) => setOrder(updatedOrder)}
             showToast={showToast}
           />
+        )}
+      </AnimatePresence>
+      
+      {/* Review Modal */}
+      <AnimatePresence>
+        {showReviewModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/55 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.3 }}
+              className="bg-[#fcfaf7] border border-[#d4c3be]/40 rounded-sm shadow-xl max-w-lg w-full p-6 md:p-8 relative max-h-[90vh] overflow-y-auto font-sans"
+            >
+              <button
+                onClick={() => setShowReviewModal(false)}
+                className="absolute top-4 right-4 text-on-surface-variant hover:text-primary transition-colors bg-transparent border-none cursor-pointer"
+              >
+                <span className="text-xl font-bold">&times;</span>
+              </button>
+
+              <h2 className="font-serif text-xl md:text-2xl font-bold text-primary mb-2">
+                Đánh Giá Sản Phẩm
+              </h2>
+              <p className="text-xs md:text-sm text-on-surface-variant mb-6 pb-4 border-b border-[#eeeeee]">
+                Đánh giá cho sản phẩm: <span className="font-bold text-[#442a22]">{reviewProductName}</span>
+              </p>
+
+              <form onSubmit={handleSubmitReview} className="space-y-6 text-xs md:text-sm">
+                {/* Rating selection (Stars) */}
+                <div>
+                  <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2 block">
+                    Đánh giá của bạn <span className="text-error">*</span>
+                  </label>
+                  <div className="flex items-center gap-1.5 py-1">
+                    {[1, 2, 3, 4, 5].map((star) => {
+                      const isFilled = reviewHoverRating !== null ? star <= reviewHoverRating : star <= reviewRating;
+                      return (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setReviewRating(star)}
+                          onMouseEnter={() => setReviewHoverRating(star)}
+                          onMouseLeave={() => setReviewHoverRating(null)}
+                          className="text-amber-400 hover:scale-110 transition-transform bg-transparent border-none cursor-pointer p-1"
+                        >
+                          <Star
+                            size={28}
+                            fill={isFilled ? "currentColor" : "none"}
+                            className="stroke-amber-400"
+                          />
+                        </button>
+                      );
+                    })}
+                    <span className="ml-3 font-serif font-bold text-[#5d4037] text-sm">
+                      {reviewRating} / 5
+                    </span>
+                  </div>
+                </div>
+
+                {/* Review Title */}
+                <div>
+                  <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2 block">
+                    Tiêu đề đánh giá
+                  </label>
+                  <input
+                    type="text"
+                    value={reviewTitle}
+                    onChange={(e) => setReviewTitle(e.target.value)}
+                    placeholder="Ví dụ: Rất hài lòng, Chất lượng tốt..."
+                    className="w-full bg-[#f3f3f3]/60 border-0 border-b border-[#d4c3be] py-2 px-3 focus:bg-white focus:border-primary focus:ring-0 outline-none transition-all duration-300 rounded-xs font-medium"
+                  />
+                </div>
+
+                {/* Review Content */}
+                <div>
+                  <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2 block">
+                    Nội dung đánh giá
+                  </label>
+                  <textarea
+                    value={reviewContent}
+                    onChange={(e) => setReviewContent(e.target.value)}
+                    placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm này (vải, form dáng, đường may...)"
+                    className="w-full bg-[#f3f3f3]/60 border-0 border-b border-[#d4c3be] p-3 focus:bg-white focus:border-primary focus:ring-0 outline-none transition-all duration-300 rounded-xs"
+                    rows={4}
+                  />
+                </div>
+
+                {/* Anonymous Review Checkbox */}
+                <div className="flex items-center gap-2 py-1 font-sans">
+                  <input
+                    type="checkbox"
+                    id="is-anonymous"
+                    checked={reviewIsAnonymous}
+                    onChange={(e) => setReviewIsAnonymous(e.target.checked)}
+                    className="w-4 h-4 text-primary border-[#d4c3be] rounded-xs focus:ring-primary cursor-pointer accent-primary"
+                  />
+                  <label htmlFor="is-anonymous" className="text-xs text-on-surface-variant font-semibold select-none cursor-pointer">
+                    Đánh giá ẩn danh (không hiển thị tên của bạn trên trang chi tiết sản phẩm)
+                  </label>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex gap-4 justify-end pt-4 border-t border-[#eeeeee]">
+                  <button
+                    type="button"
+                    onClick={() => setShowReviewModal(false)}
+                    className="px-6 py-2.5 border border-outline-variant hover:bg-[#ece0dc]/20 text-on-secondary-fixed-variant font-semibold text-xs tracking-wider uppercase transition-colors cursor-pointer bg-transparent rounded-xs"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingReview}
+                    className="px-6 py-2.5 bg-primary text-white font-semibold text-xs tracking-wider uppercase hover:bg-[#2c160e] transition-colors cursor-pointer border-none rounded-xs disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    {isSubmittingReview ? (
+                      <>
+                        <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                        Đang gửi...
+                      </>
+                    ) : (
+                      'Gửi đánh giá'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
       

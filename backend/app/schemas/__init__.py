@@ -16,6 +16,7 @@ from app.schemas.cart import CartResponse, CartItemResponse, AddToCartRequest, U
 from app.schemas.review import ReviewCreate, ReviewResponse, PaginatedReviews
 from app.schemas.blog import BlogPostCreate, BlogPostUpdate, BlogPostResponse, PaginatedBlogPosts
 from app.schemas.address import AddressCreate, AddressUpdate, AddressResponse
+from app.schemas.support import SupportTicketCreate, SupportTicketUpdate, SupportTicketResponse
 
 __all__ = [
     "UserRegister", "UserLogin", "UserUpdate", "ChangePassword",
@@ -29,4 +30,6 @@ __all__ = [
     "ReviewCreate", "ReviewResponse", "PaginatedReviews",
     "BlogPostCreate", "BlogPostUpdate", "BlogPostResponse", "PaginatedBlogPosts",
     "AddressCreate", "AddressUpdate", "AddressResponse",
+    "SupportTicketCreate", "SupportTicketUpdate", "SupportTicketResponse",
 ]
+

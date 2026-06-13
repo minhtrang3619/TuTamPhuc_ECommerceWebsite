@@ -97,7 +97,7 @@ def send_message(
                 "- Đổi size hoặc đổi mẫu khác bằng hoặc cao giá hơn.\n"
                 "Nếu có bất kỳ vấn đề gì về sản phẩm, bạn cứ gửi tin nhắn cho mình nhé!"
             )
-        elif "nhân viên hỗ trợ" in text_clean or "gặp nhân viên" in text_clean:
+        elif "nhân viên hỗ trợ" in text_clean or "gặp nhân viên" in text_clean or "tư vấn" in text_clean or data.product_info is not None:
             auto_reply = (
                 "Dạ, yêu cầu của bạn đã được chuyển tới nhân viên chăm sóc khách hàng. "
                 "Bạn vui lòng đợi trong giây lát, nhân viên sẽ phản hồi bạn ngay lập tức ạ!"

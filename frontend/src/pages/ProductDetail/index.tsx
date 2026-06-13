@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
-import { ChevronRight, Leaf, Sparkles, Heart, MessageSquare } from 'lucide-react';
+import { ChevronRight, Leaf, Sparkles, Heart, MessageSquare, Star, CheckCircle, CornerDownRight } from 'lucide-react';
 
 import { PRODUCTS } from '../../data';
 import { useMockCartStore } from '@/store/mockCartStore';
@@ -41,6 +41,10 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<any>(fallbackProduct);
   const [loading, setLoading] = useState(true);
   const [rawProduct, setRawProduct] = useState<any>(null);
+  
+  // Reviews states
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -60,6 +64,21 @@ export default function ProductDetailPage() {
         setLoading(false);
       });
   }, [slug]);
+
+  useEffect(() => {
+    if (!product?.dbId) return;
+    setReviewsLoading(true);
+    apiClient.get(`/products/${product.dbId}/reviews?page=1&page_size=50`)
+      .then(res => {
+        setReviews(res.data?.items || []);
+      })
+      .catch(err => {
+        console.error("Lỗi khi tải đánh giá sản phẩm:", err);
+      })
+      .finally(() => {
+        setReviewsLoading(false);
+      });
+  }, [product?.dbId]);
 
   const [activeDetailColor, setActiveDetailColor] = useState<{ name: string; hex: string } | null>(null);
   const [activeDetailSize, setActiveDetailSize] = useState<string>('M');
@@ -123,6 +142,30 @@ export default function ProductDetailPage() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [product]);
+
+  // Reviews calculations
+  const totalReviews = reviews.length;
+  const averageRating = totalReviews > 0 
+    ? (reviews.reduce((acc, r) => acc + r.rating, 0) / totalReviews).toFixed(1) 
+    : '0.0';
+
+  const distribution = [0, 0, 0, 0, 0]; // 5, 4, 3, 2, 1 stars
+  reviews.forEach(r => {
+    const starVal = Math.round(r.rating);
+    if (starVal >= 1 && starVal <= 5) {
+      distribution[5 - starVal] += 1;
+    }
+  });
+
+  // Mask user name helper: Nguyen Van A -> Nguyen A.
+  const maskName = (fullName: string) => {
+    if (!fullName) return 'Khách hàng';
+    const parts = fullName.trim().split(' ');
+    if (parts.length === 1) return parts[0];
+    const givenName = parts[parts.length - 1];
+    const familyName = parts[0];
+    return `${familyName} ${givenName.charAt(0)}.`;
+  };
 
   if (loading) {
     return (
@@ -424,6 +467,149 @@ export default function ProductDetailPage() {
               />
             </div>
           </div>
+        </section>
+
+        {/* Customer Reviews Section */}
+        <section className="mt-24 pt-24 border-t border-[#eeeeee]">
+          <h2 className="font-serif text-2xl font-bold text-primary mb-10 tracking-wide">
+            Đánh Giá Từ Khách Hàng
+          </h2>
+
+          {reviewsLoading ? (
+            <div className="py-12 flex flex-col items-center justify-center text-on-surface-variant/60 gap-3">
+              <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+              <p className="text-xs font-medium">Đang tải đánh giá...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start font-sans">
+              {/* Summary Statistics Panel */}
+              <div className="lg:col-span-4 bg-[#ece0dc]/10 border border-[#d4c3be]/30 p-6 md:p-8 rounded-sm">
+                <div className="text-center mb-6">
+                  <span className="block font-serif text-5xl font-black text-primary leading-none mb-3">
+                    {averageRating}
+                  </span>
+                  <div className="flex justify-center gap-1 text-amber-400 mb-2">
+                    {[1, 2, 3, 4, 5].map((star) => {
+                      const avg = parseFloat(averageRating);
+                      const isFilled = star <= Math.round(avg);
+                      return (
+                        <Star
+                          key={star}
+                          size={18}
+                          fill={isFilled ? "currentColor" : "none"}
+                          className="stroke-amber-400"
+                        />
+                      );
+                    })}
+                  </div>
+                  <span className="text-[11px] text-on-surface-variant/80 font-semibold uppercase tracking-wider block">
+                    Dựa trên {totalReviews} đánh giá
+                  </span>
+                </div>
+
+                {/* Rating Distribution Progress Bars */}
+                <div className="space-y-3">
+                  {[5, 4, 3, 2, 1].map((star) => {
+                    const count = distribution[5 - star];
+                    const percent = totalReviews > 0 ? (count / totalReviews) * 100 : 0;
+                    return (
+                      <div key={star} className="flex items-center gap-3 text-xs text-on-surface-variant">
+                        <span className="w-3 font-semibold text-right">{star}</span>
+                        <Star size={12} fill="currentColor" className="text-amber-400 stroke-amber-400 shrink-0" />
+                        <div className="flex-1 h-2 bg-[#ece0dc]/40 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary transition-all duration-500"
+                            style={{ width: `${percent}%` }}
+                          />
+                        </div>
+                        <span className="w-8 text-right text-[10px] font-mono text-on-surface-variant/70">
+                          {count} ({Math.round(percent)}%)
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Individual Customer Reviews List */}
+              <div className="lg:col-span-8 space-y-8">
+                {reviews.length > 0 ? (
+                  <div className="divide-y divide-[#eeeeee] space-y-6">
+                    {reviews.map((review: any, idx: number) => {
+                      const reviewerName = review.user?.full_name || 'Khách hàng ẩn danh';
+                      return (
+                        <div key={review.id || idx} className={`${idx > 0 ? 'pt-6' : ''} space-y-3`}>
+                          <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-[#442a22] font-serif">
+                                {maskName(reviewerName)}
+                              </span>
+                              <span className="text-[9px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-sm uppercase tracking-wide border border-emerald-100 flex items-center gap-1">
+                                <CheckCircle size={9} /> Đã mua hàng
+                              </span>
+                            </div>
+                            <span className="text-on-surface-variant/70 font-semibold font-mono text-[10px]">
+                              {new Date(review.created_at).toLocaleDateString('vi-VN')}
+                            </span>
+                          </div>
+
+                          {/* Review Stars & Title */}
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <div className="flex gap-0.5 text-amber-400">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  size={13}
+                                  fill={star <= review.rating ? "currentColor" : "none"}
+                                  className="stroke-amber-400"
+                                />
+                              ))}
+                            </div>
+                            {review.title && (
+                              <h4 className="font-serif font-bold text-xs text-[#442a22]">
+                                {review.title}
+                              </h4>
+                            )}
+                            { (review.product_color || review.product_size) && (
+                              <span className="text-[10px] text-[#8a726b] bg-[#ece0dc]/40 px-2 py-0.5 rounded-sm font-semibold">
+                                Phân loại: {[review.product_color, review.product_size].filter(Boolean).join(', ')}
+                              </span>
+                            ) }
+                          </div>
+
+                          {/* Review Comment text */}
+                          {review.content && (
+                            <p className="text-xs md:text-sm text-on-surface-variant leading-relaxed py-0.5">
+                              {review.content}
+                            </p>
+                          )}
+
+                          {/* CSKH Reply */}
+                          {review.reply && (
+                            <div className="mt-3 bg-[#ece0dc]/10 border border-[#d4c3be]/20 p-3.5 rounded-sm flex flex-col gap-1.5 ml-4">
+                              <div className="flex items-center gap-1 text-[10px] text-primary font-bold uppercase tracking-wider">
+                                <CornerDownRight size={12} />
+                                <span>Phản hồi từ Từ Tâm Phục</span>
+                              </div>
+                              <p className="text-xs md:text-sm text-on-surface-variant leading-relaxed">
+                                {review.reply}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="py-16 text-center border border-dashed border-[#d4c3be]/40 bg-[#fcfaf7] rounded-sm text-on-surface-variant/60 flex flex-col items-center justify-center gap-2">
+                    <Star size={32} className="opacity-30 text-primary" />
+                    <p className="text-xs font-semibold">Chưa có đánh giá nào cho sản phẩm này.</p>
+                    <p className="text-[11px] text-on-surface-variant/80">Hãy mua sản phẩm và chia sẻ cảm nhận của bạn nhé!</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Recommended Products */}

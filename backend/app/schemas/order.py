@@ -26,6 +26,7 @@ class OrderItemResponse(BaseSchema):
     price: float
     subtotal: float
     product_snapshot: Optional[Dict[str, Any]] = None
+    is_reviewed: bool = False
 
 
 class OrderItemCreate(BaseSchema):

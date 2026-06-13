@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   Star, 
   CornerDownRight, 
@@ -7,92 +7,109 @@ import {
   Sparkles,
   Send
 } from 'lucide-react'
+import { apiClient } from '@/services'
+import { getImageUrl } from '@/utils/productMapper'
 
-interface ReviewItem {
-  id: number
-  name: string
-  avatar: string
-  product: string
-  orderId: string
-  rating: number
-  comment: string
-  status: 'pending' | 'replied'
-  reply?: string
-}
+const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%238a726b'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.03 0-4.43-.82-6.14-2.88C7.55 15.8 9.68 15 12 15s4.45.8 6.14 2.12C16.43 19.18 14.03 20 12 20z'/%3E%3C/svg%3E"
+
+const getStatusText = (status: string) => {
+  switch (status) {
+    case 'pending': return 'Chờ xác nhận';
+    case 'confirmed': return 'Đã xác nhận';
+    case 'processing': return 'Chờ lấy hàng';
+    case 'shipped': return 'Đang vận chuyển';
+    case 'delivered': return 'Đã giao';
+    case 'cancelled': return 'Đã hủy';
+    case 'refunded': return 'Đã hoàn tiền';
+    default: return status || 'N/A';
+  }
+};
+
+const getPaymentMethodText = (method: string) => {
+  switch (method) {
+    case 'cod': return 'COD';
+    case 'bank_transfer': return 'Chuyển khoản';
+    case 'vnpay': return 'VNPAY';
+    case 'momo': return 'Ví MoMo';
+    default: return method || 'N/A';
+  }
+};
+
+const getPaymentStatusText = (status: string) => {
+  switch (status) {
+    case 'pending': return 'Chưa thanh toán';
+    case 'paid': return 'Đã thanh toán';
+    case 'failed': return 'Thanh toán thất bại';
+    case 'refunded': return 'Đã hoàn tiền';
+    default: return status || 'N/A';
+  }
+};
 
 export default function AdminCustomerReviews() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'replied'>('all')
   const [filterRating, setFilterRating] = useState<number | 'all'>('all')
   const [replyInputs, setReplyInputs] = useState<Record<number, string>>({})
+  const [reviews, setReviews] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const [reviews, setReviews] = useState<ReviewItem[]>([
-    {
-      id: 1,
-      name: 'Nguyễn Thị Minh An',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBuzLj071A4vLa0gg6_Ofmpl0kPeRxKlZr4XjIvrIMT4Awv6b39rqpIPxc7apN9e1UoA2wL3tMNoZvL66G-UGVwsoE9CK-zMY-25v92J-e3b46qiLy47zMEyQAZChOBuX7430y2FhUfj0bcidPyDwUxr9pUef7mG3f1vogF6263v5UTDzUXFDZEIEzmmkuoX7yoUNo1HlBHEKbQvKb-vXzroiwzFQUeoP-Jx3NRftjkZgNVb8IiUtXXOeTHzHOmAAB2hmUm3Kj8rO93',
-      product: 'Áo Dài Tơ Tằm Liên Hoa',
-      orderId: '#TTP-8921',
-      rating: 5,
-      comment: 'Chất liệu lụa tơ tằm thật sự tuyệt vời, cảm giác nhẹ nhàng như mây lướt trên da. Đường may tinh xảo, thể hiện được cái tâm của người thợ. Rất hài lòng với dịch vụ tư vấn tận tình.',
-      status: 'pending'
-    },
-    {
-      id: 2,
-      name: 'Trần Văn Hoàng',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA0YjK6SYjRt6LoYrfZdJFoIwGXoD0LTQ3c2x7TnvnVJN3pGOyrxTX5--VnudJ_D2zYZqhfmeqpAzDM5K-9EhlM5BjXgKOIrBWPgJ4Jdz_JxuOrtNNVoCyp2WyX6A_tfMnpT5en7I1-7fBUCjxCluVB17znD_8Ukm_gJbTu4O-tXrNBAsUoNOUj5dKY19R6rrMp6BjLax6OeiPokYuvJYmWZ9g5pePjViITsgAgRFsIkekILVZFcN2HJkEI3D2_9YYs10VM7P5ANrah',
-      product: 'Bộ Đồ Thiền Vô Thường (Linen)',
-      orderId: '#TTP-8402',
-      rating: 4,
-      comment: 'Vải linen mặc rất mát, phom dáng chuẩn cho việc ngồi thiền. Tuy nhiên thời gian giao hàng hơi chậm hơn dự kiến 2 ngày. Hy vọng thương hiệu sẽ cải thiện khâu vận chuyển.',
-      status: 'replied',
-      reply: 'Từ Tâm Phục xin chân thành cảm ơn anh Hoàng đã góp ý. Chúng tôi rất xin lỗi vì sự chậm trễ trong khâu vận chuyển. Đội ngũ đang làm việc với đối tác để đảm bảo các đơn hàng sau sẽ đến tay khách hàng đúng hẹn hơn. Chúc anh thân tâm an lạc.'
-    },
-    {
-      id: 3,
-      name: 'Lê Bảo Trâm',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCkVC2EtOLQg6wPscC_exY6PqS5or6HSo06HAEEOUpVTlyjPJ_a6Geh4rH6giU4LoHTwX8TFEhyUcynQK0b0qEft2JssJvj0KlsggzbYORvqhUAOicIwFSYryKEKdRkNQDBHlt7ikrtR7wAHji4faAsqZCmtRvzqJXP0JHk_E6pa6-86n1Q1maz-o0yLAAkcoAFhMHJ9SoRjfMxPIlYNVFVNziu-fgsiFxvOM8wrQAHU_VsNx7Y6KPwwLbV6cWDh9Gh1UshRpz00BeM',
-      product: 'Khăn Quàng Lụa Vân Gấm',
-      orderId: '#TTP-7911',
-      rating: 5,
-      comment: 'Màu sắc bên ngoài đẹp hơn cả trong ảnh. Họa tiết gấm chìm rất sang trọng. Đóng gói hộp gỗ rất chỉn chu, phù hợp để làm quà tặng. Sẽ tiếp tục ủng hộ!',
-      status: 'pending'
+  const fetchReviews = async () => {
+    setLoading(true)
+    try {
+      const statusParam = filterStatus !== 'all' ? filterStatus : undefined
+      const ratingParam = filterRating !== 'all' ? filterRating : undefined
+      
+      const response = await apiClient.get('/admin/reviews', {
+        params: {
+          status: statusParam,
+          rating: ratingParam
+        }
+      })
+      setReviews(response.data || [])
+    } catch (err) {
+      console.error("Lỗi khi lấy danh sách đánh giá từ API:", err)
+    } finally {
+      setLoading(false)
     }
-  ])
+  }
+
+  useEffect(() => {
+    fetchReviews()
+  }, [filterStatus, filterRating])
 
   const handleReplyChange = (id: number, val: string) => {
     setReplyInputs(prev => ({ ...prev, [id]: val }))
   }
 
-  const handleSendReply = (id: number) => {
+  const handleSendReply = async (id: number) => {
     const text = replyInputs[id]
     if (!text?.trim()) return
 
-    setReviews(prev => prev.map(r => {
-      if (r.id === id) {
-        return {
-          ...r,
-          status: 'replied',
-          reply: text
+    try {
+      await apiClient.post(`/reviews/${id}/reply`, { reply: text.trim() })
+      // Update local reviews state to mark as replied
+      setReviews(prev => prev.map(r => {
+        if (r.id === id) {
+          return {
+            ...r,
+            reply: text.trim()
+          }
         }
-      }
-      return r
-    }))
-
-    // Clear input
-    setReplyInputs(prev => {
-      const copy = { ...prev }
-      delete copy[id]
-      return copy
-    })
+        return r
+      }))
+      // Clear input
+      setReplyInputs(prev => {
+        const copy = { ...prev }
+        delete copy[id]
+        return copy
+      })
+    } catch (err) {
+      console.error("Lỗi khi gửi phản hồi lên API:", err)
+    }
   }
 
-  const filteredReviews = reviews.filter(r => {
-    const matchStatus = filterStatus === 'all' || r.status === filterStatus
-    const matchRating = filterRating === 'all' || r.rating === filterRating
-    return matchStatus && matchRating
-  })
-
-  const pendingCount = reviews.filter(r => r.status === 'pending').length
+  const pendingCount = reviews.filter(r => !r.reply).length
+  const totalRating = reviews.reduce((acc, r) => acc + r.rating, 0)
+  const averageRating = reviews.length > 0 ? (totalRating / reviews.length).toFixed(1) : '0.0'
 
   return (
     <div className="page-transition space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 font-sans pb-16">
@@ -109,30 +126,30 @@ export default function AdminCustomerReviews() {
           <div className="flex bg-surface-container-low p-1 rounded-lg">
             <button 
               onClick={() => setFilterStatus('all')}
-              className={`px-5 py-1.5 rounded text-xs font-semibold tracking-wider uppercase transition-all ${
+              className={`px-5 py-1.5 rounded text-xs font-semibold tracking-wider uppercase transition-all border-none cursor-pointer ${
                 filterStatus === 'all' 
-                  ? 'bg-white shadow-sm text-primary' 
-                  : 'text-on-surface-variant hover:text-primary'
+                  ? 'bg-white shadow-sm text-primary font-bold' 
+                  : 'text-on-surface-variant hover:text-primary bg-transparent'
               }`}
             >
               Tất cả
             </button>
             <button 
               onClick={() => setFilterStatus('pending')}
-              className={`px-5 py-1.5 rounded text-xs font-semibold tracking-wider uppercase transition-all ${
+              className={`px-5 py-1.5 rounded text-xs font-semibold tracking-wider uppercase transition-all border-none cursor-pointer ${
                 filterStatus === 'pending' 
-                  ? 'bg-white shadow-sm text-primary' 
-                  : 'text-on-surface-variant hover:text-primary'
+                  ? 'bg-white shadow-sm text-primary font-bold' 
+                  : 'text-on-surface-variant hover:text-primary bg-transparent'
               }`}
             >
               Chờ xử lý
             </button>
             <button 
               onClick={() => setFilterStatus('replied')}
-              className={`px-5 py-1.5 rounded text-xs font-semibold tracking-wider uppercase transition-all ${
+              className={`px-5 py-1.5 rounded text-xs font-semibold tracking-wider uppercase transition-all border-none cursor-pointer ${
                 filterStatus === 'replied' 
-                  ? 'bg-white shadow-sm text-primary' 
-                  : 'text-on-surface-variant hover:text-primary'
+                  ? 'bg-white shadow-sm text-primary font-bold' 
+                  : 'text-on-surface-variant hover:text-primary bg-transparent'
               }`}
             >
               Đã phản hồi
@@ -143,7 +160,7 @@ export default function AdminCustomerReviews() {
           <select 
             value={filterRating}
             onChange={(e) => setFilterRating(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-            className="bg-surface-container-low border-none rounded-lg text-xs font-semibold tracking-wider uppercase px-4 py-2 text-primary focus:ring-1 focus:ring-primary/20 cursor-pointer"
+            className="bg-surface-container-low border-none rounded-lg text-xs font-semibold tracking-wider uppercase px-4 py-2 text-primary focus:ring-1 focus:ring-primary/20 cursor-pointer outline-none"
           >
             <option value="all">Mọi mức sao</option>
             <option value="5">5 Sao</option>
@@ -159,24 +176,41 @@ export default function AdminCustomerReviews() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         {/* Left: Reviews list */}
         <div className="lg:col-span-2 space-y-6">
-          {filteredReviews.length === 0 ? (
+          {loading ? (
+            <div className="bg-white p-12 text-center rounded-xl border border-outline-variant/10 text-on-surface-variant/60 flex flex-col items-center justify-center gap-3">
+              <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+              <p className="text-xs font-medium">Đang tải danh sách đánh giá...</p>
+            </div>
+          ) : reviews.length === 0 ? (
             <div className="bg-white p-12 text-center rounded-xl border border-outline-variant/10 text-on-surface-variant/60">
               Không có đánh giá nào phù hợp bộ lọc.
             </div>
           ) : (
-            filteredReviews.map((r) => (
+            reviews.map((r) => (
               <article key={r.id} className="bg-white p-8 rounded-xl border border-outline-variant/20 flex flex-col gap-6 shadow-sm hover:shadow-md transition-all">
                 <div className="flex justify-between items-start flex-wrap gap-4">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-full overflow-hidden bg-primary/10 border border-outline-variant/20 shrink-0">
-                      <img alt={r.name} className="w-full h-full object-cover" src={r.avatar} />
+                      <img 
+                        alt={r.is_anonymous ? 'Ẩn danh' : (r.user?.full_name || 'Khách hàng')} 
+                        className="w-full h-full object-cover" 
+                        src={r.is_anonymous ? DEFAULT_AVATAR : (getImageUrl(r.user?.avatar || '') || DEFAULT_AVATAR)} 
+                        referrerPolicy="no-referrer"
+                      />
                     </div>
                     <div>
-                      <h4 className="text-sm font-semibold text-primary">{r.name}</h4>
-                      <p className="text-xs text-on-surface-variant opacity-75">Sản phẩm: {r.product}</p>
+                      <h4 className="text-sm font-semibold text-primary">
+                        {r.is_anonymous ? 'Người dùng ẩn danh' : (r.user?.full_name || 'Khách hàng')}
+                      </h4>
+                      <p className="text-xs text-on-surface-variant opacity-75">Sản phẩm: {r.product_name}</p>
+                      { (r.product_color || r.product_size) && (
+                        <p className="text-[11px] text-on-surface-variant/80 mt-0.5">
+                          Phân loại: {[r.product_color, r.product_size].filter(Boolean).join(', ')}
+                        </p>
+                      ) }
                       <div className="mt-1">
                         <span className="text-[10px] bg-primary/10 text-primary px-2.5 py-0.5 rounded font-semibold">
-                          Đơn hàng: {r.orderId}
+                          {r.order_code ? `Đơn hàng: #${r.order_code}` : `Mã đánh giá: #${r.id}`}
                         </span>
                       </div>
                     </div>
@@ -186,25 +220,83 @@ export default function AdminCustomerReviews() {
                       <Star 
                         key={idx} 
                         size={16} 
-                        className={idx < r.rating ? 'fill-current' : 'text-outline-variant/40'} 
+                        className={idx < r.rating ? 'fill-current text-amber-400' : 'text-outline-variant/40'} 
                       />
                     ))}
                   </div>
                 </div>
 
-                <p className="text-sm text-on-surface leading-relaxed italic">
-                  "{r.comment}"
-                </p>
+                <div className="space-y-1">
+                  {r.title && (
+                    <h5 className="font-serif font-bold text-sm text-[#442a22]">{r.title}</h5>
+                  )}
+                  <p className="text-sm text-on-surface leading-relaxed italic">
+                    "{r.content || 'Không có nội dung nhận xét.'}"
+                  </p>
+                </div>
+
+                {r.order_code && (
+                  <div className="p-5 bg-[#faf6f0]/40 rounded-lg border border-[#d4c3be]/40 text-xs text-on-surface-variant font-sans space-y-3">
+                    <div className="flex items-center justify-between border-b border-[#d4c3be]/20 pb-2">
+                      <span className="font-serif font-bold text-primary text-xs uppercase tracking-wider flex items-center gap-1.5">
+                        <CheckCircle size={14} className="text-emerald-600" />
+                        Thông tin đơn hàng liên kết
+                      </span>
+                      <span className="font-mono font-bold text-primary text-sm">#{r.order_code}</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs leading-relaxed">
+                      <div className="space-y-1">
+                        <p><span className="font-bold text-[#442a22]">Người nhận:</span> {r.order_recipient_name || 'N/A'}</p>
+                        <p><span className="font-bold text-[#442a22]">Số điện thoại:</span> {r.order_recipient_phone || 'N/A'}</p>
+                        <p><span className="font-bold text-[#442a22]">Địa chỉ nhận hàng:</span> {r.order_recipient_address || 'N/A'}</p>
+                        {r.order_date && (
+                          <p><span className="font-bold text-[#442a22]">Ngày mua:</span> {new Date(r.order_date).toLocaleString('vi-VN')}</p>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <p>
+                          <span className="font-bold text-[#442a22]">Tổng thanh toán:</span>{' '}
+                          <span className="font-mono font-bold text-primary text-sm">
+                            {r.order_total ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(r.order_total) : '0 đ'}
+                          </span>
+                        </p>
+                        <p>
+                          <span className="font-bold text-[#442a22]">Thanh toán:</span>{' '}
+                          <span className="font-semibold">{getPaymentMethodText(r.order_payment_method)}</span>
+                          <span className={`ml-2 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide border ${
+                            r.order_payment_status === 'paid' 
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                              : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}>
+                            {getPaymentStatusText(r.order_payment_status)}
+                          </span>
+                        </p>
+                        <p>
+                          <span className="font-bold text-[#442a22]">Trạng thái đơn:</span>{' '}
+                          <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide border ${
+                            r.order_status === 'delivered'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : r.order_status === 'cancelled'
+                              ? 'bg-red-50 text-red-700 border-red-200'
+                              : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}>
+                            {getStatusText(r.order_status)}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Reply section */}
                 <div className="pt-6 border-t border-outline-variant/10">
-                  {r.status === 'replied' ? (
+                  {r.reply ? (
                     <div className="space-y-3">
                       <div className="flex items-center gap-1.5 text-xs text-primary font-bold uppercase tracking-wider">
                         <CornerDownRight size={14} />
                         <span>Đã phản hồi</span>
                       </div>
-                      <p className="text-sm text-on-surface-variant bg-surface-container-low/40 p-4 rounded-lg border border-outline-variant/10">
+                      <p className="text-sm text-on-surface-variant bg-surface-container-low/40 p-4 rounded-lg border border-outline-variant/10 leading-relaxed">
                         {r.reply}
                       </p>
                     </div>
@@ -220,7 +312,7 @@ export default function AdminCustomerReviews() {
                       <div className="flex justify-end mt-2">
                         <button 
                           onClick={() => handleSendReply(r.id)}
-                          className="px-5 py-2 bg-primary text-white text-xs font-semibold rounded hover:bg-primary/95 transition-all flex items-center gap-1.5"
+                          className="px-5 py-2 bg-primary text-white text-xs font-semibold rounded hover:bg-primary/95 transition-all flex items-center gap-1.5 border-none cursor-pointer"
                         >
                           <Send size={12} />
                           Gửi Phản Hồi
@@ -240,7 +332,7 @@ export default function AdminCustomerReviews() {
             <div className="bg-primary-container text-white p-6 rounded-xl flex flex-col justify-between shadow-sm">
               <Sparkles className="opacity-50 mb-6" size={24} />
               <div>
-                <p className="text-3xl font-serif font-bold">4.9</p>
+                <p className="text-3xl font-serif font-bold">{averageRating}</p>
                 <p className="text-[10px] font-semibold uppercase tracking-wider opacity-80 mt-1">Đánh giá trung bình</p>
               </div>
             </div>

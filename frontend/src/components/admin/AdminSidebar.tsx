@@ -12,7 +12,6 @@ import {
   FileText,
   LogOut,
   BarChart3,
-  Headphones,
   Settings,
   X
 } from 'lucide-react'
@@ -44,11 +43,6 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
       title: 'Tin nhắn',
       path: '/admin/cskh-tin-nhan',
       icon: MessageSquare
-    },
-    {
-      title: 'Yêu cầu hỗ trợ',
-      path: '/admin/cskh-ho-tro',
-      icon: Headphones
     },
     {
       title: 'Khách hàng',

@@ -75,3 +75,8 @@ class OrderItem(BaseModel):
     order = relationship("Order", back_populates="items")
     product = relationship("Product", back_populates="order_items")
     variant = relationship("ProductVariant")
+    reviews = relationship("Review", back_populates="order_item", cascade="all, delete-orphan")
+
+    @property
+    def is_reviewed(self) -> bool:
+        return len(self.reviews) > 0

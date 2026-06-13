@@ -312,3 +312,21 @@ export interface UserAddress {
   updated_at: string
 }
 
+// ========================
+// Support Ticket Types
+// ========================
+export interface SupportTicket {
+  id: number
+  ticket_code: string
+  user_id: number
+  user?: Pick<User, 'id' | 'full_name' | 'avatar'>
+  subject: string
+  description: string
+  category: string
+  priority: 'low' | 'medium' | 'high'
+  status: 'pending' | 'solving' | 'closed'
+  created_at: string
+  updated_at: string
+}
+
+

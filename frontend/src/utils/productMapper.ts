@@ -49,7 +49,7 @@ export function mapApiProductToMockProduct(p: ApiProduct): MockProduct {
     
   const uniqueColors = colors.filter(
     (c: any, index: number, self: any[]) =>
-      self.findIndex((t) => t.name === c.name) === index
+      self.findIndex((t) => t.name === c.name && t.hex === c.hex) === index
   )
 
   // Map size variants

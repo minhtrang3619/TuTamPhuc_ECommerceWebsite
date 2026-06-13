@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { 
   Search, 
   Send, 
@@ -21,6 +22,12 @@ interface Message {
   text: string
   time: string
   imageUrl?: string
+  productInfo?: {
+    id: string
+    name: string
+    price: number
+    image: string
+  }
 }
 
 interface Conversation {
@@ -64,7 +71,8 @@ export default function AdminCustomerChat() {
           sender: m.sender_id === c.id ? 'customer' : 'agent',
           text: m.text,
           time: new Date(m.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-          imageUrl: m.image_url
+          imageUrl: m.image_url,
+          productInfo: m.product_info
         }))
       }))
 
@@ -97,6 +105,17 @@ export default function AdminCustomerChat() {
   }, [activeId])
 
   const activeChat = conversations.find(c => c.id === activeId) || conversations[0]
+  const messageEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    messageEndRef.current?.scrollIntoView({ behavior: 'auto' })
+  }, [activeId, activeChat?.messages?.length])
+
+
+  // Find the product info currently being consulted for this conversation (most recent message with productInfo)
+  const activeProductInfo = activeChat?.messages
+    ? [...activeChat.messages].reverse().find(m => m.productInfo)?.productInfo
+    : undefined
 
   if (!activeChat) {
     return (
@@ -236,6 +255,29 @@ export default function AdminCustomerChat() {
                       />
                     </div>
                   )}
+                  {m.productInfo && (
+                    <Link
+                      to={`/san-pham/${m.productInfo.id}`}
+                      target="_blank"
+                      className={`mb-2 p-3 rounded-xl border shadow-xs flex items-start gap-3 bg-white/95 backdrop-blur-xs w-64 cursor-pointer transition-all hover:scale-[1.02] border-[#d4c3be]/40 hover:border-primary/50 text-left block ${isAgent ? 'ml-auto' : ''}`}
+                    >
+                      <img 
+                        src={getImageUrl(m.productInfo.image)} 
+                        alt={m.productInfo.name}
+                        className="w-14 h-16 object-cover rounded-md border border-[#eeeeee]"
+                        referrerPolicy="no-referrer"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-serif text-xs font-bold text-[#442a22] line-clamp-2">{m.productInfo.name}</h4>
+                        <p className="text-xs font-bold text-primary mt-1">
+                          {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(m.productInfo.price)}
+                        </p>
+                        <span className="text-[10px] text-primary hover:underline mt-1 inline-block uppercase tracking-wider font-bold">
+                          Tư vấn sản phẩm
+                        </span>
+                      </div>
+                    </Link>
+                  )}
                   <div className={`p-4 rounded-xl text-sm leading-relaxed shadow-sm ${
                     isAgent 
                       ? 'bg-primary-container text-white rounded-tr-none' 
@@ -248,7 +290,9 @@ export default function AdminCustomerChat() {
               </div>
             )
           })}
+          <div ref={messageEndRef} />
         </div>
+
 
         {/* Input Area */}
         <div className="p-4 border-t border-outline-variant/10 bg-white">
@@ -297,6 +341,33 @@ export default function AdminCustomerChat() {
         </div>
         
         <div className="p-5 space-y-6">
+          {activeProductInfo && (
+            <div className="bg-white border border-outline-variant/30 rounded-xl p-4 shadow-xs">
+              <h5 className="font-serif text-[10px] font-bold text-primary mb-3 tracking-widest uppercase border-b border-outline-variant/20 pb-2">Đang Tư Vấn</h5>
+              <div className="group overflow-hidden rounded-lg mb-3 border border-outline-variant/20 aspect-square">
+                <img 
+                  alt={activeProductInfo.name} 
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                  src={getImageUrl(activeProductInfo.image)}
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+              <div className="space-y-1 text-left">
+                <h6 className="font-serif text-xs font-bold text-[#442a22] line-clamp-2">{activeProductInfo.name}</h6>
+                <p className="text-xs text-primary font-semibold">
+                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(activeProductInfo.price)}
+                </p>
+              </div>
+              <Link 
+                to={`/san-pham/${activeProductInfo.id}`}
+                target="_blank"
+                className="mt-4 w-full border border-primary text-primary py-2 px-4 rounded-full font-semibold text-[10px] tracking-wider uppercase hover:bg-primary/5 active:scale-[0.98] transition-all duration-300 flex items-center justify-center text-center"
+              >
+                XEM CHI TIẾT
+              </Link>
+            </div>
+          )}
+
           <div>
             <h5 className="text-[10px] opacity-50 uppercase tracking-widest font-semibold mb-3">Thông tin liên hệ</h5>
             <div className="space-y-3 text-xs text-on-surface-variant">

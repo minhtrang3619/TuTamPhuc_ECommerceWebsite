@@ -10,7 +10,7 @@ from app.schemas.customer import CustomerCreate, CustomerUpdate, CustomerRead
 router = APIRouter(prefix="/customers", tags=["Customers"])
 
 # Create a new customer (admin or customer_service)
-@router.post("/", response_model=CustomerRead, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=CustomerRead, status_code=status.HTTP_201_CREATED)
 def create_customer(
     payload: CustomerCreate,
     db: Session = Depends(get_db),
@@ -26,7 +26,7 @@ def create_customer(
     return customer
 
 # Get list of customers (admin or customer_service)
-@router.get("/", response_model=List[CustomerRead])
+@router.get("", response_model=List[CustomerRead])
 def list_customers(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),

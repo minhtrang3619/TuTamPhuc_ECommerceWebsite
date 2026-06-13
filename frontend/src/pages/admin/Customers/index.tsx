@@ -15,6 +15,7 @@ export default function AdminCustomers() {
   const [searchTerm, setSearchTerm] = useState('')
   const [customers, setCustomers] = useState<Customer[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -24,10 +25,12 @@ export default function AdminCustomers() {
   const fetchCustomers = async () => {
     try {
       setIsLoading(true)
+      setErrorMsg(null)
       const data = await customerService.getAll()
       setCustomers(data)
-    } catch (err) {
+    } catch (err: any) {
       console.error("Lỗi khi tải danh sách khách hàng:", err)
+      setErrorMsg(err.response?.data?.detail || err.message || String(err))
     } finally {
       setIsLoading(false)
     }
@@ -96,6 +99,12 @@ export default function AdminCustomers() {
           className="bg-transparent border-none focus:ring-0 w-full font-label-md text-label-md placeholder:text-on-surface-variant/50 p-0"
         />
       </div>
+
+      {errorMsg && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm font-sans flex items-center gap-2">
+          <span>{errorMsg}</span>
+        </div>
+      )}
 
       {/* Table Container */}
       <div className="bg-surface-container-lowest shadow-[0_32px_64px_-12px_rgba(93,64,55,0.06)] rounded-xl overflow-hidden border border-outline-variant/10">
