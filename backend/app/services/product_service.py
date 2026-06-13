@@ -21,6 +21,7 @@ class ProductService:
         min_price: Optional[float] = None,
         max_price: Optional[float] = None,
         search: Optional[str] = None,
+        status: Optional[str] = None,
         sort_by: Optional[str] = "newest",
     ) -> PaginatedProducts:
         items, total = self.repo.get_paginated(
@@ -30,6 +31,7 @@ class ProductService:
             min_price=min_price,
             max_price=max_price,
             search=search,
+            status=status,
             sort_by=sort_by,
         )
         return PaginatedProducts(

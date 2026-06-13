@@ -183,7 +183,7 @@ export default function ProductDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
           {/* Left Columns - Images */}
           <div className="lg:col-span-7 flex flex-col gap-6">
-            <div className="aspect-[3/4] bg-surface-container overflow-hidden rounded-xs shadow-[0_8px_32px_rgba(68,42,34,0.03)] border border-[#d4c3be]/20 relative">
+            <div className="aspect-[9/16] bg-surface-container overflow-hidden rounded-xs shadow-[0_8px_32px_rgba(68,42,34,0.03)] border border-[#d4c3be]/20 relative">
               <img
                 alt={product.name}
                 src={product.images[activeImageIndex] || product.images[0]}
@@ -206,7 +206,7 @@ export default function ProductDetailPage() {
                     <button
                       key={idx}
                       onClick={() => setActiveImageIndex(idx)}
-                      className={`aspect-[3/4] bg-surface-container overflow-hidden rounded-xs border transition-all cursor-pointer p-0 bg-transparent flex items-center justify-center outline-none ${
+                      className={`aspect-[9/16] bg-surface-container overflow-hidden rounded-xs border transition-all cursor-pointer p-0 bg-transparent flex items-center justify-center outline-none ${
                         isActive 
                           ? 'border-primary ring-2 ring-primary/20 scale-[1.02]' 
                           : 'border-[#d4c3be]/40 hover:border-primary'
@@ -442,7 +442,7 @@ export default function ProductDetailPage() {
                   }}
                   className="group cursor-pointer"
                 >
-                  <div className="aspect-[3/4] overflow-hidden bg-surface-container mb-4 relative rounded-xs border border-[#eeeeee]/60 group-hover:shadow-md transition-shadow">
+                  <div className="aspect-[9/16] overflow-hidden bg-surface-container mb-4 relative rounded-xs border border-[#eeeeee]/60 group-hover:shadow-md transition-shadow">
                     <img
                       alt={prod.name}
                       src={prod.images[0]}

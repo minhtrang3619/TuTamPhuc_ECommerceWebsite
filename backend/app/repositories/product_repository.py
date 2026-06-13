@@ -41,7 +41,7 @@ class ProductRepository(BaseRepository[Product]):
         min_price: Optional[float] = None,
         max_price: Optional[float] = None,
         search: Optional[str] = None,
-        status: Optional[ProductStatus] = None,
+        status: Optional[str] = None,
         sort_by: Optional[str] = "newest",
     ) -> Tuple[List[Product], int]:
         query = self.db.query(Product).options(
@@ -58,7 +58,10 @@ class ProductRepository(BaseRepository[Product]):
         if search:
             query = query.filter(Product.name.ilike(f"%{search}%"))
         if status:
-            query = query.filter(Product.status == status)
+            if status.lower() == "all":
+                pass
+            else:
+                query = query.filter(Product.status == status)
         else:
             query = query.filter(Product.status == ProductStatus.ACTIVE)
 

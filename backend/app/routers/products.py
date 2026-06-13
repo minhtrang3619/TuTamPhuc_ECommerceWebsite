@@ -20,6 +20,7 @@ def list_products(
     min_price: Optional[float] = None,
     max_price: Optional[float] = None,
     search: Optional[str] = None,
+    status: Optional[str] = None,
     sort_by: Optional[str] = Query("newest", enum=["newest", "price_asc", "price_desc", "popular", "rating"]),
     db: Session = Depends(get_db),
 ):
@@ -27,7 +28,7 @@ def list_products(
     service = ProductService(db)
     return service.get_paginated(
         page=page, page_size=page_size, category_id=category_id,
-        min_price=min_price, max_price=max_price, search=search, sort_by=sort_by,
+        min_price=min_price, max_price=max_price, search=search, status=status, sort_by=sort_by,
     )
 
 

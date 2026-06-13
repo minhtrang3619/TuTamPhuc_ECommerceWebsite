@@ -56,7 +56,7 @@ export default function AdminProducts() {
   const fetchProducts = async () => {
     try {
       setLoading(true)
-      const res = await apiClient.get('/products?page_size=100')
+      const res = await apiClient.get('/products?page_size=100&status=all')
       const items = res.data?.items || []
       const mapped = items.map((p: any) => ({
         id: String(p.id),
@@ -66,7 +66,7 @@ export default function AdminProducts() {
         price: p.price,
         stock: p.stock,
         seller: 'Từ Tâm Chính',
-        status: p.status === 'active' ? 'Đang bán' : 'Đã lưu trữ',
+        status: p.status === 'active' ? 'Đang bán' : (p.status === 'out_of_stock' ? 'Hết hàng' : 'Bản nháp'),
         image: getImageUrl(p.images?.[0]?.url),
         raw: p
       }))
@@ -112,6 +112,7 @@ export default function AdminProducts() {
     name: '',
     sku: '',
     category: 'Đồ lam đi chùa',
+    status: 'active',
     description: '',
     material: 'Linen tự nhiên',
     price: 0,
@@ -145,10 +146,7 @@ export default function AdminProducts() {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.sku.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesCategory = categoryFilter === 'Tất cả bộ sưu tập' || p.category === categoryFilter
     const matchesSeller = sellerFilter === 'Tất cả người bán' || p.seller === sellerFilter
-    const matchesStatus = statusFilter === 'Mọi trạng thái' || 
-                         (statusFilter === 'Đang bán' && p.status === 'Đang bán' && p.stock > 0) ||
-                         (statusFilter === 'Hết hàng' && p.stock === 0) ||
-                         (statusFilter === 'Bản nháp' && p.status === 'Đã lưu trữ')
+    const matchesStatus = statusFilter === 'Mọi trạng thái' || p.status === statusFilter
     return matchesSearch && matchesCategory && matchesSeller && matchesStatus
   })
 
@@ -242,6 +240,7 @@ export default function AdminProducts() {
       name: '',
       sku: '',
       category: 'Đồ lam đi chùa',
+      status: 'active',
       description: '',
       material: 'Linen tự nhiên',
       price: 0,
@@ -323,6 +322,7 @@ export default function AdminProducts() {
       name: p.name,
       sku: p.sku,
       category: p.category,
+      status: p.raw?.status || 'active',
       description: p.raw?.description || '',
       material: p.raw?.short_description || p.raw?.tags?.[0] || 'Linen tự nhiên',
       price: p.price,
@@ -550,7 +550,7 @@ export default function AdminProducts() {
         price: formData.price,
         sku: formData.sku,
         stock: totalStockFromVariants,
-        status: 'active',
+        status: formData.status,
         category_id: catId,
         tags: [formData.material],
         weight: 350,
@@ -642,8 +642,8 @@ export default function AdminProducts() {
                 <Info className="text-primary/60" size={20} />
                 <h3 className="font-headline-sm text-lg text-primary font-semibold">Thông tin cơ bản</h3>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="col-span-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="col-span-1 md:col-span-3">
                   <label className="font-caption text-xs text-outline uppercase tracking-wider block mb-2 font-medium">Tên sản phẩm</label>
                   <input 
                     value={formData.name}
@@ -673,6 +673,18 @@ export default function AdminProducts() {
                     {dbCategories.map(c => (
                       <option key={c.id} value={c.name}>{c.name}</option>
                     ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-caption text-xs text-outline uppercase tracking-wider block mb-2 font-medium">Trạng thái</label>
+                  <select 
+                    value={formData.status}
+                    onChange={(e) => setFormData({...formData, status: e.target.value})}
+                    className="w-full border-0 border-b border-outline-variant bg-transparent focus:ring-0 focus:border-primary py-2 font-body-md text-sm appearance-none cursor-pointer"
+                  >
+                    <option value="active">Đang bán</option>
+                    <option value="inactive">Bản nháp</option>
+                    <option value="out_of_stock">Hết hàng</option>
                   </select>
                 </div>
               </div>
@@ -952,7 +964,7 @@ export default function AdminProducts() {
               {/* Main Image */}
               <div>
                 <label className="font-caption text-xs text-outline uppercase tracking-wider block mb-4 font-medium">Ảnh đại diện</label>
-                <div className="relative aspect-[4/5] bg-surface-container-low border-2 border-dashed border-outline-variant/50 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-all overflow-hidden group">
+                <div className="relative aspect-[9/16] bg-surface-container-low border-2 border-dashed border-outline-variant/50 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-all overflow-hidden group">
                   {formData.image ? (
                     <>
                       <img src={formData.image} className="w-full h-full object-cover" />
@@ -979,7 +991,7 @@ export default function AdminProducts() {
               <div>
                 <label className="font-caption text-xs text-outline uppercase tracking-wider block mb-4 font-medium">Ảnh bổ sung</label>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="aspect-square bg-surface-container-low border-2 border-dashed border-outline-variant/50 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-all relative">
+                  <div className="aspect-[9/16] bg-surface-container-low border-2 border-dashed border-outline-variant/50 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-all relative">
                     <Plus size={20} className="text-outline-variant" />
                     <input 
                       type="file" 
@@ -990,7 +1002,7 @@ export default function AdminProducts() {
                     />
                   </div>
                   {formData.galleryImages.map((img, imgIdx) => (
-                    <div key={imgIdx} className="aspect-square relative rounded-lg overflow-hidden group border border-outline-variant/20">
+                    <div key={imgIdx} className="aspect-[9/16] relative rounded-lg overflow-hidden group border border-outline-variant/20">
                       <img src={img} className="w-full h-full object-cover" />
                       <button 
                         type="button"
@@ -1048,7 +1060,7 @@ export default function AdminProducts() {
                     
                     {/* Left Column - Images */}
                     <div className="lg:col-span-7 flex flex-col gap-6">
-                      <div className="aspect-[3/4] bg-surface-container overflow-hidden rounded-xs shadow-[0_8px_32px_rgba(68,42,34,0.03)] border border-[#d4c3be]/20 relative">
+                      <div className="aspect-[9/16] bg-surface-container overflow-hidden rounded-xs shadow-[0_8px_32px_rgba(68,42,34,0.03)] border border-[#d4c3be]/20 relative">
                         {formData.image ? (
                           <img
                             alt={formData.name || 'Ảnh sản phẩm'}
@@ -1067,7 +1079,7 @@ export default function AdminProducts() {
                       {formData.galleryImages && formData.galleryImages.length > 0 && (
                         <div className="grid grid-cols-2 gap-6">
                           {formData.galleryImages.slice(0, 2).map((img, idx) => (
-                            <div key={idx} className="aspect-square bg-surface-container overflow-hidden rounded-xs border border-[#d4c3be]/20 relative group">
+                            <div key={idx} className="aspect-[9/16] bg-surface-container overflow-hidden rounded-xs border border-[#d4c3be]/20 relative group">
                               <img
                                 alt={`Fabric Detail ${idx + 1}`}
                                 src={img}
