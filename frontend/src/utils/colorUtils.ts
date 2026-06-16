@@ -29,15 +29,15 @@ export interface ColorFamily {
 
 // Các nhóm màu hiển thị trong bộ lọc
 export const COLOR_FAMILIES: ColorFamily[] = [
-  { id: 'trang',    name: 'Trắng / Kem',  hex: '#F5F0E8' },
-  { id: 'xam',      name: 'Xám',           hex: '#9E9E9E' },
-  { id: 'den',      name: 'Đen / Tối',     hex: '#2C2C2C' },
-  { id: 'nau',      name: 'Nâu',           hex: '#795548' },
-  { id: 'vang',     name: 'Vàng / Be',     hex: '#C8A84B' },
-  { id: 'hong',     name: 'Hồng / Đỏ',    hex: '#C05878' },
-  { id: 'xanh-la', name: 'Xanh lá',       hex: '#4CAF50' },
-  { id: 'xanh',    name: 'Xanh dương',    hex: '#1976D2' },
-  { id: 'tim',      name: 'Tím',           hex: '#7B1FA2' },
+  { id: 'trang',    name: 'Trắng ngà / Kem',  hex: '#FAF9F6' },
+  { id: 'xam',      name: 'Xám đá / Slate',    hex: '#A8A29E' },
+  { id: 'den',      name: 'Đen charcoal',      hex: '#292524' },
+  { id: 'nau',      name: 'Nâu đất / Đất nung', hex: '#5D4037' },
+  { id: 'vang',     name: 'Vàng cát / Be',     hex: '#D2B48C' },
+  { id: 'hong',     name: 'Hồng sen / Mộc',    hex: '#B88A88' },
+  { id: 'xanh-la', name: 'Xanh rêu / Sage',   hex: '#8D9B91' },
+  { id: 'xanh',    name: 'Xanh lam / Indigo',  hex: '#4E5E66' },
+  { id: 'tim',      name: 'Tím tía / Plum',    hex: '#735F74' },
 ];
 
 // Phân loại một giá trị hex vào nhóm màu
@@ -45,21 +45,38 @@ export function getColorFamilyId(hex: string): string {
   if (!hex || hex.length < 4) return 'xam';
   const [h, s, l] = hexToHsl(hex);
 
-  // Trắng/Kem: độ sáng rất cao
-  if (l > 80) return 'trang';
-  // Đen/Tối: độ sáng rất thấp
-  if (l < 18) return 'den';
-  // Xám: bão hòa thấp
-  if (s < 12) return 'xam';
+  // 1. Trắng / Kem (Very light colors)
+  if (l > 90 && s < 12) return 'trang';
+  if (l > 82 && s < 25 && (h > 20 && h < 55)) return 'vang'; // light beige / sand
+  if (l > 82 && s < 25 && (h <= 20 || h >= 340)) return 'trang'; // very light pink/cream
 
-  // Phân loại theo hue
-  if (h >= 0   && h < 20)   return 'hong';   // Đỏ/Hồng
-  if (h >= 20  && h < 45)   return 'nau';    // Nâu / Cam đất
-  if (h >= 45  && h < 80)   return 'vang';   // Vàng / Be
-  if (h >= 80  && h < 165)  return 'xanh-la'; // Xanh lá
-  if (h >= 165 && h < 265)  return 'xanh';   // Xanh dương / Xanh ngọc
-  if (h >= 265 && h < 320)  return 'tim';    // Tím
-  if (h >= 320 && h < 345)  return 'hong';   // Hồng
+  // 2. Đen / Tối (Very dark colors)
+  if (l < 18) return 'den';
+
+  // 3. Xám (Very desaturated colors)
+  if (s < 8) return 'xam';
+
+  // 4. Phân loại theo Hue
+  if (h >= 345 || h < 15) {
+    if (l < 45) return 'nau';
+    return 'hong'; // Đỏ/Hồng
+  }
+  if (h >= 15 && h < 35) {
+    if (l < 60) return 'nau'; // Nâu
+    return 'vang'; // Vàng / Be
+  }
+  if (h >= 35 && h < 65) {
+    return 'vang'; // Vàng / Be
+  }
+  if (h >= 65 && h < 165) {
+    return 'xanh-la'; // Xanh lá / Rêu
+  }
+  if (h >= 165 && h < 255) {
+    return 'xanh'; // Xanh dương / Lam
+  }
+  if (h >= 255 && h < 345) {
+    return 'tim'; // Tím
+  }
   return 'nau'; // fallback
 }
 

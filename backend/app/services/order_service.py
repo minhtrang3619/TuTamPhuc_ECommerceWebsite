@@ -146,11 +146,11 @@ class OrderService:
             raise HTTPException(status_code=404, detail="Không tìm thấy đơn hàng")
         return order
 
-    def get_by_code(self, code: str, user_id: int) -> Order:
-        order = self.db.query(Order).filter(
-            Order.order_code == code,
-            Order.user_id == user_id,
-        ).first()
+    def get_by_code(self, code: str, user_id: int = None) -> Order:
+        query = self.db.query(Order).filter(Order.order_code == code)
+        if user_id is not None:
+            query = query.filter(Order.user_id == user_id)
+        order = query.first()
         if not order:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -192,10 +192,26 @@ class OrderService:
         order = self.db.query(Order).filter(Order.id == order_id).first()
         if not order:
             raise HTTPException(status_code=404, detail="Đơn hàng không tồn tại")
+        
+        old_status = order.status
         if new_status is not None:
             order.status = new_status
         if new_payment_status is not None:
             order.payment_status = new_payment_status
+            
+        # Add dynamic charity transaction of 5% total amount when order is delivered
+        if new_status == OrderStatus.DELIVERED and old_status != OrderStatus.DELIVERED:
+            from app.models.charity import CharityTransaction
+            donation_amount = order.total * 0.05
+            db_tx = CharityTransaction(
+                campaign_id=None,
+                donor_recipient=order.shipping_address.get("full_name", f"Đơn hàng #{order.order_code}"),
+                amount=donation_amount,
+                transaction_type="donation",
+                description=f"Trích 5% doanh số từ đơn hàng #{order.order_code}"
+            )
+            self.db.add(db_tx)
+
         self.db.commit()
         self.db.refresh(order)
         return order

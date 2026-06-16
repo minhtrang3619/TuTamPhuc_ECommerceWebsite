@@ -1,4 +1,4 @@
-import { Sparkles, Trash2 } from 'lucide-react';
+import { Sparkles, Trash2, Check } from 'lucide-react';
 import { COLOR_FAMILIES } from '@/utils/colorUtils';
 
 interface SidebarProps {
@@ -100,24 +100,34 @@ export default function Sidebar({
       {/* Color Family Filter */}
       <div>
         <h4 className="text-[11px] uppercase tracking-widest font-semibold text-primary mb-3">Màu sắc</h4>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-3.5">
           {COLOR_FAMILIES.map((family) => {
             const isSelected = selectedColors.includes(family.id);
             return (
               <button
                 key={family.id}
                 onClick={() => handleColorToggle(family.id)}
-                className={`group relative w-7 h-7 rounded-full border flex items-center justify-center transition-all ${
-                  isSelected ? 'border-primary ring-2 ring-primary/20 scale-110' : 'border-[#d4c3be]'
-                } hover:border-primary cursor-pointer`}
+                className={`group relative w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
+                  isSelected 
+                    ? 'border-primary bg-primary/5 scale-110 shadow-sm' 
+                    : 'border-[#e0d6d3] hover:border-primary hover:scale-105'
+                } cursor-pointer`}
                 title={family.name}
               >
                 <span
-                  className="w-5 h-5 rounded-full block border border-[rgba(0,0,0,0.08)]"
+                  className="w-6 h-6 rounded-full flex items-center justify-center border border-[rgba(0,0,0,0.05)] shadow-inner transition-transform duration-300 group-hover:scale-105"
                   style={{ backgroundColor: family.hex }}
-                />
+                >
+                  {isSelected && (
+                    <Check 
+                      size={12} 
+                      strokeWidth={3} 
+                      className={['trang', 'vang'].includes(family.id) ? 'text-primary' : 'text-white'} 
+                    />
+                  )}
+                </span>
                 {/* Tooltip */}
-                <span className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-primary text-white text-[9px] py-0.5 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-sm font-semibold z-10">
+                <span className="absolute bottom-10 left-1/2 -translate-y-1/2 bg-[#5d4037] text-[#fcfaf7] text-[10px] py-1 px-2 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none shadow-md font-semibold z-10">
                   {family.name}
                 </span>
               </button>

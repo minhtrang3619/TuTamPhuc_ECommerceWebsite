@@ -33,6 +33,7 @@ const AdminCustomers = lazy(() => import('@/pages/admin/Customers'))
 
 const AdminBlog = lazy(() => import('@/pages/admin/Blog'))
 const AdminReports = lazy(() => import('@/pages/admin/Reports'))
+const AdminCharity = lazy(() => import('@/pages/admin/Charity'))
 const AdminSettings = lazy(() => import('@/pages/admin/Settings'))
 const AdminPromotions = lazy(() => import('@/pages/admin/Promotions'));
 
@@ -82,6 +83,7 @@ export function AppRoutes() {
 
             <Route path="/admin/blog" element={<AdminBlog />} />
             <Route path="/admin/bao-cao" element={<AdminReports />} />
+            <Route path="/admin/tu-thien" element={<AdminCharity />} />
             <Route path="/admin/cai-dat" element={<AdminSettings />} />
             <Route path="/admin/khuyen-mai" element={<AdminPromotions />} />
 

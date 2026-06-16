@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
-from app.core.dependencies import get_current_user, require_admin, require_shop_staff_or_admin
+from app.core.dependencies import get_current_user, require_admin, require_shop_staff_or_admin, require_shop_staff_or_admin_write
 from app.services.order_service import OrderService
 from app.schemas.order import OrderCreate, OrderResponse, OrderStatusUpdate, PaginatedOrders
 from app.schemas.return_request import ReturnRequestCreate, ReturnRequestResponse, ReturnRequestUpdateStatus
-from app.models.user import User
+from app.models.user import User, UserRole
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
@@ -37,7 +37,7 @@ def get_order(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if current_user.role.value in ["admin", "shop_staff", "customer_service"]:
+    if current_user.role in [UserRole.ADMIN, UserRole.STAFF, UserRole.SHOP_STAFF, UserRole.CUSTOMER_SERVICE]:
         return OrderService(db).get_by_id(order_id)
     return OrderService(db).get_by_id(order_id, current_user.id)
 
@@ -48,6 +48,8 @@ def get_order_by_code(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if current_user.role in [UserRole.ADMIN, UserRole.STAFF, UserRole.SHOP_STAFF, UserRole.CUSTOMER_SERVICE]:
+        return OrderService(db).get_by_code(code)
     return OrderService(db).get_by_code(code, current_user.id)
 
 
@@ -65,11 +67,12 @@ def cancel_order(
 @router.get("", response_model=PaginatedOrders)
 def admin_list_orders(
     page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=1000),
     order_status: str = None,
     db: Session = Depends(get_db),
     _: User = Depends(require_shop_staff_or_admin),
 ):
-    return OrderService(db).get_all_orders(page=page, order_status=order_status)
+    return OrderService(db).get_all_orders(page=page, page_size=page_size, order_status=order_status)
 
 
 @router.patch("/{order_id}/status", response_model=OrderResponse)
@@ -77,7 +80,7 @@ def update_order_status(
     order_id: int,
     data: OrderStatusUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_shop_staff_or_admin),
+    _: User = Depends(require_shop_staff_or_admin_write),
 ):
     return OrderService(db).update_status(
         order_id=order_id,
@@ -116,7 +119,7 @@ def update_return_request_status(
     return_id: int,
     data: ReturnRequestUpdateStatus,
     db: Session = Depends(get_db),
-    _: User = Depends(require_shop_staff_or_admin),
+    _: User = Depends(require_shop_staff_or_admin_write),
 ):
     """Admin duyệt / từ chối yêu cầu trả hàng."""
     return OrderService(db).update_return_request_status(

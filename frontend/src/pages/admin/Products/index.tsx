@@ -1595,17 +1595,17 @@ export default function AdminProducts() {
 
       {/* Delete Confirmation Modal (Zen UI Card Modal) */}
       {isDeleteModalOpen && productToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl max-w-sm w-full shadow-2xl p-6 relative animate-in slide-in-from-bottom-8 duration-500">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-300 font-sans">
+          <div className="bg-white border border-outline-variant/30 rounded-xl max-w-sm w-full shadow-2xl p-6 relative animate-in slide-in-from-bottom-8 duration-500 font-sans text-left">
             <button 
               onClick={() => setIsDeleteModalOpen(false)}
               className="absolute top-4 right-4 text-on-surface-variant hover:text-primary transition-colors p-1"
             >
               <X size={20} />
             </button>
-            <h3 className="font-headline-sm text-headline-sm text-primary mb-3">Xóa sản phẩm</h3>
+            <h3 className="font-headline-sm text-headline-sm text-primary mb-3 font-semibold">Xóa sản phẩm</h3>
             <p className="font-body-md text-on-surface-variant text-sm mb-5 leading-relaxed">
-              Bạn có chắc chắn muốn xóa sản phẩm <span className="font-semibold text-primary">"{productToDelete.name}"</span>? Hành động này không thể hoàn tác.
+              Bạn có chắc chắn muốn xóa sản phẩm <span className="font-semibold text-primary">"{productToDelete.name}"</span>? Hành động này sẽ gỡ bỏ sản phẩm vĩnh viễn và không thể hoàn tác.
             </p>
             <div className="flex justify-end gap-3">
               <button 

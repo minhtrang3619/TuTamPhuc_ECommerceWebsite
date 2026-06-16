@@ -49,7 +49,8 @@ export default function ProductListPage() {
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [sortBy, setSortBy] = useState<'latest' | 'price-asc' | 'price-desc'>('latest');
+  const [sortBy, setSortBy] = useState<'all' | 'latest' | 'price-asc' | 'price-desc'>('all');
+  const [productWeights, setProductWeights] = useState<Record<string, number>>({});
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
 
@@ -82,6 +83,17 @@ export default function ProductListPage() {
       setSelectedCategories([]);
     }
   }, [activeCategorySlug, categories]);
+
+  // Generate stable random weights for shuffling when products load or sortBy is set to 'all'
+  useEffect(() => {
+    if (dbProducts.length > 0) {
+      const weights: Record<string, number> = {};
+      dbProducts.forEach((p) => {
+        weights[p.id] = Math.random();
+      });
+      setProductWeights(weights);
+    }
+  }, [dbProducts, sortBy === 'all']);
 
 
   // Toast alert state
@@ -142,9 +154,12 @@ export default function ProductListPage() {
     }).sort((a, b) => {
       if (sortBy === 'price-asc') return a.price - b.price;
       if (sortBy === 'price-desc') return b.price - a.price;
+      if (sortBy === 'all') {
+        return (productWeights[a.id] || 0) - (productWeights[b.id] || 0);
+      }
       return 0; // 'latest' matches raw order
     });
-  }, [dbProducts, searchQuery, selectedCategories, selectedColors, selectedSizes, sortBy]);
+  }, [dbProducts, searchQuery, selectedCategories, selectedColors, selectedSizes, sortBy, productWeights]);
 
   // Paginated items
   const productsPerPage = 6;
@@ -159,7 +174,7 @@ export default function ProductListPage() {
     setSelectedColors([]);
     setSelectedSizes([]);
     setSearchQuery('');
-    setSortBy('latest');
+    setSortBy('all');
     setCurrentPage(1);
     showToast('Bộ lọc đã được đặt lại.', 'info');
   };
@@ -252,6 +267,7 @@ export default function ProductListPage() {
                     onChange={(e) => setSortBy(e.target.value as any)}
                     className="bg-transparent border-0 py-1 pl-1 pr-6 font-semibold text-primary cursor-pointer outline-none focus:ring-0 text-xs text-right appearance-none"
                   >
+                    <option value="all">Tất cả</option>
                     <option value="latest">Mới nhất</option>
                     <option value="price-asc">Giá tăng dần</option>
                     <option value="price-desc">Giá giảm dần</option>

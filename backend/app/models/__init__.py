@@ -13,6 +13,7 @@ from app.models.customer import Customer
 from app.models.address import Address
 from app.models.chat_message import ChatMessage
 from app.models.support_ticket import SupportTicket
+from app.models.charity import CharityCampaign, CharityTransaction
 
 __all__ = [
     "BaseModel",
@@ -29,5 +30,7 @@ __all__ = [
     "ReturnRequest", "ReturnRequestStatus",
     "ChatMessage",
     "SupportTicket",
+    "CharityCampaign",
+    "CharityTransaction",
 ]
 

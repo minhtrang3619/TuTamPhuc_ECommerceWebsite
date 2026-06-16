@@ -16,8 +16,10 @@ from app.models.product import Product, ProductImage, ProductVariant, ProductSta
 MOCK_CATEGORIES = [
     {"name": "Đồ lam nam", "slug": "do-lam-nam", "description": "Trang phục thanh nhã dành cho cư sĩ nam"},
     {"name": "Đồ lam nữ", "slug": "do-lam-nu", "description": "Pháp phục đằm thắm dành cho nữ đạo hữu"},
-    {"name": "Áo tràng", "slug": "ao-trang", "description": "Áo tràng tôn nghiêm dành cho các khóa tu và nghi lễ"},
-    {"name": "Pháp Phục", "slug": "phap-phuc", "description": "Pháp phục cách tân cao cấp cho mọi hoạt động đời sống"}
+    {"name": "Pháp phục nam", "slug": "phap-phuc-nam", "description": "Pháp phục cách tân cao cấp dành cho nam"},
+    {"name": "Pháp phục nữ", "slug": "phap-phuc-nu", "description": "Pháp phục cách tân duyên dáng dành cho nữ"},
+    {"name": "Áo tràng Nam", "slug": "ao-trang-nam", "description": "Áo tràng tôn nghiêm dành cho nam đạo hữu"},
+    {"name": "Áo tràng Nữ", "slug": "ao-trang-nu", "description": "Áo tràng tôn nghiêm dành cho nữ đạo hữu"},
 ]
 
 MOCK_PRODUCTS = [
@@ -45,7 +47,7 @@ MOCK_PRODUCTS = [
     "name": "Áo Tràng An Nhiên",
     "price": 1650000,
     "sale_price": 1850000,
-    "category": "Áo tràng",
+    "category": "Áo tràng Nữ",
     "is_featured": True,
     "colors": [
       {"name": "Trắng ngà", "hex": "#F5F5F5"},
@@ -63,7 +65,7 @@ MOCK_PRODUCTS = [
     "id": "bo-cu-si-thien-mon",
     "name": "Bộ Cư Sĩ Thiền Môn",
     "price": 1450000,
-    "category": "Pháp Phục",
+    "category": "Pháp phục nam",
     "colors": [
       {"name": "Nâu đất", "hex": "#5D4037"},
       {"name": "Nâu nhạt", "hex": "#EADDD7"}
@@ -96,7 +98,7 @@ MOCK_PRODUCTS = [
     "id": "ao-trang-khinh-thanh",
     "name": "Áo Tràng Khinh Thanh",
     "price": 2100000,
-    "category": "Áo tràng",
+    "category": "Áo tràng Nam",
     "colors": [
       {"name": "Trắng ngà", "hex": "#F5F5F5"},
       {"name": "Nâu nhạt", "hex": "#EADDD7"}
@@ -131,7 +133,7 @@ MOCK_PRODUCTS = [
     "id": "ao-dai-cach-tan-silk-trang",
     "name": "Áo Dài Cách Tân Silk Trắng",
     "price": 2450000,
-    "category": "Pháp Phục",
+    "category": "Pháp phục nữ",
     "colors": [
       {"name": "Trắng ngà", "hex": "#F5F5F5"},
       {"name": "Nâu nhạt", "hex": "#EADDD7"}
@@ -150,7 +152,7 @@ MOCK_PRODUCTS = [
     "id": "phap-phuc-linen-tu-nhien",
     "name": "Pháp Phục Linen Tự Nhiên",
     "price": 1850000,
-    "category": "Pháp Phục",
+    "category": "Pháp phục nam",
     "colors": [
       {"name": "Nâu nhạt", "hex": "#EADDD7"}
     ],
@@ -183,7 +185,7 @@ MOCK_PRODUCTS = [
     "id": "khan-lua-theu-sen",
     "name": "Khăn Lụa Thêu Sen",
     "price": 850000,
-    "category": "Pháp Phục",
+    "category": "Pháp phục nữ",
     "colors": [
       {"name": "Nâu nhạt", "hex": "#EADDD7"},
       {"name": "Trắng ngà", "hex": "#F5F5F5"}
@@ -217,7 +219,7 @@ MOCK_PRODUCTS = [
     "id": "bo-cu-si-cat-tuong",
     "name": "Bộ Cư Sĩ Cát Tường",
     "price": 1500000,
-    "category": "Pháp Phục",
+    "category": "Pháp phục nam",
     "colors": [
       {"name": "Nâu nhạt", "hex": "#EADDD7"},
       {"name": "Trắng ngà", "hex": "#F5F5F5"}
@@ -234,7 +236,7 @@ MOCK_PRODUCTS = [
     "id": "ao-trang-thanh-luong",
     "name": "Áo Tràng Thanh Lương",
     "price": 1900000,
-    "category": "Áo tràng",
+    "category": "Áo tràng Nam",
     "is_featured": True,
     "colors": [
       {"name": "Xanh rêu", "hex": "#8D9B91"},
@@ -269,7 +271,7 @@ MOCK_PRODUCTS = [
     "id": "phap-phuc-giao-linh-cai-tien",
     "name": "Pháp Phục Giao Lĩnh Cách Tân",
     "price": 2600000,
-    "category": "Pháp Phục",
+    "category": "Pháp phục nữ",
     "is_featured": True,
     "colors": [
       {"name": "Trắng ngà", "hex": "#F5F5F5"},

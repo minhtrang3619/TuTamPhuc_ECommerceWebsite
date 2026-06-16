@@ -7,7 +7,12 @@ import {
   ChevronRight,
   X,
   Sparkles,
-  Check
+  Check,
+  User,
+  MapPin,
+  CreditCard,
+  Calendar,
+  FileText
 } from 'lucide-react'
 import { useAuthStore } from '@/store'
 import { orderService } from '@/services'
@@ -383,130 +388,290 @@ export default function AdminOrders() {
       {/* Edit Order Modal */}
       {isModalOpen && selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-          <div className={`bg-surface-container-lowest border border-outline-variant/30 rounded-xl w-full shadow-2xl p-6 relative animate-in slide-in-from-bottom-8 duration-500 max-h-[90vh] overflow-y-auto ${selectedOrder.return_request ? 'max-w-lg' : 'max-w-md'}`}>
+          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl w-full shadow-2xl p-6 md:p-8 relative animate-in slide-in-from-bottom-8 duration-500 max-h-[92vh] overflow-y-auto max-w-4xl font-sans text-left">
             <button 
               onClick={() => setIsModalOpen(false)}
               className="absolute top-4 right-4 text-on-surface-variant hover:text-primary transition-colors p-1"
             >
               <X size={20} />
             </button>
-            <h3 className="font-headline-sm text-headline-sm text-primary mb-4">Cập nhật đơn hàng</h3>
             
-            {/* Simple UI Info Card */}
-            <div className="bg-surface-container-low p-4 rounded-lg mb-6 flex justify-between items-center border border-outline-variant/10">
-              <div>
-                <p className="font-body-md text-on-surface font-semibold text-sm">Mã đơn: {selectedOrder.order_code}</p>
-                <p className="font-caption text-on-surface-variant text-xs">Khách hàng: {selectedOrder.shipping_address?.full_name || selectedOrder.user?.full_name || 'Khách hàng'}</p>
+            <div className="border-b border-outline-variant/20 pb-4 mb-6">
+              <div className="flex flex-wrap items-center gap-3">
+                <h3 className="font-headline-sm text-2xl font-bold text-primary">Chi tiết đơn hàng</h3>
+                <span className="font-mono text-xs font-semibold px-2.5 py-1 bg-primary/5 text-primary rounded border border-primary/10">
+                  {selectedOrder.order_code}
+                </span>
               </div>
-              <p className="font-body-md font-bold text-primary text-sm">{formatPrice(selectedOrder.total)}</p>
+              <p className="text-xs text-on-surface-variant/70 mt-1 flex items-center gap-1.5">
+                <Calendar size={13} /> Ngày tạo: {new Date(selectedOrder.created_at).toLocaleString('vi-VN')}
+              </p>
             </div>
 
-            {/* Inputs / Confirmation Fields */}
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="text-[11px] uppercase tracking-wider text-on-surface-variant opacity-75 font-semibold block mb-1">Trạng thái thanh toán</label>
-                <select 
-                  value={editPaymentStatus}
-                  onChange={(e) => setEditPaymentStatus(e.target.value as PaymentStatus)}
-                  disabled={isCSKH}
-                  className="w-full bg-surface-container-low border border-outline-variant/30 rounded px-3 py-2 text-sm text-primary focus:ring-1 focus:ring-primary/20 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                  <option value="paid">Đã thanh toán</option>
-                  <option value="pending">
-                    {selectedOrder.payment_method === 'cod' ? 'Thanh toán COD' : 'Chờ thanh toán'}
-                  </option>
-                  <option value="failed">Thất bại</option>
-                  <option value="refunded">Đã hoàn tiền</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[11px] uppercase tracking-wider text-on-surface-variant opacity-75 font-semibold block mb-1">Trạng thái vận chuyển</label>
-                <select 
-                  value={editStatus}
-                  onChange={(e) => setEditStatus(e.target.value as OrderStatus)}
-                  disabled={isCSKH}
-                  className="w-full bg-surface-container-low border border-outline-variant/30 rounded px-3 py-2 text-sm text-primary focus:ring-1 focus:ring-primary/20 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                  <option value="delivered">Đã giao</option>
-                  <option value="pending">Chờ xác nhận</option>
-                  <option value="confirmed">Đã xác nhận</option>
-                  <option value="processing">Đang chuẩn bị</option>
-                  <option value="shipped">Đang vận chuyển</option>
-                  <option value="cancelled">Đã hủy</option>
-                  <option value="refunded">Đã trả hàng</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Return Request Details (if exists) */}
-            {selectedOrder.return_request && (
-              <div className="mt-6 p-4 border border-[#d4c3be]/40 rounded-lg bg-surface-container-low text-xs space-y-3">
-                <h4 className="font-serif text-sm font-bold text-primary border-b border-outline-variant/20 pb-1 flex items-center justify-between">
-                  <span>Yêu cầu Trả hàng / Hoàn tiền</span>
-                  <span className={`px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-bold border ${
-                    selectedOrder.return_request.status === 'pending'
-                      ? 'bg-amber-50 text-amber-700 border-amber-200'
-                      : selectedOrder.return_request.status === 'approved'
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                      : 'bg-red-50 text-red-700 border-red-200'
-                  }`}>
-                    {selectedOrder.return_request.status === 'pending' ? 'Chờ duyệt' : selectedOrder.return_request.status === 'approved' ? 'Đã duyệt' : 'Từ chối'}
-                  </span>
-                </h4>
-                
-                <p><span className="font-semibold text-primary">Lý do:</span> {selectedOrder.return_request.reason}</p>
-                {selectedOrder.return_request.description && (
-                  <p><span className="font-semibold text-primary">Chi tiết:</span> {selectedOrder.return_request.description}</p>
-                )}
-                <p><span className="font-semibold text-primary">Hình thức trả hàng:</span> {selectedOrder.return_request.shipping_method === 'pickup' ? 'Shipper lấy tận nơi' : 'Tự mang ra bưu cục'}</p>
-                
-                <div className="bg-white p-2.5 rounded border border-outline-variant/10 text-[11px] leading-relaxed">
-                  <p className="font-semibold mb-1 text-primary">Thông tin tài khoản hoàn tiền:</p>
-                  <p><span className="font-medium text-on-surface-variant">Ngân hàng:</span> {selectedOrder.return_request.bank_name}</p>
-                  <p><span className="font-medium text-on-surface-variant">Số tài khoản:</span> {selectedOrder.return_request.account_number}</p>
-                  <p><span className="font-medium text-on-surface-variant">Chủ tài khoản:</span> {selectedOrder.return_request.account_holder}</p>
-                </div>
-                
-                <div>
-                  <p className="font-semibold mb-1 text-primary">Ảnh minh chứng:</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {selectedOrder.return_request.images?.map((url, i) => (
-                      <a href={getImageUrl(url)} key={i} target="_blank" rel="noopener noreferrer" className="block relative group">
-                        <img src={getImageUrl(url)} className="w-16 h-16 object-cover rounded border border-outline-variant/20 hover:opacity-90 transition-opacity" alt="Proof" />
-                      </a>
-                    ))}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 mb-8">
+              {/* Left Column: Customer & Delivery Info */}
+              <div className="md:col-span-5 space-y-6">
+                {/* Customer Info Card */}
+                <div className="bg-surface-container-low p-5 rounded-xl border border-outline-variant/10 space-y-4 shadow-[0_10px_30px_rgba(93,64,55,0.02)]">
+                  <h4 className="font-semibold text-primary uppercase tracking-wider text-[11px] flex items-center gap-1.5 border-b border-outline-variant/20 pb-2">
+                    <User size={14} /> Thông tin khách hàng
+                  </h4>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-primary/10 text-primary">
+                      {(selectedOrder.shipping_address?.full_name || selectedOrder.user?.full_name || 'KH')
+                        .split(' ')
+                        .map((n: string) => n[0])
+                        .join('')
+                        .toUpperCase()
+                        .slice(0, 2)}
+                    </div>
+                    <div>
+                      <p className="font-bold text-primary text-sm">
+                        {selectedOrder.shipping_address?.full_name || selectedOrder.user?.full_name}
+                      </p>
+                      <p className="text-xs text-on-surface-variant/65">
+                        Email: {selectedOrder.user?.email || 'N/A'}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                {selectedOrder.return_request.status === 'pending' && !isCSKH && (
-                  <div className="flex gap-2 pt-2.5 border-t border-outline-variant/20">
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateReturnRequestStatus(selectedOrder.return_request!.id, 'rejected')}
-                      className="w-1/2 py-2 bg-red-50 border border-red-200 hover:bg-red-100/60 text-red-700 text-[10px] font-bold uppercase tracking-wider rounded-xs transition-colors cursor-pointer"
-                    >
-                      Từ chối
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateReturnRequestStatus(selectedOrder.return_request!.id, 'approved')}
-                      className="w-1/2 py-2 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100/60 text-emerald-700 text-[10px] font-bold uppercase tracking-wider rounded-xs transition-colors cursor-pointer"
-                    >
-                      Duyệt trả
-                    </button>
+                {/* Delivery Info Card */}
+                <div className="bg-surface-container-low p-5 rounded-xl border border-outline-variant/10 space-y-3 shadow-[0_10px_30px_rgba(93,64,55,0.02)]">
+                  <h4 className="font-semibold text-primary uppercase tracking-wider text-[11px] flex items-center gap-1.5 border-b border-outline-variant/20 pb-2">
+                    <MapPin size={14} /> Địa chỉ giao hàng
+                  </h4>
+                  <div className="space-y-2 text-xs text-on-surface/90">
+                    <p><span className="font-medium text-on-surface-variant">Số điện thoại:</span> {selectedOrder.shipping_address?.phone || 'N/A'}</p>
+                    <p>
+                      <span className="font-medium text-on-surface-variant">Địa chỉ:</span>{' '}
+                      {selectedOrder.shipping_address?.address}, {selectedOrder.shipping_address?.ward},{' '}
+                      {selectedOrder.shipping_address?.district}, {selectedOrder.shipping_address?.province}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Charity Messages & Notes */}
+                {(selectedOrder.shipping_address?.charity_message || selectedOrder.notes) && (
+                  <div className="space-y-3">
+                    {selectedOrder.shipping_address?.charity_message && (
+                      <div className="italic text-xs text-primary bg-primary/5 p-4 rounded-xl border border-primary/10 shadow-[0_10px_30px_rgba(93,64,55,0.02)]">
+                        <span className="font-medium block not-italic text-[10px] uppercase tracking-wider text-primary/70 mb-1">
+                          Thông điệp gieo duyên
+                        </span>
+                        "{selectedOrder.shipping_address.charity_message}"
+                        {selectedOrder.shipping_address.is_charity_anonymous && (
+                          <span className="block text-[9px] text-on-surface-variant/65 mt-1.5 font-semibold">
+                            (Yêu cầu gửi ẩn danh)
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {selectedOrder.notes && (
+                      <div className="text-xs text-amber-800 bg-amber-50/50 p-4 rounded-xl border border-amber-200/40 shadow-[0_10px_30px_rgba(93,64,55,0.02)]">
+                        <span className="font-medium block text-[10px] uppercase tracking-wider text-amber-700/80 mb-1">
+                          Ghi chú từ khách hàng
+                        </span>
+                        "{selectedOrder.notes}"
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
 
+              {/* Right Column: Order Items & Pricing Breakdown */}
+              <div className="md:col-span-7 space-y-6">
+                {/* Product List */}
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-primary uppercase tracking-wider text-[11px] flex items-center gap-1.5 border-b border-outline-variant/20 pb-2">
+                    <FileText size={14} /> Danh sách sản phẩm
+                  </h4>
+                  <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                    {selectedOrder.items?.map((item: any) => {
+                      const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+                      const imgPath = item.product_snapshot?.image || item.product?.images?.[0]?.url
+                      const imgUrl = imgPath 
+                        ? (imgPath.startsWith('http') ? imgPath : `${BASE_URL}${imgPath}`)
+                        : 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?auto=format&fit=crop&w=600&q=80'
+
+                      const name = item.product_snapshot?.name || item.product?.name || 'Sản phẩm Từ Tâm Phục'
+                      const color = item.product_snapshot?.color || item.variant?.value
+                      const size = item.product_snapshot?.size || (item.variant?.name === 'Size' ? item.variant?.value : '')
+
+                      return (
+                        <div key={item.id} className="flex items-center justify-between gap-4 p-3 bg-surface-container-low rounded-xl border border-outline-variant/10 group/item hover:border-primary/25 transition-all">
+                          <div className="flex items-center gap-3">
+                            <img 
+                              src={imgUrl} 
+                              alt={name} 
+                              className="w-10 h-14 object-cover rounded border border-outline-variant/20 bg-white" 
+                            />
+                            <div>
+                              <p className="font-semibold text-primary text-xs leading-snug">{name}</p>
+                              <p className="text-[10px] text-on-surface-variant/60 mt-1">
+                                {color && `Màu: ${color}`} {size && ` | Size: ${size}`}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold text-primary text-xs">{formatPrice(item.price)}</p>
+                            <p className="text-[10px] text-on-surface-variant/60">x{item.quantity}</p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Price Summary */}
+                <div className="bg-surface-container-low p-5 rounded-xl border border-outline-variant/10 space-y-2 text-xs shadow-[0_10px_30px_rgba(93,64,55,0.02)]">
+                  <div className="flex justify-between text-on-surface-variant">
+                    <span>Tạm tính</span>
+                    <span>{formatPrice(selectedOrder.subtotal)}</span>
+                  </div>
+                  {selectedOrder.discount > 0 && (
+                    <div className="flex justify-between text-red-600">
+                      <span>Mã giảm giá</span>
+                      <span>-{formatPrice(selectedOrder.discount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-on-surface-variant">
+                    <span>Phí vận chuyển</span>
+                    <span>{formatPrice(selectedOrder.shipping_fee)}</span>
+                  </div>
+                  <div className="flex justify-between text-primary font-bold text-sm border-t border-outline-variant/25 pt-2 mt-2">
+                    <span>Tổng thanh toán</span>
+                    <span>{formatPrice(selectedOrder.total)}</span>
+                  </div>
+                </div>
+
+                {/* Status Update section */}
+                <div className="bg-surface-container-low p-5 rounded-xl border border-outline-variant/10 space-y-4 shadow-[0_10px_30px_rgba(93,64,55,0.02)]">
+                  <h4 className="font-semibold text-primary uppercase tracking-wider text-[11px] flex items-center gap-1.5 border-b border-outline-variant/20 pb-2">
+                    <CreditCard size={14} /> Cập nhật trạng thái xử lý
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-on-surface-variant opacity-75 font-semibold block mb-1">
+                        Thanh toán
+                      </label>
+                      {isCSKH ? (
+                        <span className="inline-block px-3 py-2 bg-surface-container-high border border-outline-variant/10 rounded text-xs text-primary font-semibold w-full">
+                          {getPaymentStatusLabel(selectedOrder.payment_status, selectedOrder.payment_method)}
+                        </span>
+                      ) : (
+                        <select 
+                          value={editPaymentStatus}
+                          onChange={(e) => setEditPaymentStatus(e.target.value as PaymentStatus)}
+                          className="w-full bg-white border border-outline-variant/30 rounded px-3 py-2 text-xs text-primary focus:ring-1 focus:ring-primary/20 cursor-pointer outline-none transition-all"
+                        >
+                          <option value="pending">
+                            {selectedOrder.payment_method === 'cod' ? 'Thanh toán COD' : 'Chờ thanh toán'}
+                          </option>
+                          <option value="paid">Đã thanh toán</option>
+                          <option value="failed">Thất bại</option>
+                          <option value="refunded">Đã hoàn tiền</option>
+                        </select>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-on-surface-variant opacity-75 font-semibold block mb-1">
+                        Vận chuyển
+                      </label>
+                      {isCSKH ? (
+                        <span className="inline-block px-3 py-2 bg-surface-container-high border border-outline-variant/10 rounded text-xs text-primary font-semibold w-full">
+                          {getOrderStatusLabel(selectedOrder.status)}
+                        </span>
+                      ) : (
+                        <select 
+                          value={editStatus}
+                          onChange={(e) => setEditStatus(e.target.value as OrderStatus)}
+                          className="w-full bg-white border border-outline-variant/30 rounded px-3 py-2 text-xs text-primary focus:ring-1 focus:ring-primary/20 cursor-pointer outline-none transition-all"
+                        >
+                          <option value="pending">Chờ xác nhận</option>
+                          <option value="confirmed">Đã xác nhận</option>
+                          <option value="processing">Đang chuẩn bị</option>
+                          <option value="shipped">Đang vận chuyển</option>
+                          <option value="delivered">Đã giao</option>
+                          <option value="cancelled">Đã hủy</option>
+                          <option value="refunded">Đã trả hàng</option>
+                        </select>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Return Request Details (if exists) */}
+                {selectedOrder.return_request && (
+                  <div className="p-5 border border-[#d4c3be]/40 rounded-xl bg-surface-container-low text-xs space-y-3 shadow-[0_10px_30px_rgba(93,64,55,0.02)]">
+                    <h4 className="font-serif text-sm font-bold text-primary border-b border-outline-variant/20 pb-1 flex items-center justify-between">
+                      <span>Yêu cầu Trả hàng / Hoàn tiền</span>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-bold border ${
+                        selectedOrder.return_request.status === 'pending'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : selectedOrder.return_request.status === 'approved'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-red-50 text-red-700 border-red-200'
+                      }`}>
+                        {selectedOrder.return_request.status === 'pending' ? 'Chờ duyệt' : selectedOrder.return_request.status === 'approved' ? 'Đã duyệt' : 'Từ chối'}
+                      </span>
+                    </h4>
+                    
+                    <p><span className="font-semibold text-primary">Lý do:</span> {selectedOrder.return_request.reason}</p>
+                    {selectedOrder.return_request.description && (
+                      <p><span className="font-semibold text-primary">Chi tiết:</span> {selectedOrder.return_request.description}</p>
+                    )}
+                    <p><span className="font-semibold text-primary">Hình thức trả hàng:</span> {selectedOrder.return_request.shipping_method === 'pickup' ? 'Shipper lấy tận nơi' : 'Tự mang ra bưu cục'}</p>
+                    
+                    <div className="bg-white p-3 rounded border border-outline-variant/10 text-[11px] leading-relaxed">
+                      <p className="font-semibold mb-1 text-primary">Thông tin tài khoản hoàn tiền:</p>
+                      <p><span className="font-medium text-on-surface-variant">Ngân hàng:</span> {selectedOrder.return_request.bank_name}</p>
+                      <p><span className="font-medium text-on-surface-variant">Số tài khoản:</span> {selectedOrder.return_request.account_number}</p>
+                      <p><span className="font-medium text-on-surface-variant">Chủ tài khoản:</span> {selectedOrder.return_request.account_holder}</p>
+                    </div>
+                    
+                    <div>
+                      <p className="font-semibold mb-1 text-primary">Ảnh minh chứng:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedOrder.return_request.images?.map((url, i) => (
+                          <a href={getImageUrl(url)} key={i} target="_blank" rel="noopener noreferrer" className="block relative group">
+                            <img src={getImageUrl(url)} className="w-16 h-16 object-cover rounded border border-outline-variant/20 hover:opacity-90 transition-opacity" alt="Proof" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+
+                    {selectedOrder.return_request.status === 'pending' && !isCSKH && (
+                      <div className="flex gap-3 pt-2.5 border-t border-outline-variant/20">
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateReturnRequestStatus(selectedOrder.return_request!.id, 'rejected')}
+                          className="w-1/2 py-2 bg-red-50 border border-red-200 hover:bg-red-100/60 text-red-700 text-[10px] font-bold uppercase tracking-wider rounded transition-colors cursor-pointer"
+                        >
+                          Từ chối
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateReturnRequestStatus(selectedOrder.return_request!.id, 'approved')}
+                          className="w-1/2 py-2 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100/60 text-emerald-700 text-[10px] font-bold uppercase tracking-wider rounded transition-colors cursor-pointer"
+                        >
+                          Duyệt trả
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-end gap-3">
+            <div className="flex justify-end gap-3 border-t border-outline-variant/15 pt-5">
               {isCSKH ? (
                 <button 
                   onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2 bg-primary text-white rounded font-label-md text-xs hover:bg-opacity-90 transition-colors"
+                  className="px-6 py-2.5 bg-primary text-white rounded font-label-md text-xs hover:bg-opacity-90 transition-colors"
                 >
                   Đóng
                 </button>
@@ -514,13 +679,13 @@ export default function AdminOrders() {
                 <>
                   <button 
                     onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 border border-outline-variant/50 rounded font-label-md text-xs text-on-surface-variant hover:bg-surface-container-low transition-colors"
+                    className="px-5 py-2.5 border border-outline-variant/50 rounded font-label-md text-xs text-on-surface-variant hover:bg-surface-container-low transition-colors"
                   >
                     Hủy bỏ
                   </button>
                   <button 
                     onClick={handleSaveOrder}
-                    className="px-5 py-2 bg-primary text-white rounded font-label-md text-xs hover:bg-on-primary-fixed-variant transition-colors"
+                    className="px-6 py-2.5 bg-primary text-white rounded font-label-md text-xs hover:bg-on-primary-fixed-variant transition-colors"
                   >
                     Xác nhận thay đổi
                   </button>

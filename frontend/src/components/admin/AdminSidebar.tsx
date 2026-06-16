@@ -13,7 +13,8 @@ import {
   LogOut,
   BarChart3,
   Settings,
-  X
+  X,
+  Heart
 } from 'lucide-react'
 
 interface AdminSidebarProps {
@@ -73,6 +74,12 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
       title: 'Báo cáo chuyên sâu',
       path: '/admin/bao-cao',
       icon: FileText,
+      roles: ['admin']
+    },
+    {
+      title: 'Quỹ thiện nguyện',
+      path: '/admin/tu-thien',
+      icon: Heart,
       roles: ['admin']
     },
     {

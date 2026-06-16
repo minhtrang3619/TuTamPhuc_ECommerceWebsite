@@ -30,6 +30,38 @@ def seed_users():
         else:
             print(f"Admin account already exists: {admin_email}")
 
+        # 1b. Create Shop Staff User
+        staff_email = "shop_staff@gmail.com"
+        staff_user = db.query(User).filter(User.email == staff_email).first()
+        if not staff_user:
+            staff_user = User(
+                email=staff_email,
+                hashed_password=get_password_hash("Staff@123456"),
+                full_name="Nhân viên cửa hàng",
+                role=UserRole.SHOP_STAFF,
+                is_active=True
+            )
+            db.add(staff_user)
+            print(f"Created Shop Staff account: {staff_email} / Staff@123456")
+        else:
+            print(f"Shop Staff account already exists: {staff_email}")
+
+        # 1c. Create Customer Service User
+        cs_email = "customer_service@gmail.com"
+        cs_user = db.query(User).filter(User.email == cs_email).first()
+        if not cs_user:
+            cs_user = User(
+                email=cs_email,
+                hashed_password=get_password_hash("Service@123456"),
+                full_name="Nhân viên Chăm sóc khách hàng",
+                role=UserRole.CUSTOMER_SERVICE,
+                is_active=True
+            )
+            db.add(cs_user)
+            print(f"Created Customer Service account: {cs_email} / Service@123456")
+        else:
+            print(f"Customer Service account already exists: {cs_email}")
+
         # 2. Create Customer User
         customer_email = "customer@gmail.com"
         customer_user = db.query(User).filter(User.email == customer_email).first()

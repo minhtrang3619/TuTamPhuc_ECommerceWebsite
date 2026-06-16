@@ -7,12 +7,9 @@ import { useAuthStore } from '@/store/authStore'
 import { useWishlistStore } from '@/store/wishlistStore'
 import { cn } from '@/lib/utils'
 import { Marquee } from '@/components/ui/Marquee'
-import { categoryService } from '@/services/categoryService'
-import type { Category } from '@/types'
 
 export function Navbar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false)
-  const [categories, setCategories] = useState<Category[]>([])
   const { isAuthenticated, user } = useAuthStore()
   const { cart, openCart } = useMockCartStore()
   const { items: wishlistItems, fetchWishlist } = useWishlistStore()
@@ -20,33 +17,20 @@ export function Navbar() {
   const location = useLocation()
 
   useEffect(() => {
-    categoryService.getCategories().then(setCategories).catch(console.error)
     if (isAuthenticated) {
       fetchWishlist()
     }
   }, [isAuthenticated, fetchWishlist])
 
   const navLinks = useMemo(() => {
-    // Chỉ hiển thị đúng 3 danh mục, label viết hoa chuẩn
-    const allowedNav = [
-      { slug: 'do-lam', label: 'Đồ Lam' },
-      { slug: 'phap-phuc', label: 'Pháp Phục' },
-      { slug: 'ao-trang', label: 'Áo Tràng' },
-    ];
-
-    const filtered = allowedNav
-      .map(nav => {
-        const cat = categories.find(c => c.slug === nav.slug);
-        return cat ? { label: nav.label, href: `/san-pham?category=${cat.slug}` } : null;
-      })
-      .filter(Boolean) as { label: string; href: string }[];
-
     return [
       { label: 'Trang Chủ', href: '/' },
-      ...filtered,
+      { label: 'Đồ Lam', href: '/san-pham?category=do-lam' },
+      { label: 'Pháp Phục', href: '/san-pham?category=phap-phuc' },
+      { label: 'Áo Tràng', href: '/san-pham?category=ao-trang' },
       { label: 'Blog', href: '/blog' },
     ];
-  }, [categories])
+  }, [])
 
   const marqueeItems = [
     "Miễn phí vận chuyển cho đơn hàng từ 1.000.000đ",

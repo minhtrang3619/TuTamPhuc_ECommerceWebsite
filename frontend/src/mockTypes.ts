@@ -31,7 +31,7 @@ export interface ActiveFilters {
   categories: string[];
   colors: string[]; // hex values or names
   sizes: string[];
-  sortBy: 'latest' | 'price-asc' | 'price-desc';
+  sortBy: 'all' | 'latest' | 'price-asc' | 'price-desc';
 }
 
 export type Screen = 'catalog' | 'detail' | 'about' | 'blog' | 'collections';

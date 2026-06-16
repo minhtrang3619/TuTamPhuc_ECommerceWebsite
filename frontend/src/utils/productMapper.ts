@@ -70,7 +70,7 @@ export function mapApiProductToMockProduct(p: ApiProduct): MockProduct {
     oldPrice: p.sale_price || undefined,
     category: p.category?.name || "Pháp Phục",
     colors: uniqueColors.length > 0 ? uniqueColors : [{ name: "Nâu đất", hex: "#5D4037" }],
-    sizes: uniqueSizes.length > 0 ? uniqueSizes : ["S", "M", "L", "XL"],
+    sizes: uniqueSizes.length > 0 ? Array.from(new Set([...["S", "M", "L", "XL"], ...uniqueSizes])) : ["S", "M", "L", "XL"],
     images: images.length > 0 ? images : ["https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?auto=format&fit=crop&w=600&q=80"],
     description: p.description || "",
     videoUrl: p.video_url ? getImageUrl(p.video_url) : undefined,

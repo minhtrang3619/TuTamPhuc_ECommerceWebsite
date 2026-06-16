@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   TrendingUp,
@@ -11,143 +11,90 @@ import {
   ExternalLink,
   Target
 } from 'lucide-react'
+import { analyticsService, ReportData } from '../../../services/analyticsService'
 
 // Helper format price
 const formatPrice = (price: number) => {
   return price.toLocaleString('vi-VN') + ' ₫'
 }
 
-interface PeriodData {
-  summary: {
-    revenue: number;
-    revenueChange: number;
-    orders: number;
-    ordersChange: number;
-    aov: number;
-    aovChange: number;
-    conversion: number;
-    conversionChange: number;
-    charity: number;
-    charityChange: number;
-  };
-  chartData: { label: string; value: number }[];
-  topProducts: { name: string; category: string; sales: number; revenue: number; percentage: number }[];
-  charityProjects: { name: string; raised: number; target: number; status: string }[];
-}
-
-const REPORT_DATABASE: Record<'7days' | '30days' | 'year', PeriodData> = {
-  '7days': {
-    summary: {
-      revenue: 58450000,
-      revenueChange: 6.2,
-      orders: 310,
-      ordersChange: 5.5,
-      aov: 188500,
-      aovChange: 0.7,
-      conversion: 2.75,
-      conversionChange: 0.08,
-      charity: 2922500,
-      charityChange: 6.2
-    },
-    chartData: [
-      { label: 'Thứ 2', value: 7200000 },
-      { label: 'Thứ 3', value: 8500000 },
-      { label: 'Thứ 4', value: 6900000 },
-      { label: 'Thứ 5', value: 9100000 },
-      { label: 'Thứ 6', value: 8000000 },
-      { label: 'Thứ 7', value: 10500000 },
-      { label: 'Chủ Nhật', value: 8250000 }
-    ],
-    topProducts: [
-      { name: 'Áo Tràng Từ Tâm - Nâu Sồng', category: 'Pháp Phục', sales: 76, revenue: 18240000, percentage: 31 },
-      { name: 'Trà Cổ Thụ Tà Xùa', category: 'Trà Đạo', sales: 58, revenue: 13920000, percentage: 23 },
-      { name: 'Áo Pháp Phục Thiền Giả', category: 'Pháp Phục', sales: 44, revenue: 13200000, percentage: 22 },
-      { name: 'Đệm Ngồi Thiền Trúc Lâm', category: 'Thiền Cụ', sales: 36, revenue: 7200000, percentage: 12 },
-      { name: 'Nhang Trầm Hương Tự Nhiên', category: 'Hương Phẩm', sales: 26, revenue: 5890000, percentage: 11 }
-    ],
-    charityProjects: [
-      { name: 'Áo ấm mùa đông cho trẻ em Hà Giang', raised: 2100000, target: 10000000, status: 'Đang triển khai' },
-      { name: 'Trồng rừng phòng hộ miền Trung', raised: 822500, target: 5000000, status: 'Đang triển khai' }
-    ]
-  },
-  '30days': {
-    summary: {
-      revenue: 245820000,
-      revenueChange: 12.4,
-      orders: 1280,
-      ordersChange: 8.1,
-      aov: 192000,
-      aovChange: 4.0,
-      conversion: 2.84,
-      conversionChange: 0.12,
-      charity: 12291000,
-      charityChange: 12.4
-    },
-    chartData: [
-      { label: 'Tuần 1', value: 45000000 },
-      { label: 'Tuần 2', value: 58000000 },
-      { label: 'Tuần 3', value: 62000000 },
-      { label: 'Tuần 4', value: 80820000 }
-    ],
-    topProducts: [
-      { name: 'Áo Tràng Từ Tâm - Nâu Sồng', category: 'Pháp Phục', sales: 320, revenue: 76800000, percentage: 31 },
-      { name: 'Trà Cổ Thụ Tà Xùa', category: 'Trà Đạo', sales: 240, revenue: 57600000, percentage: 23 },
-      { name: 'Áo Pháp Phục Thiền Giả', category: 'Pháp Phục', sales: 180, revenue: 54000000, percentage: 22 },
-      { name: 'Đệm Ngồi Thiền Trúc Lâm', category: 'Thiền Cụ', sales: 150, revenue: 30000000, percentage: 12 },
-      { name: 'Nhang Trầm Hương Tự Nhiên', category: 'Hương Phẩm', sales: 110, revenue: 27420000, percentage: 11 }
-    ],
-    charityProjects: [
-      { name: 'Áo ấm mùa đông cho trẻ em Hà Giang', raised: 8500000, target: 10000000, status: 'Sắp hoàn thành' },
-      { name: 'Trồng rừng phòng hộ miền Trung', raised: 3791000, target: 5000000, status: 'Đang triển khai' }
-    ]
-  },
-  'year': {
-    summary: {
-      revenue: 2840500000,
-      revenueChange: 24.5,
-      orders: 14820,
-      ordersChange: 18.2,
-      aov: 191600,
-      aovChange: 5.3,
-      conversion: 2.92,
-      conversionChange: 0.25,
-      charity: 142025000,
-      charityChange: 24.5
-    },
-    chartData: [
-      { label: 'Tháng 1', value: 180000000 },
-      { label: 'Tháng 2', value: 210000000 },
-      { label: 'Tháng 3', value: 195000000 },
-      { label: 'Tháng 4', value: 240000000 },
-      { label: 'Tháng 5', value: 235000000 },
-      { label: 'Tháng 6', value: 245000000 },
-      { label: 'Tháng 7', value: 260000000 },
-      { label: 'Tháng 8', value: 275000000 },
-      { label: 'Tháng 9', value: 290000000 },
-      { label: 'Tháng 10', value: 285000000 },
-      { label: 'Tháng 11', value: 310000000 },
-      { label: 'Tháng 12', value: 355500000 }
-    ],
-    topProducts: [
-      { name: 'Áo Tràng Từ Tâm - Nâu Sồng', category: 'Pháp Phục', sales: 3680, revenue: 883200000, percentage: 31 },
-      { name: 'Trà Cổ Thụ Tà Xùa', category: 'Trà Đạo', sales: 2780, revenue: 667200000, percentage: 23 },
-      { name: 'Áo Pháp Phục Thiền Giả', category: 'Pháp Phục', sales: 2080, revenue: 624000000, percentage: 22 },
-      { name: 'Đệm Ngồi Thiền Trúc Lâm', category: 'Thiền Cụ', sales: 1720, revenue: 344000000, percentage: 12 },
-      { name: 'Nhang Trầm Hương Tự Nhiên', category: 'Hương Phẩm', sales: 1290, revenue: 322100000, percentage: 11 }
-    ],
-    charityProjects: [
-      { name: 'Xây trường tiểu học cao sơn vùng cao Điện Biên', raised: 92025000, target: 100000000, status: 'Sắp hoàn thành' },
-      { name: 'Mổ mắt nhân đạo cho người già neo đơn', raised: 50000000, target: 50000000, status: 'Đã hoàn thành' }
-    ]
-  }
-}
-
 export default function AdminReports() {
   const [period, setPeriod] = useState<'7days' | '30days' | 'year'>('30days')
   const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null)
-  
-  const currentData = REPORT_DATABASE[period]
-  
+  const [reportData, setReportData] = useState<ReportData | null>(null)
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    const fetchData = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const data = await analyticsService.getReportData(period)
+        if (active) {
+          setReportData(data)
+        }
+      } catch (err: any) {
+        console.error(err)
+        if (active) {
+          setError('Không thể tải báo cáo từ hệ thống. Vui lòng thử lại sau.')
+        }
+      } finally {
+        if (active) {
+          setLoading(false)
+        }
+      }
+    }
+    fetchData()
+    return () => {
+      active = false
+    }
+  }, [period])
+
+  if (!reportData) {
+    if (error) {
+      return (
+        <div className="bg-error/5 border border-error/20 p-6 rounded-xl text-center space-y-4 max-w-md mx-auto mt-12">
+          <h3 className="font-serif text-lg font-bold text-error">Đã xảy ra lỗi</h3>
+          <p className="text-xs text-on-surface-variant">{error}</p>
+          <button
+            onClick={() => {
+              // Trigger reload
+              setReportData(null)
+              setError(null)
+              setLoading(true)
+              analyticsService.getReportData(period)
+                .then(data => {
+                  setReportData(data)
+                  setLoading(false)
+                })
+                .catch(err => {
+                  console.error(err)
+                  setError('Không thể tải báo cáo từ hệ thống. Vui lòng thử lại sau.')
+                  setLoading(false)
+                })
+            }}
+            className="px-4 py-2 bg-primary text-white text-xs font-bold rounded-lg cursor-pointer hover:bg-primary/95 border-none"
+          >
+            Thử Lại
+          </button>
+        </div>
+      )
+    }
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[450px] space-y-4">
+        <div className="w-12 h-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+        <p className="text-xs font-semibold text-on-surface-variant/80 tracking-wide font-serif animate-pulse">
+          Đang tính toán số liệu thời gian thực...
+        </p>
+      </div>
+    )
+  }
+
+  const currentData = reportData
+  const isRefreshing = loading
+
   // Calculate max chart value for scaling SVGs
   const maxChartValue = Math.max(...currentData.chartData.map(d => d.value), 1)
 
@@ -204,7 +151,7 @@ export default function AdminReports() {
       </div>
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 transition-opacity duration-200 ${isRefreshing ? 'opacity-50' : ''}`}>
         {/* Revenue Card */}
         <div className="bg-surface p-6 rounded-xl border border-outline-variant/30 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
@@ -286,7 +233,7 @@ export default function AdminReports() {
       </div>
 
       {/* Main Charts & Charity Project Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 transition-opacity duration-200 ${isRefreshing ? 'opacity-50' : ''}`}>
         {/* Revenue SVG Line Chart */}
         <div className="lg:col-span-2 bg-surface p-6 rounded-xl border border-outline-variant/30 shadow-xs flex flex-col justify-between">
           <div>
@@ -460,7 +407,7 @@ export default function AdminReports() {
       </div>
 
       {/* Row 3: Top Products & Conversion funnel */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 transition-opacity duration-200 ${isRefreshing ? 'opacity-50' : ''}`}>
         {/* Top selling products table */}
         <div className="lg:col-span-2 bg-surface p-6 rounded-xl border border-outline-variant/30 shadow-xs">
           <h3 className="font-serif text-base font-bold text-on-surface mb-1">

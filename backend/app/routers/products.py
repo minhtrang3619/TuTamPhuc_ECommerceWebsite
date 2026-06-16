@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.schemas.product import ProductResponse, PaginatedProducts
 from app.services.product_service import ProductService
-from app.core.dependencies import require_admin, require_shop_staff_or_admin
+from app.core.dependencies import require_admin, require_shop_staff_or_admin, require_shop_staff_or_admin_write
 from app.schemas.product import ProductCreate, ProductUpdate
 from app.models.user import User
 
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/products", tags=["Products"])
 @router.get("", response_model=PaginatedProducts)
 def list_products(
     page: int = Query(1, ge=1),
-    page_size: int = Query(12, ge=1, le=100),
+    page_size: int = Query(12, ge=1, le=1000),
     category_id: Optional[int] = None,
     min_price: Optional[float] = None,
     max_price: Optional[float] = None,
@@ -55,7 +55,7 @@ def get_related(product_id: int, db: Session = Depends(get_db)):
 def create_product(
     data: ProductCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_shop_staff_or_admin),
+    _: User = Depends(require_shop_staff_or_admin_write),
 ):
     return ProductService(db).create(data)
 
@@ -65,7 +65,7 @@ def update_product(
     product_id: int,
     data: ProductUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_shop_staff_or_admin),
+    _: User = Depends(require_shop_staff_or_admin_write),
 ):
     return ProductService(db).update(product_id, data)
 
@@ -74,6 +74,6 @@ def update_product(
 def delete_product(
     product_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_shop_staff_or_admin),
+    _: User = Depends(require_shop_staff_or_admin_write),
 ):
     ProductService(db).delete(product_id)

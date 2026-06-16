@@ -100,6 +100,24 @@ export default function ProductDetailPage() {
 
   const isFavorite = product?.dbId ? isInWishlist(product.dbId) : false;
 
+  const isSizeOutOfStock = (sizeName: string) => {
+    if (!rawProduct || !rawProduct.variants) return false;
+    
+    // Check if the product has at least one size variant in database
+    const hasAnySizeVariant = rawProduct.variants.some(
+      (v: any) => v.name === "Kích cỡ" || v.name === "Size"
+    );
+    
+    if (!hasAnySizeVariant) {
+      return false;
+    }
+    
+    const sizeVar = rawProduct.variants.find(
+      (v: any) => (v.name === "Kích cỡ" || v.name === "Size") && v.value === sizeName
+    );
+    return sizeVar ? sizeVar.stock <= 0 : true; // If not in variants, it is implicitly stock = 0
+  };
+
   const toggleFavorite = async () => {
     if (!isAuthenticated) {
       showToast('Vui lòng đăng nhập để lưu sản phẩm yêu thích!', 'info');
@@ -152,7 +170,17 @@ export default function ProductDetailPage() {
       setActiveImageIndex(0);
       setIsVideoActive(false);
       setActiveDetailColor(product.colors[0] || null);
-      setActiveDetailSize(product.sizes[0] || 'M');
+
+      // Find the first size that is in stock
+      const firstInStockSize = product.sizes.find((size: string) => {
+        if (!rawProduct || !rawProduct.variants) return true;
+        const sizeVar = rawProduct.variants.find(
+          (v: any) => (v.name === "Kích cỡ" || v.name === "Size") && v.value === size
+        );
+        return sizeVar ? sizeVar.stock > 0 : true;
+      });
+
+      setActiveDetailSize(firstInStockSize || product.sizes[0] || 'M');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [product]);
@@ -390,14 +418,18 @@ export default function ProductDetailPage() {
                 <div className="flex flex-wrap gap-2.5">
                   {product.sizes.map((size: string) => {
                     const isSelected = activeDetailSize === size;
+                    const isOutOfStock = isSizeOutOfStock(size);
                     return (
                       <button
                         key={size}
+                        disabled={isOutOfStock}
                         onClick={() => setActiveDetailSize(size)}
-                        className={`px-5 py-2 min-w-14 border text-xs tracking-wider transition-colors font-bold rounded-sm cursor-pointer ${
+                        className={`px-5 py-2 min-w-14 border text-xs tracking-wider transition-colors font-bold rounded-sm ${
                           isSelected
-                            ? 'border-primary bg-[#e2e2e2] text-primary shadow-xs'
-                            : 'border-[#d4c3be] text-on-surface-variant hover:border-primary'
+                            ? 'border-primary bg-[#e2e2e2] text-primary shadow-xs cursor-pointer'
+                            : isOutOfStock
+                            ? 'border-neutral-200 text-neutral-300 line-through cursor-not-allowed opacity-40 bg-neutral-50/50 pointer-events-none'
+                            : 'border-[#d4c3be] text-on-surface-variant hover:border-primary cursor-pointer'
                         }`}
                       >
                         {size}
