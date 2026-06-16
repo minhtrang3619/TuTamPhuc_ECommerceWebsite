@@ -21,6 +21,7 @@ export interface MockProduct {
   sizes: string[]
   images: string[]
   description: string
+  videoUrl?: string
   quote?: string
   details?: {
     material?: string
@@ -72,6 +73,7 @@ export function mapApiProductToMockProduct(p: ApiProduct): MockProduct {
     sizes: uniqueSizes.length > 0 ? uniqueSizes : ["S", "M", "L", "XL"],
     images: images.length > 0 ? images : ["https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?auto=format&fit=crop&w=600&q=80"],
     description: p.description || "",
+    videoUrl: p.video_url ? getImageUrl(p.video_url) : undefined,
     quote: p.short_description || "",
     details: {
       material: p.tags?.includes("linen") ? "Linen tự nhiên 100%" : p.tags?.includes("lua") ? "Lụa cao cấp" : "Đũi organic",

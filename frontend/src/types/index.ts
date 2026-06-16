@@ -91,6 +91,7 @@ export interface Product {
   variants?: ProductVariant[]
   tags?: string[]
   weight?: number
+  video_url?: string
   rating_avg: number
   rating_count: number
   created_at: string

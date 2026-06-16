@@ -20,7 +20,7 @@ import {
   ChevronDown,
   Star
 } from 'lucide-react';
-import { orderService, apiClient } from '@/services';
+import { orderService, reviewService, apiClient } from '@/services';
 import { formatPrice } from '@/components/ui/ProductCard';
 import { getImageUrl } from '@/utils/productMapper';
 import type { Order } from '@/types';
@@ -96,6 +96,10 @@ export default function OrderDetailPage() {
   const [reviewOrderItemId, setReviewOrderItemId] = useState<number | null>(null);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewHoverRating, setReviewHoverRating] = useState<number | null>(null);
+  const [reviewImages, setReviewImages] = useState<string[]>([]);
+  const [reviewVideos, setReviewVideos] = useState<string[]>([]);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
 
   const handleOpenReviewModal = (productId: number, productName: string, orderItemId: number) => {
     setReviewProductId(productId);
@@ -105,7 +109,57 @@ export default function OrderDetailPage() {
     setReviewContent('');
     setReviewIsAnonymous(false);
     setReviewOrderItemId(orderItemId);
+    setReviewImages([]);
+    setReviewVideos([]);
+    setMediaError(null);
     setShowReviewModal(true);
+  };
+
+  const handleReviewMediaChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const files = Array.from(e.target.files);
+
+    setIsUploadingMedia(true);
+    setMediaError(null);
+
+    try {
+      for (const file of files) {
+        if (file.type.startsWith('image/')) {
+          if (file.size > 10 * 1024 * 1024) {
+            setMediaError(`Ảnh ${file.name} quá lớn. Tối đa 10MB.`);
+            continue;
+          }
+        } else if (file.type.startsWith('video/')) {
+          if (file.size > 50 * 1024 * 1024) {
+            setMediaError(`Video ${file.name} quá lớn. Tối đa 50MB.`);
+            continue;
+          }
+        } else {
+          setMediaError(`File ${file.name} không được hỗ trợ. Chỉ nhận ảnh và video.`);
+          continue;
+        }
+
+        const res = await reviewService.uploadReviewMedia(file);
+        if (res.type === 'image') {
+          setReviewImages(prev => [...prev, res.url]);
+        } else {
+          setReviewVideos(prev => [...prev, res.url]);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setMediaError('Tải tệp lên thất bại. Vui lòng thử lại.');
+    } finally {
+      setIsUploadingMedia(false);
+    }
+  };
+
+  const handleRemoveImage = (urlToRemove: string) => {
+    setReviewImages(prev => prev.filter(url => url !== urlToRemove));
+  };
+
+  const handleRemoveVideo = (urlToRemove: string) => {
+    setReviewVideos(prev => prev.filter(url => url !== urlToRemove));
   };
 
   const handleSubmitReview = async (e: React.FormEvent) => {
@@ -120,6 +174,8 @@ export default function OrderDetailPage() {
         content: reviewContent.trim() || undefined,
         is_anonymous: reviewIsAnonymous,
         order_item_id: reviewOrderItemId || undefined,
+        images: reviewImages.length > 0 ? reviewImages : undefined,
+        videos: reviewVideos.length > 0 ? reviewVideos : undefined,
       });
       showToast('Đã gửi đánh giá sản phẩm thành công!');
       setShowReviewModal(false);
@@ -672,6 +728,83 @@ export default function OrderDetailPage() {
                     className="w-full bg-[#f3f3f3]/60 border-0 border-b border-[#d4c3be] p-3 focus:bg-white focus:border-primary focus:ring-0 outline-none transition-all duration-300 rounded-xs"
                     rows={4}
                   />
+                </div>
+
+                {/* Media Upload Section */}
+                <div>
+                  <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2 block">
+                    Hình ảnh & Video thực tế
+                  </label>
+                  
+                  {/* Upload Controls */}
+                  <div className="flex items-center gap-4 py-1.5">
+                    <label className="flex items-center gap-1.5 px-4 py-2 border border-[#d4c3be] hover:bg-[#ece0dc]/20 text-[#5d4037] font-semibold text-[10px] tracking-wider uppercase rounded-xs transition-colors cursor-pointer select-none">
+                      <Camera size={13} />
+                      <span>Thêm ảnh / video</span>
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*,video/*"
+                        onChange={handleReviewMediaChange}
+                        className="hidden"
+                      />
+                    </label>
+                    
+                    {isUploadingMedia && (
+                      <div className="flex items-center gap-2 text-xs text-on-surface-variant">
+                        <div className="w-3.5 h-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                        <span>Đang tải lên...</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {mediaError && (
+                    <p className="text-xs text-red-600 font-semibold mt-1">{mediaError}</p>
+                  )}
+
+                  {/* Previews Grid */}
+                  {(reviewImages.length > 0 || reviewVideos.length > 0) && (
+                    <div className="grid grid-cols-4 gap-3 mt-3">
+                      {/* Images */}
+                      {reviewImages.map((url, idx) => (
+                        <div key={`img-${idx}`} className="relative aspect-square rounded-xs overflow-hidden border border-[#d4c3be]/30 group">
+                          <img
+                            src={getImageUrl(url)}
+                            alt={`Preview img ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveImage(url)}
+                            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity border-none cursor-pointer"
+                          >
+                            &times;
+                          </button>
+                        </div>
+                      ))}
+
+                      {/* Videos */}
+                      {reviewVideos.map((url, idx) => (
+                        <div key={`vid-${idx}`} className="relative aspect-square rounded-xs overflow-hidden border border-[#d4c3be]/30 group bg-black">
+                          <video
+                            src={getImageUrl(url)}
+                            className="w-full h-full object-cover opacity-80"
+                            muted
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-white text-[10px] font-bold">▶</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveVideo(url)}
+                            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity border-none cursor-pointer"
+                          >
+                            &times;
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Anonymous Review Checkbox */}

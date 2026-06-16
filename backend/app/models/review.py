@@ -14,6 +14,7 @@ class Review(BaseModel):
     title = Column(String(255), nullable=True)
     content = Column(Text, nullable=True)
     images = Column(JSON, nullable=True)            # ["/uploads/reviews/img.jpg"]
+    videos = Column(JSON, nullable=True)            # ["/uploads/reviews/vid.mp4"]
     is_verified_purchase = Column(Boolean, default=False, nullable=False)
     is_approved = Column(Boolean, default=True, nullable=False)
     is_anonymous = Column(Boolean, default=False, nullable=False)

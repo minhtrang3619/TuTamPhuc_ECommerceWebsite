@@ -125,6 +125,8 @@ def get_all_reviews_admin(
             "rating": r.rating,
             "title": r.title,
             "content": r.content,
+            "images": r.images,
+            "videos": r.videos,
             "is_anonymous": r.is_anonymous,
             "reply": r.reply,
             "order_code": r.order_code,

@@ -41,3 +41,26 @@ async def upload_return_evidence(
     service = UploadService()
     url = await service.upload_image(file, "returns")
     return {"url": url}
+
+
+@router.post("/review-media", response_model=dict)
+async def upload_review_media(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    """Upload hình ảnh/video đánh giá sản phẩm (dành cho khách hàng)."""
+    service = UploadService()
+    url = await service.upload_media(file, "reviews")
+    return {"url": url, "type": "image" if file.content_type and file.content_type.startswith("image/") else "video"}
+
+
+@router.post("/video", response_model=dict)
+async def upload_single_video(
+    file: UploadFile = File(...),
+    folder: str = "products",
+    _: User = Depends(require_shop_staff_or_admin),
+):
+    """Upload một video sản phẩm (dành cho quản trị viên)."""
+    service = UploadService()
+    url = await service.upload_media(file, folder)
+    return {"url": url}

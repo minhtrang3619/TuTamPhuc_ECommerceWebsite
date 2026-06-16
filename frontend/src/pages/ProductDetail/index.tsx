@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
-import { ChevronRight, Leaf, Sparkles, Heart, MessageSquare, Star, CheckCircle, CornerDownRight } from 'lucide-react';
+import { ChevronRight, Leaf, Sparkles, Heart, MessageSquare, Star, CheckCircle, CornerDownRight, Play } from 'lucide-react';
 
 import { PRODUCTS } from '../../data';
 import { useMockCartStore } from '@/store/mockCartStore';
@@ -10,7 +10,7 @@ import { useWishlistStore } from '@/store/wishlistStore';
 import { formatPrice } from '../../components/ui/ProductCard';
 import Toast from '../../components/ui/Toast';
 import apiClient from '@/services/apiClient';
-import { mapApiProductToMockProduct } from '@/utils/productMapper';
+import { mapApiProductToMockProduct, getImageUrl } from '@/utils/productMapper';
 
 export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -45,6 +45,18 @@ export default function ProductDetailPage() {
   // Reviews states
   const [reviews, setReviews] = useState<any[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
+
+  // Lightbox & Video Player modal states
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
+
+  const handleOpenLightbox = (url: string) => {
+    setLightboxImage(url);
+  };
+
+  const handleOpenVideoPlayer = (url: string) => {
+    setActiveVideoUrl(url);
+  };
 
   useEffect(() => {
     if (!slug) return;
@@ -84,6 +96,7 @@ export default function ProductDetailPage() {
   const [activeDetailSize, setActiveDetailSize] = useState<string>('M');
   const [isSizeGuideOpen, setIsSizeGuideOpen] = useState<boolean>(false);
   const [activeImageIndex, setActiveImageIndex] = useState<number>(0);
+  const [isVideoActive, setIsVideoActive] = useState<boolean>(false);
 
   const isFavorite = product?.dbId ? isInWishlist(product.dbId) : false;
 
@@ -137,6 +150,7 @@ export default function ProductDetailPage() {
   useEffect(() => {
     if (product) {
       setActiveImageIndex(0);
+      setIsVideoActive(false);
       setActiveDetailColor(product.colors[0] || null);
       setActiveDetailSize(product.sizes[0] || 'M');
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -227,12 +241,21 @@ export default function ProductDetailPage() {
           {/* Left Columns - Images */}
           <div className="lg:col-span-7 flex flex-col gap-6">
             <div className="aspect-[9/16] bg-surface-container overflow-hidden rounded-xs shadow-[0_8px_32px_rgba(68,42,34,0.03)] border border-[#d4c3be]/20 relative">
-              <img
-                alt={product.name}
-                src={product.images[activeImageIndex] || product.images[0]}
-                className="w-full h-full object-cover transition-transform duration-[2200ms] hover:scale-105"
-                referrerPolicy="no-referrer"
-              />
+              {isVideoActive && product.videoUrl ? (
+                <video
+                  src={product.videoUrl}
+                  controls
+                  autoPlay
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <img
+                  alt={product.name}
+                  src={product.images[activeImageIndex] || product.images[0]}
+                  className="w-full h-full object-cover transition-transform duration-[2200ms] hover:scale-105"
+                  referrerPolicy="no-referrer"
+                />
+              )}
               {product.badge && (
                 <span className="absolute top-4 left-4 z-10 px-3 py-1 font-sans text-[10px] font-bold text-primary bg-white/95 rounded-sm border border-[#d4c3be]/30 uppercase tracking-widest">
                   {product.badge}
@@ -241,14 +264,39 @@ export default function ProductDetailPage() {
             </div>
 
             {/* Sub-thumbnails */}
-            {product.images && product.images.length > 1 && (
+            {((product.images && product.images.length > 1) || product.videoUrl) && (
               <div className="grid grid-cols-4 gap-4">
-                {product.images.map((imgUrl: string, idx: number) => {
-                  const isActive = activeImageIndex === idx;
+                {product.videoUrl && (
+                  <button
+                    onClick={() => setIsVideoActive(true)}
+                    className={`aspect-[9/16] bg-black overflow-hidden rounded-xs border transition-all cursor-pointer p-0 flex items-center justify-center outline-none relative group ${
+                      isVideoActive
+                        ? 'border-primary ring-2 ring-primary/20 scale-[1.02]'
+                        : 'border-[#d4c3be]/40 hover:border-primary'
+                    }`}
+                  >
+                    <video
+                      src={product.videoUrl}
+                      className="w-full h-full object-cover opacity-60 group-hover:opacity-85 transition-opacity"
+                      preload="metadata"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/5 transition-colors">
+                      <div className="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center text-primary shadow-md group-hover:scale-115 transition-transform duration-300">
+                        <Play size={14} fill="currentColor" className="ml-0.5" />
+                      </div>
+                    </div>
+                  </button>
+                )}
+
+                {product.images && product.images.map((imgUrl: string, idx: number) => {
+                  const isActive = !isVideoActive && activeImageIndex === idx;
                   return (
                     <button
                       key={idx}
-                      onClick={() => setActiveImageIndex(idx)}
+                      onClick={() => {
+                        setActiveImageIndex(idx);
+                        setIsVideoActive(false);
+                      }}
                       className={`aspect-[9/16] bg-surface-container overflow-hidden rounded-xs border transition-all cursor-pointer p-0 bg-transparent flex items-center justify-center outline-none ${
                         isActive 
                           ? 'border-primary ring-2 ring-primary/20 scale-[1.02]' 
@@ -584,6 +632,42 @@ export default function ProductDetailPage() {
                             </p>
                           )}
 
+                          {/* Review Media (Images & Videos) */}
+                          {((review.images && review.images.length > 0) || (review.videos && review.videos.length > 0)) && (
+                            <div className="flex flex-wrap gap-2 mt-2 pb-1">
+                              {review.images?.map((imgUrl: string, idx: number) => (
+                                <div 
+                                  key={`review-img-${idx}`}
+                                  onClick={() => handleOpenLightbox(getImageUrl(imgUrl))}
+                                  className="w-20 h-20 rounded-xs overflow-hidden border border-[#d4c3be]/30 hover:border-primary cursor-zoom-in transition-colors relative"
+                                >
+                                  <img
+                                    src={getImageUrl(imgUrl)}
+                                    alt={`Review media image ${idx + 1}`}
+                                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                                  />
+                                </div>
+                              ))}
+
+                              {review.videos?.map((vidUrl: string, idx: number) => (
+                                <div 
+                                  key={`review-vid-${idx}`}
+                                  className="w-20 h-20 rounded-xs overflow-hidden border border-[#d4c3be]/30 bg-black relative group cursor-pointer"
+                                  onClick={() => handleOpenVideoPlayer(getImageUrl(vidUrl))}
+                                >
+                                  <video
+                                    src={getImageUrl(vidUrl)}
+                                    className="w-full h-full object-cover opacity-80"
+                                    muted
+                                  />
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors">
+                                    <span className="w-6 h-6 rounded-full bg-white/30 backdrop-blur-xs flex items-center justify-center text-white text-[9px]">▶</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
                           {/* CSKH Reply */}
                           {review.reply && (
                             <div className="mt-3 bg-[#ece0dc]/10 border border-[#d4c3be]/20 p-3.5 rounded-sm flex flex-col gap-1.5 ml-4">
@@ -714,6 +798,67 @@ export default function ProductDetailPage() {
         type={toast.type}
         onClose={() => setToast((prev) => ({ ...prev, isVisible: false }))}
       />
+
+      {/* Review Image Lightbox Modal */}
+      <AnimatePresence>
+        {lightboxImage && (
+          <div 
+            onClick={() => setLightboxImage(null)}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs cursor-zoom-out"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-4xl max-h-[90vh] overflow-hidden"
+            >
+              <img
+                src={lightboxImage}
+                alt="Full review"
+                className="max-w-full max-h-[90vh] object-contain rounded-xs shadow-2xl"
+              />
+              <button
+                onClick={() => setLightboxImage(null)}
+                className="absolute top-4 right-4 text-white bg-black/50 hover:bg-black/85 w-8 h-8 rounded-full flex items-center justify-center text-xl border-none cursor-pointer"
+              >
+                &times;
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Review Video Player Modal */}
+      <AnimatePresence>
+        {activeVideoUrl && (
+          <div 
+            onClick={() => setActiveVideoUrl(null)}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-xs"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-2xl w-full aspect-video bg-black rounded-xs overflow-hidden shadow-2xl"
+            >
+              <video
+                src={activeVideoUrl}
+                controls
+                autoPlay
+                className="w-full h-full object-contain"
+              />
+              <button
+                onClick={() => setActiveVideoUrl(null)}
+                className="absolute top-4 right-4 text-white bg-black/50 hover:bg-black/85 w-8 h-8 rounded-full flex items-center justify-center text-xl border-none cursor-pointer"
+              >
+                &times;
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

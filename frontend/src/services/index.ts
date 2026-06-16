@@ -6,6 +6,7 @@ export { wishlistService } from './wishlistService'
 export { customerService } from './customerService'
 export { addressService } from './addressService'
 export { supportService } from './supportService'
+export { reviewService } from './reviewService'
 export { default as apiClient } from './apiClient'
 
 

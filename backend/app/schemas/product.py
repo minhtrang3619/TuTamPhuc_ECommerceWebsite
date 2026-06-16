@@ -53,6 +53,7 @@ class ProductCreate(BaseSchema):
     is_featured: bool = False
     variants: Optional[List[ProductVariantCreate]] = None
     images: Optional[List[ProductImageCreate]] = None
+    video_url: Optional[str] = None
 
 
 class ProductUpdate(BaseSchema):
@@ -71,6 +72,7 @@ class ProductUpdate(BaseSchema):
     is_featured: Optional[bool] = None
     variants: Optional[List[ProductVariantCreate]] = None
     images: Optional[List[ProductImageCreate]] = None
+    video_url: Optional[str] = None
 
 
 class ProductResponse(BaseSchema):
@@ -92,6 +94,7 @@ class ProductResponse(BaseSchema):
     weight: Optional[float] = None
     rating_avg: float
     rating_count: int
+    video_url: Optional[str] = None
     is_featured: bool
     created_at: datetime
     updated_at: datetime

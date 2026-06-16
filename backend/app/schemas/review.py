@@ -11,6 +11,8 @@ class ReviewCreate(BaseSchema):
     content: Optional[str] = None
     is_anonymous: bool = False
     order_item_id: Optional[int] = None
+    images: Optional[List[str]] = None
+    videos: Optional[List[str]] = None
 
 
 class ReviewReply(BaseSchema):
@@ -25,6 +27,7 @@ class ReviewResponse(BaseSchema):
     title: Optional[str] = None
     content: Optional[str] = None
     images: Optional[List[str]] = None
+    videos: Optional[List[str]] = None
     is_verified_purchase: bool
     is_approved: bool
     is_anonymous: bool = False
@@ -50,6 +53,8 @@ class AdminReviewResponse(BaseSchema):
     rating: float
     title: Optional[str] = None
     content: Optional[str] = None
+    images: Optional[List[str]] = None
+    videos: Optional[List[str]] = None
     is_anonymous: bool
     reply: Optional[str] = None
     order_code: Optional[str] = None

@@ -101,6 +101,7 @@ export default function AdminProducts() {
   const [galleryImageFiles, setGalleryImageFiles] = useState<{ blobUrl: string; file: File }[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [isSaveConfirmModalOpen, setIsSaveConfirmModalOpen] = useState(false)
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false)
 
   // Preview Modal states
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
@@ -126,6 +127,7 @@ export default function AdminProducts() {
     endDate: '',
     image: '',
     galleryImages: [] as string[],
+    videoUrl: '',
     variants: [
       {
         colorName: 'Nâu Trầm (Earth Brown)',
@@ -265,6 +267,7 @@ export default function AdminProducts() {
       endDate: '',
       image: '',
       galleryImages: [],
+      videoUrl: '',
       variants: [
         {
           colorName: 'Nâu Trầm (Earth Brown)',
@@ -347,6 +350,7 @@ export default function AdminProducts() {
       endDate: '',
       image: p.image,
       galleryImages: apiGalleryImages.length > 0 ? apiGalleryImages : [p.image],
+      videoUrl: p.raw?.video_url ? getImageUrl(p.raw.video_url) : '',
       variants: finalVariants
     })
     setIsAddModalOpen(true)
@@ -439,6 +443,33 @@ export default function AdminProducts() {
       ...prev,
       galleryImages: prev.galleryImages.filter((_, idx) => idx !== index)
     }))
+  }
+
+  const handleProductVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 50 * 1024 * 1024) {
+      alert('Video quá lớn. Tối đa 50MB.')
+      return
+    }
+
+    try {
+      setIsUploadingVideo(true)
+      const uploadData = new FormData()
+      uploadData.append('file', file)
+      const uploadRes = await apiClient.post('/uploads/video', uploadData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+      setFormData(prev => ({ ...prev, videoUrl: uploadRes.data.url }))
+    } catch (err) {
+      console.error(err)
+      alert('Không thể tải video lên. Vui lòng thử lại.')
+    } finally {
+      setIsUploadingVideo(false)
+    }
   }
 
   // Save product logic
@@ -562,6 +593,13 @@ export default function AdminProducts() {
         }
       })
 
+      // Format finalVideoUrl as relative path if it contains BASE_URL
+      let relativeVideoUrl = ''
+      if (formData.videoUrl) {
+        const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+        relativeVideoUrl = formData.videoUrl.replace(BASE_URL, '')
+      }
+
       const payload = {
         name: formData.name,
         slug: slug,
@@ -576,7 +614,8 @@ export default function AdminProducts() {
         weight: 350,
         is_featured: false,
         variants: apiVariants,
-        images: apiImages
+        images: apiImages,
+        video_url: relativeVideoUrl || null
       }
 
       if (formData.id) {
@@ -1047,6 +1086,45 @@ export default function AdminProducts() {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Product Showcase Video */}
+              <div className="border-t border-outline-variant/20 pt-6">
+                <label className="font-caption text-xs text-outline uppercase tracking-wider block mb-4 font-medium">Video giới thiệu sản phẩm</label>
+                {formData.videoUrl ? (
+                  <div className="relative aspect-video bg-black rounded-lg overflow-hidden group">
+                    <video src={formData.videoUrl} className="w-full h-full object-cover" controls />
+                    <button 
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, videoUrl: '' }))}
+                      className="absolute top-2 right-2 w-6 h-6 bg-white/80 rounded-full flex items-center justify-center cursor-pointer hover:bg-red-600 hover:text-white transition-all text-on-surface z-10"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative aspect-video bg-surface-container-low border-2 border-dashed border-outline-variant/50 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-all overflow-hidden group">
+                    {isUploadingVideo ? (
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                        <span className="text-[10px] text-on-surface-variant">Đang tải video lên...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <Upload size={24} className="text-outline-variant mb-2" />
+                        <p className="font-caption text-xs text-on-surface-variant font-medium">Tải lên video giới thiệu</p>
+                        <p className="text-[10px] text-on-surface-variant/60 mt-1">Hỗ trợ MP4, WEBM tối đa 50MB</p>
+                      </>
+                    )}
+                    <input 
+                      type="file" 
+                      accept="video/*"
+                      onChange={handleProductVideoUpload}
+                      disabled={isUploadingVideo}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                  </div>
+                )}
               </div>
             </section>
           </aside>

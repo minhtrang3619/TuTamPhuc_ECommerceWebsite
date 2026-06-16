@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Star, 
   CornerDownRight, 
@@ -51,6 +52,17 @@ export default function AdminCustomerReviews() {
   const [replyInputs, setReplyInputs] = useState<Record<number, string>>({})
   const [reviews, setReviews] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
+
+  const handleOpenLightbox = (url: string) => {
+    setLightboxImage(url);
+  };
+
+  const handleOpenVideoPlayer = (url: string) => {
+    setActiveVideoUrl(url);
+  };
 
   const fetchReviews = async () => {
     setLoading(true)
@@ -235,6 +247,42 @@ export default function AdminCustomerReviews() {
                   </p>
                 </div>
 
+                {/* Review Media (Images & Videos) */}
+                {((r.images && r.images.length > 0) || (r.videos && r.videos.length > 0)) && (
+                  <div className="flex flex-wrap gap-2 mt-2 pb-1">
+                    {r.images?.map((imgUrl: string, idx: number) => (
+                      <div 
+                        key={`admin-review-img-${idx}`}
+                        onClick={() => handleOpenLightbox(getImageUrl(imgUrl))}
+                        className="w-16 h-16 rounded overflow-hidden border border-[#d4c3be]/40 hover:border-primary cursor-zoom-in transition-colors relative"
+                      >
+                        <img
+                          src={getImageUrl(imgUrl)}
+                          alt={`Review img ${idx + 1}`}
+                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+                    ))}
+
+                    {r.videos?.map((vidUrl: string, idx: number) => (
+                      <div 
+                        key={`admin-review-vid-${idx}`}
+                        className="w-16 h-16 rounded overflow-hidden border border-[#d4c3be]/40 bg-black relative group cursor-pointer"
+                        onClick={() => handleOpenVideoPlayer(getImageUrl(vidUrl))}
+                      >
+                        <video
+                          src={getImageUrl(vidUrl)}
+                          className="w-full h-full object-cover opacity-80"
+                          muted
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors">
+                          <span className="w-5 h-5 rounded-full bg-white/30 backdrop-blur-xs flex items-center justify-center text-white text-[8px]">▶</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {r.order_code && (
                   <div className="p-5 bg-[#faf6f0]/40 rounded-lg border border-[#d4c3be]/40 text-xs text-on-surface-variant font-sans space-y-3">
                     <div className="flex items-center justify-between border-b border-[#d4c3be]/20 pb-2">
@@ -364,6 +412,66 @@ export default function AdminCustomerReviews() {
           </div>
         </div>
       </div>
+      {/* Review Image Lightbox Modal */}
+      <AnimatePresence>
+        {lightboxImage && (
+          <div 
+            onClick={() => setLightboxImage(null)}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs cursor-zoom-out"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-4xl max-h-[90vh] overflow-hidden"
+            >
+              <img
+                src={lightboxImage}
+                alt="Full review"
+                className="max-w-full max-h-[90vh] object-contain rounded-xs shadow-2xl"
+              />
+              <button
+                onClick={() => setLightboxImage(null)}
+                className="absolute top-4 right-4 text-white bg-black/50 hover:bg-black/85 w-8 h-8 rounded-full flex items-center justify-center text-xl border-none cursor-pointer"
+              >
+                &times;
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Review Video Player Modal */}
+      <AnimatePresence>
+        {activeVideoUrl && (
+          <div 
+            onClick={() => setActiveVideoUrl(null)}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-xs"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-2xl w-full aspect-video bg-black rounded-xs overflow-hidden shadow-2xl"
+            >
+              <video
+                src={activeVideoUrl}
+                controls
+                autoPlay
+                className="w-full h-full object-contain"
+              />
+              <button
+                onClick={() => setActiveVideoUrl(null)}
+                className="absolute top-4 right-4 text-white bg-black/50 hover:bg-black/85 w-8 h-8 rounded-full flex items-center justify-center text-xl border-none cursor-pointer"
+              >
+                &times;
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

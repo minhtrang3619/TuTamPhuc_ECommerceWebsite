@@ -31,6 +31,7 @@ class Product(BaseModel):
     rating_avg = Column(Float, default=0.0, nullable=False)
     rating_count = Column(Integer, default=0, nullable=False)
     view_count = Column(Integer, default=0, nullable=False)
+    video_url = Column(String(500), nullable=True)
     is_featured = Column(Boolean, default=False, nullable=False)
 
     # Relationships
