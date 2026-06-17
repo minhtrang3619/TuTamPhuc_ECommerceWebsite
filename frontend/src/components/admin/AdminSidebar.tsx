@@ -83,7 +83,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
       roles: ['admin']
     },
     {
-      title: 'Thống kê hàng hóa',
+      title: 'Thống kê chuyên sâu',
       path: '/admin/dashboard',
       icon: LayoutDashboard,
       roles: ['shop_staff']
@@ -120,21 +120,21 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
     }
   ]
 
-  const greetingText = role === 'admin' 
-    ? 'Xin chào chủ cửa hàng' 
-    : role === 'shop_staff' 
-      ? 'Xin chào nhân viên cửa hàng' 
-      : role === 'customer_service' 
-        ? 'Xin chào nhân viên chăm sóc khách hàng' 
+  const greetingText = role === 'admin'
+    ? 'Xin chào chủ cửa hàng'
+    : role === 'shop_staff'
+      ? 'Xin chào nhân viên cửa hàng'
+      : role === 'customer_service'
+        ? 'Xin chào nhân viên chăm sóc khách hàng'
         : 'Xin chào nhân viên'
 
-  const menuItems = isCSKH 
-    ? cskhMenuItems 
+  const menuItems = isCSKH
+    ? cskhMenuItems
     : allMenuItems.filter(item => item.roles.includes(role))
 
   return (
     <aside className={cn(
-      "w-60 bg-[#f4f2f0] flex flex-col flex-shrink-0 min-h-screen transition-all py-10 px-8 border-r border-[#e5e1de]/40 ease-in-out duration-300",
+      "w-64 bg-[#f4f2f0] flex flex-col flex-shrink-0 min-h-screen transition-all py-10 px-6 border-r border-[#e5e1de]/40 ease-in-out duration-300",
       "fixed inset-y-0 left-0 z-40 md:static md:translate-x-0",
       isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
     )}>
@@ -162,14 +162,13 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-4 py-2 text-sm font-sans tracking-wide transition-all ${
-                  isActive
+                className={`flex items-center gap-4 py-2 text-sm font-sans tracking-wide transition-all ${isActive
                     ? 'text-[#442a22] font-semibold border-b border-[#442a22]/20 pb-3 mb-1'
                     : 'text-[#827470] hover:text-[#442a22] font-normal'
-                }`}
+                  }`}
               >
                 <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className={isActive ? 'text-[#442a22]' : 'text-[#827470]'} />
-                <span>{item.title}</span>
+                <span className="whitespace-nowrap">{item.title}</span>
               </Link>
             )
           })}

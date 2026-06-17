@@ -199,18 +199,32 @@ class OrderService:
         if new_payment_status is not None:
             order.payment_status = new_payment_status
             
-        # Add dynamic charity transaction of 5% total amount when order is delivered
+        # Add dynamic charity transaction of 5% product selling price (subtotal) when order is delivered
         if new_status == OrderStatus.DELIVERED and old_status != OrderStatus.DELIVERED:
-            from app.models.charity import CharityTransaction
-            donation_amount = order.total * 0.05
+            from app.models.charity import CharityTransaction, CharityCampaign
+            campaign = self.db.query(CharityCampaign).filter(CharityCampaign.name == "Hạt Lành Từ Tâm").first()
+            if not campaign:
+                campaign = CharityCampaign(
+                    name="Hạt Lành Từ Tâm",
+                    description="Gieo hạt từ bi – Lan tỏa phúc lành.",
+                    target_amount=500000000.0,
+                    raised_amount=0.0,
+                    image_url="https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?q=80&w=1000",
+                    status="active"
+                )
+                self.db.add(campaign)
+                self.db.flush()
+                
+            donation_amount = order.subtotal * 0.05
             db_tx = CharityTransaction(
-                campaign_id=None,
+                campaign_id=campaign.id,
                 donor_recipient=order.shipping_address.get("full_name", f"Đơn hàng #{order.order_code}"),
                 amount=donation_amount,
                 transaction_type="donation",
                 description=f"Trích 5% doanh số từ đơn hàng #{order.order_code}"
             )
             self.db.add(db_tx)
+            campaign.raised_amount += donation_amount
 
         self.db.commit()
         self.db.refresh(order)

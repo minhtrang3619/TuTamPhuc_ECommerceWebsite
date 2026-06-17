@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 class CharityCampaignBase(BaseModel):
     name: str
+    slogan: Optional[str] = None
     description: Optional[str] = None
     target_amount: float
     image_url: Optional[str] = None
@@ -14,6 +15,7 @@ class CharityCampaignCreate(CharityCampaignBase):
 
 class CharityCampaignUpdate(BaseModel):
     name: Optional[str] = None
+    slogan: Optional[str] = None
     description: Optional[str] = None
     target_amount: Optional[float] = None
     image_url: Optional[str] = None

@@ -29,6 +29,7 @@ export default function AdminDashboard() {
   const [animate, setAnimate] = useState(false)
   const [timeRange, setTimeRange] = useState('6 tháng qua')
   const [activeSubTab, setActiveSubTab] = useState<'inventory' | 'sales'>('inventory')
+  const [bestSellersPeriod, setBestSellersPeriod] = useState<'7days' | '3months'>('7days')
 
   // API State
   const [orders, setOrders] = useState<any[]>([])
@@ -211,26 +212,40 @@ export default function AdminDashboard() {
   }, [products])
 
   const topSellersInventoryChart = useMemo(() => {
-    const productSales: { [key: number]: { name: string; count: number } } = {}
+    const now = new Date()
+    const cutoffDate = new Date()
+    if (bestSellersPeriod === '7days') {
+      cutoffDate.setDate(now.getDate() - 7)
+    } else {
+      cutoffDate.setMonth(now.getMonth() - 3)
+    }
+    cutoffDate.setHours(0, 0, 0, 0)
+
+    const productSales: { [key: number]: { name: string; count: number; image: string } } = {}
     orders.forEach(order => {
-      order.items?.forEach((item: any) => {
-        const pId = item.product_id
-        const pName = item.product_snapshot?.name || item.product?.name || `Sản phẩm #${pId}`
-        if (!productSales[pId]) {
-          productSales[pId] = { name: pName, count: 0 }
-        }
-        productSales[pId].count += item.quantity
-      })
+      const orderDate = new Date(order.created_at)
+      if (orderDate >= cutoffDate) {
+        order.items?.forEach((item: any) => {
+          const pId = item.product_id
+          const pName = item.product_snapshot?.name || item.product?.name || `Sản phẩm #${pId}`
+          const pImg = item.product_snapshot?.image || item.product?.images?.[0]?.url || ''
+          if (!productSales[pId]) {
+            productSales[pId] = { name: pName, count: 0, image: pImg }
+          }
+          productSales[pId].count += item.quantity
+        })
+      }
     })
     const sorted = Object.values(productSales).sort((a, b) => b.count - a.count)
     const top4 = sorted.slice(0, 4)
-    const maxCount = Math.max(...top4.map(p => p.count), 1)
     return top4.map(p => ({
-      label: p.name,
-      height: `${(p.count / maxCount) * 90}%`,
-      count: `${p.count} đv`
+      name: p.name,
+      count: p.count,
+      image: p.image 
+        ? getImageUrl(p.image) 
+        : 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?auto=format&fit=crop&w=600&q=80'
     }))
-  }, [orders])
+  }, [orders, bestSellersPeriod])
 
   const slowInventory = useMemo(() => {
     const candidates = products.filter(p => p.stock > 10)
@@ -582,27 +597,75 @@ export default function AdminDashboard() {
               {/* Top Sellers Chart */}
               <div className="lg:col-span-5 bg-surface-container-lowest p-8 rounded-xl shadow-[0_10px_32px_-4px_rgba(68,42,34,0.05)] border border-outline-variant/10 flex flex-col justify-between">
                 <div>
-                  <h3 className="font-headline-sm text-headline-sm text-primary mb-1">Bán chạy nhất</h3>
-                  <p className="font-body-md text-on-surface-variant text-sm">Sản phẩm phổ biến theo lượng bán tháng.</p>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-headline-sm text-headline-sm text-primary">Sản phẩm bán chạy</h3>
+                    <div className="flex bg-surface-container-low p-0.5 rounded-full border border-outline-variant/30">
+                      <button
+                        onClick={() => setBestSellersPeriod('7days')}
+                        className={`px-3 py-1 text-[10px] uppercase font-bold tracking-wider rounded-full transition-all duration-300 ${
+                          bestSellersPeriod === '7days'
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'text-on-surface-variant/60 hover:text-primary'
+                        }`}
+                      >
+                        7 ngày
+                      </button>
+                      <button
+                        onClick={() => setBestSellersPeriod('3months')}
+                        className={`px-3 py-1 text-[10px] uppercase font-bold tracking-wider rounded-full transition-all duration-300 ${
+                          bestSellersPeriod === '3months'
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'text-on-surface-variant/60 hover:text-primary'
+                        }`}
+                      >
+                        3 tháng
+                      </button>
+                    </div>
+                  </div>
+                  <p className="font-body-md text-on-surface-variant text-sm">
+                    Xếp hạng top các sản phẩm bán chạy nhất trong {bestSellersPeriod === '7days' ? '7 ngày qua' : '3 tháng qua'}.
+                  </p>
                 </div>
                 
-                <div className="flex-grow flex items-end gap-3 h-40 mt-8 mb-6">
-                  {topSellersInventoryChart.map((bar, idx) => (
-                    <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end group">
-                      <div 
-                        className="w-full bg-primary rounded-t-sm transition-all duration-[1200ms] ease-out relative cursor-pointer"
-                        style={{ 
-                          height: animate ? bar.height : '0%',
-                          opacity: 1 - idx * 0.15
-                        }}
-                      >
-                        <span className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-[9px] font-semibold text-primary opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                          {bar.count}
-                        </span>
+                <div className="space-y-4 mt-8 flex-grow">
+                  {topSellersInventoryChart.map((item, idx) => (
+                    <div 
+                      key={idx} 
+                      className="flex items-center gap-4 p-4 rounded-lg bg-surface-container-low/30 border border-outline-variant/10 transition-all hover:bg-surface-container-low/60 group animate-in fade-in duration-500"
+                    >
+                      {/* Rank Badge */}
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+                        idx === 0 
+                          ? 'bg-[#E5D5C5] text-primary' 
+                          : idx === 1 
+                          ? 'bg-[#EADED2] text-primary/80' 
+                          : idx === 2 
+                          ? 'bg-[#F2EAE1] text-primary/60' 
+                          : 'bg-surface-container text-on-surface-variant/70'
+                      }`}>
+                        {idx + 1}
                       </div>
-                      <span className="text-[9px] mt-2 text-center uppercase tracking-tighter text-on-surface-variant font-label-md truncate w-full">
-                        {bar.label}
-                      </span>
+
+                      {/* Product Image */}
+                      <div className="w-12 h-12 rounded overflow-hidden bg-surface-container-low shrink-0 border border-outline-variant/10">
+                        <img 
+                          src={item.image} 
+                          alt={item.name} 
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      </div>
+
+                      {/* Product Name */}
+                      <div className="flex-grow min-w-0">
+                        <h4 className="font-body-md font-semibold text-on-surface truncate text-sm">{item.name}</h4>
+                        <p className="text-[10px] text-on-surface-variant/70 uppercase tracking-wider mt-0.5">Top {idx + 1}</p>
+                      </div>
+
+                      {/* Sales Count */}
+                      <div className="text-right shrink-0">
+                        <p className="font-headline-sm text-primary text-[16px] font-bold leading-none">{item.count}</p>
+                        <p className="text-[8px] uppercase tracking-wider text-on-surface-variant/60 mt-1">ĐƠN VỊ</p>
+                      </div>
                     </div>
                   ))}
                   {topSellersInventoryChart.length === 0 && (

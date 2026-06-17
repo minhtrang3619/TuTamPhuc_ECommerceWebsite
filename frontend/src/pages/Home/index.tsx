@@ -1,8 +1,29 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Leaf } from 'lucide-react'
+import { ArrowRight, Leaf, Heart } from 'lucide-react'
 import { Marquee } from '@/components/ui/Marquee'
+import { charityService, CharityCampaign } from '@/services/charityService'
+
+const formatPrice = (price: number) => {
+  return price.toLocaleString('vi-VN') + ' ₫'
+}
 
 export default function HomePage() {
+  const [campaign, setCampaign] = useState<CharityCampaign | null>(null)
+  
+  useEffect(() => {
+    const fetchCampaign = async () => {
+      try {
+        const data = await charityService.getCampaigns()
+        if (data && data.length > 0) {
+          setCampaign(data[0])
+        }
+      } catch (err) {
+        console.error("Failed to load charity campaign on homepage:", err)
+      }
+    }
+    fetchCampaign()
+  }, [])
   const scrollToCollections = () => {
     const collectionsEl = document.getElementById("collections")
     if (collectionsEl) {
@@ -115,20 +136,68 @@ export default function HomePage() {
 
       {/* Charity Campaign Section */}
       <section className="py-20 bg-[#faf6f0] border-t border-b border-[#ece0dc] relative">
-        <div className="max-w-4xl mx-auto px-margin-mobile text-center flex flex-col items-center">
-          <span className="text-[10px] uppercase font-sans font-extrabold tracking-[0.25em] text-primary mb-3">
+        <div className="max-w-4xl mx-auto px-margin-mobile flex flex-col items-center">
+          <span className="text-[10px] uppercase font-sans font-extrabold tracking-[0.25em] text-primary mb-3 text-center">
             Hành trình nhân ái xuyên suốt
           </span>
-          <h2 className="font-serif text-2xl md:text-3.5xl text-primary font-bold mb-6 tracking-wide leading-tight">
+          <h2 className="font-serif text-2xl md:text-3.5xl text-primary font-bold mb-6 tracking-wide leading-tight text-center">
             Gieo Mầm Từ Tâm • Trích 5% Giá Bán
           </h2>
-          <p className="font-sans text-xs md:text-sm text-[#5d4037] leading-relaxed max-w-2xl opacity-90 mb-8 px-2 md:px-0">
-            Từ Tâm Phục cam kết trích <strong>5% từ giá bán của sản phẩm</strong> từ mỗi đơn hàng được bán ra để quyên vào công quỹ của các chùa và tu viện. Nguồn quỹ này sẽ trực tiếp giúp đỡ những người già neo đơn không nơi nương tựa, và các em nhỏ mồ côi đang được nhà chùa cưu mang, chăm sóc dưới bóng Phật đài.
-          </p>
-          <div className="w-16 h-0.5 bg-[#d4c3be] mb-6"></div>
-          <p className="font-serif italic text-xs text-on-surface-variant max-w-xl px-4">
-            "Mỗi bộ pháp phục khoác lên mình không chỉ mang lại sự trang nghiêm thanh thoát, mà còn là một đóa sen nhân ái gửi gắm yêu thương đến những mảnh đời khó khăn."
-          </p>
+          
+          {campaign ? (
+            <div className="w-full bg-white border border-[#e5e1de] rounded-xl p-6 md:p-8 flex flex-col md:flex-row items-center gap-8 shadow-xs max-w-3xl mt-4">
+              <div className="w-full md:w-2/5 aspect-[4/3] rounded-lg overflow-hidden bg-surface-container flex-shrink-0">
+                {campaign.image_url ? (
+                  <img src={campaign.image_url} alt={campaign.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-primary/30">
+                    <Heart size={48} />
+                  </div>
+                )}
+              </div>
+              <div className="w-full md:w-3/5 space-y-4 text-left">
+                <div>
+                  <h3 className="font-serif text-xl font-bold text-primary">{campaign.name}</h3>
+                  {campaign.slogan && (
+                    <p className="text-xs text-primary font-serif font-semibold italic mt-1">
+                      Slogan: {campaign.slogan}
+                    </p>
+                  )}
+                </div>
+                <p className="text-xs text-[#5d4037] leading-relaxed font-sans">
+                  {campaign.description}
+                </p>
+                
+                {/* Progress bar */}
+                {(() => {
+                  const percent = Math.min(100, Math.round((campaign.raised_amount / campaign.target_amount) * 100))
+                  return (
+                    <div className="space-y-2 pt-2 border-t border-[#e5e1de]/60">
+                      <div className="flex justify-between items-end text-[10px] font-semibold text-on-surface-variant/80">
+                        <span>Đã đạt được: {percent}%</span>
+                        <span className="font-bold text-primary text-xs">
+                          {formatPrice(campaign.raised_amount)} / {formatPrice(campaign.target_amount)}
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-[#eeeeee] rounded-full overflow-hidden">
+                        <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: `${percent}%` }} />
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center">
+              <p className="font-sans text-xs md:text-sm text-[#5d4037] leading-relaxed max-w-2xl opacity-90 mb-8 px-2 md:px-0">
+                Từ Tâm Phục cam kết trích <strong>5% từ giá bán của sản phẩm</strong> từ mỗi đơn hàng được bán ra để quyên vào công quỹ của các chùa và tu viện. Nguồn quỹ này sẽ trực tiếp giúp đỡ những người già neo đơn không nơi nương tựa, và các em nhỏ mồ côi đang được nhà chùa cưu mang, chăm sóc dưới bóng Phật đài.
+              </p>
+              <div className="w-16 h-0.5 bg-[#d4c3be] mb-6 mx-auto"></div>
+              <p className="font-serif italic text-xs text-on-surface-variant max-w-xl px-4">
+                "Mỗi bộ pháp phục khoác lên mình không chỉ mang lại sự trang nghiêm thanh thoát, mà còn là một đóa sen nhân ái gửi gắm yêu thương đến những mảnh đời khó khăn."
+              </p>
+            </div>
+          )}
         </div>
       </section>
 

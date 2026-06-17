@@ -1,6 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Toast from '../../components/ui/Toast';
+import { Heart } from 'lucide-react';
+import { charityService, CharityCampaign } from '@/services/charityService';
+
+const formatPrice = (price: number) => {
+  return price.toLocaleString('vi-VN') + ' ₫'
+}
 
 export default function BlogPage() {
   const [newsletterEmail, setNewsletterEmail] = useState<string>('');
@@ -11,6 +17,22 @@ export default function BlogPage() {
     isVisible: false,
     type: 'success',
   });
+
+  const [campaign, setCampaign] = useState<CharityCampaign | null>(null);
+
+  useEffect(() => {
+    const fetchCampaign = async () => {
+      try {
+        const data = await charityService.getCampaigns()
+        if (data && data.length > 0) {
+          setCampaign(data[0])
+        }
+      } catch (err) {
+        console.error("Failed to load charity campaign on blog page:", err)
+      }
+    }
+    fetchCampaign()
+  }, [])
 
   const showToast = (message: string, type: 'success' | 'info' = 'success') => {
     setToast({ message, isVisible: true, type });
@@ -121,6 +143,55 @@ export default function BlogPage() {
             </div>
           </div>
         </div>
+
+        {/* Accompanying Charity Campaign Banner */}
+        {campaign && (
+          <div className="mt-16 bg-white border border-[#eeeeee] hover:shadow-lg transition-all duration-300 rounded-lg overflow-hidden p-6 md:p-8 flex flex-col md:flex-row items-center gap-8">
+            <div className="w-full md:w-1/3 aspect-[4/3] rounded-lg overflow-hidden bg-[#faf6f0] flex items-center justify-center flex-shrink-0">
+              {campaign.image_url ? (
+                <img src={campaign.image_url} alt={campaign.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="text-primary/30">
+                  <Heart size={48} />
+                </div>
+              )}
+            </div>
+            <div className="w-full md:w-2/3 space-y-4 text-left flex flex-col justify-between">
+              <div>
+                <span className="text-[9px] bg-primary/10 text-primary font-bold uppercase tracking-widest px-2.5 py-1 rounded-sm">
+                  Chiến Dịch Đồng Hành
+                </span>
+                <h3 className="font-serif text-xl font-bold text-primary mt-3">{campaign.name}</h3>
+                {campaign.slogan && (
+                  <p className="text-xs text-primary font-serif font-semibold italic mt-1">
+                    Slogan: {campaign.slogan}
+                  </p>
+                )}
+              </div>
+              <p className="text-xs text-on-surface-variant/80 leading-relaxed font-semibold">
+                {campaign.description}
+              </p>
+              
+              {/* Progress bar */}
+              {(() => {
+                const percent = Math.min(100, Math.round((campaign.raised_amount / campaign.target_amount) * 100))
+                return (
+                  <div className="space-y-2 pt-3 border-t border-[#eeeeee]">
+                    <div className="flex justify-between items-end text-[10px] font-semibold text-on-surface-variant/60">
+                      <span>Đóng góp đạt: {percent}%</span>
+                      <span className="font-bold text-primary text-xs">
+                        {formatPrice(campaign.raised_amount)} / {formatPrice(campaign.target_amount)}
+                      </span>
+                    </div>
+                    <div className="w-full h-1.5 bg-[#eeeeee] rounded-full overflow-hidden">
+                      <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: `${percent}%` }} />
+                    </div>
+                  </div>
+                )
+              })()}
+            </div>
+          </div>
+        )}
 
         {/* Newsletter widget */}
         <div className="mt-16 bg-[#ece0dc]/30 border border-[#d4c3be]/40 rounded-sm p-8 text-center max-w-xl mx-auto">

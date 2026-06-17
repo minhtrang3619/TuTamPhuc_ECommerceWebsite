@@ -3,6 +3,7 @@ import apiClient from './apiClient'
 export interface CharityCampaign {
   id: number;
   name: string;
+  slogan?: string;
   description?: string;
   target_amount: number;
   raised_amount: number;

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Heart,
-  Plus,
   Edit2,
   Filter,
   Download,
@@ -14,6 +13,7 @@ import {
   Calendar
 } from 'lucide-react'
 import { charityService, CharityCampaign, CharityTransaction, CharityOverview } from '../../../services/charityService'
+import apiClient from '../../../services/apiClient'
 
 const formatPrice = (price: number) => {
   return price.toLocaleString('vi-VN') + ' ₫'
@@ -36,10 +36,12 @@ export default function AdminCharity() {
   const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false)
   const [editingCampaign, setEditingCampaign] = useState<CharityCampaign | null>(null)
   const [isTxModalOpen, setIsTxModalOpen] = useState(false)
+  const [uploading, setUploading] = useState(false)
 
   // Form states
   const [campaignForm, setCampaignForm] = useState({
     name: '',
+    slogan: '',
     description: '',
     target_amount: 0,
     image_url: '',
@@ -112,6 +114,36 @@ export default function AdminCharity() {
     }
   }
 
+  // Handle image upload to server
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      alert('Vui lòng chọn tệp hình ảnh hợp lệ.')
+      return
+    }
+
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('folder', 'charity')
+
+    setUploading(true)
+    try {
+      const response = await apiClient.post<{ url: string }>('/uploads/image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+      setCampaignForm(prev => ({ ...prev, image_url: response.data.url }))
+    } catch (err) {
+      console.error("Upload error:", err)
+      alert('Tải ảnh lên thất bại. Vui lòng thử lại.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
   // Handle campaign form submission (Create or Edit)
   const handleCampaignSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -124,6 +156,7 @@ export default function AdminCharity() {
       if (editingCampaign) {
         await charityService.updateCampaign(editingCampaign.id, {
           name: campaignForm.name,
+          slogan: campaignForm.slogan,
           description: campaignForm.description,
           target_amount: campaignForm.target_amount,
           image_url: campaignForm.image_url || undefined,
@@ -132,6 +165,7 @@ export default function AdminCharity() {
       } else {
         await charityService.createCampaign({
           name: campaignForm.name,
+          slogan: campaignForm.slogan,
           description: campaignForm.description,
           target_amount: campaignForm.target_amount,
           image_url: campaignForm.image_url || undefined,
@@ -180,6 +214,7 @@ export default function AdminCharity() {
     setEditingCampaign(campaign)
     setCampaignForm({
       name: campaign.name,
+      slogan: campaign.slogan || '',
       description: campaign.description || '',
       target_amount: campaign.target_amount,
       image_url: campaign.image_url || '',
@@ -222,7 +257,8 @@ export default function AdminCharity() {
 
   const totalFund = overview?.total_fund || 0
   const totalDonations = overview?.total_donations || 0
-  const activeProjects = overview?.active_campaigns_count || 0
+  const totalDonationAmount = campaigns[0]?.raised_amount || 0
+  const totalExpenses = Math.max(0, totalDonationAmount - totalFund)
 
   return (
     <div className="page-transition space-y-12 pb-16 font-sans">
@@ -234,26 +270,8 @@ export default function AdminCharity() {
             Quản Lý Quỹ Thiện Nguyện
           </h1>
           <p className="text-xs text-on-surface-variant opacity-80 leading-relaxed font-serif">
-            "Cho đi là còn mãi." Trực quan hóa tiến trình đóng góp từ 5% doanh số đơn hàng và phân phối giải ngân đến các chiến dịch ý nghĩa của Từ Tâm Phục.
+            Chiến dịch thiện nguyện độc quyền và xuyên suốt của Từ Tâm Phục trích 5% giá bán sản phẩm từ các đơn hàng để gieo nhân duyên lành.
           </p>
-        </div>
-        <div>
-          <button
-            onClick={() => {
-              setEditingCampaign(null)
-              setCampaignForm({
-                name: '',
-                description: '',
-                target_amount: 0,
-                image_url: '',
-                status: 'active'
-              })
-              setIsCampaignModalOpen(true)
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white hover:bg-primary/95 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer border-none"
-          >
-            <Plus size={14} /> Khởi tạo dự án
-          </button>
         </div>
       </section>
 
@@ -288,9 +306,9 @@ export default function AdminCharity() {
             </span>
           </div>
           <div className="mt-6">
-            <h3 className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Lượt đóng góp</h3>
+            <h3 className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Tổng đóng góp trích quỹ</h3>
             <p className="text-2xl font-serif font-black text-on-surface mt-2">
-              {totalDonations.toLocaleString('vi-VN')} <span className="text-xs font-sans font-medium text-on-surface-variant">Lượt</span>
+              {formatPrice(totalDonationAmount)}
             </p>
           </div>
         </div>
@@ -302,16 +320,16 @@ export default function AdminCharity() {
               <Award size={20} />
             </span>
             <button
-              onClick={() => openDisburseModal()}
+              onClick={() => openDisburseModal(campaigns[0]?.id)}
               className="text-[10px] font-bold text-white bg-[#5d4037] hover:bg-[#442a22] px-3 py-1 rounded border-none cursor-pointer uppercase transition-colors"
             >
               Giải ngân quỹ
             </button>
           </div>
           <div className="mt-6">
-            <h3 className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Chiến dịch đang thực hiện</h3>
+            <h3 className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Tổng đã giải ngân</h3>
             <p className="text-2xl font-serif font-black text-on-surface mt-2">
-              {activeProjects} <span className="text-xs font-sans font-medium text-on-surface-variant">Dự án</span>
+              {formatPrice(totalExpenses)}
             </p>
           </div>
         </div>
@@ -320,11 +338,11 @@ export default function AdminCharity() {
       {/* Campaigns Section */}
       <section className="space-y-6">
         <div className="flex items-end justify-between border-b border-[#e5e1de]/60 pb-3">
-          <h2 className="text-lg font-serif font-bold text-primary">Dự án thiện nguyện</h2>
-          <span className="text-xs text-on-surface-variant/80 font-medium">Tổng số: {campaigns.length} dự án</span>
+          <h2 className="text-lg font-serif font-bold text-primary">Chiến dịch thiện nguyện hiện tại</h2>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {campaigns.map((project) => {
+        <div className="w-full">
+          {campaigns.length > 0 && (() => {
+            const project = campaigns[0]
             const percent = Math.min(100, Math.round((project.raised_amount / project.target_amount) * 100))
             const statusLabel = project.status === 'completed' 
               ? 'Đã hoàn thành' 
@@ -333,20 +351,20 @@ export default function AdminCharity() {
                 : 'Đang thực hiện'
             
             return (
-              <div key={project.id} className="group bg-surface rounded-xl border border-outline-variant/30 overflow-hidden flex flex-col sm:flex-row h-full transition-transform duration-300 hover:scale-[1.005] shadow-xs">
+              <div key={project.id} className="group bg-surface rounded-xl border border-outline-variant/30 overflow-hidden flex flex-col md:flex-row min-h-[300px] transition-transform duration-300 hover:scale-[1.002] shadow-xs">
                 {/* Image panel */}
-                <div className="sm:w-2/5 h-48 sm:h-auto overflow-hidden relative bg-[#ece0dc]/20">
+                <div className="md:w-2/5 h-64 md:h-auto overflow-hidden relative bg-[#ece0dc]/20 flex items-center justify-center">
                   {project.image_url ? (
                     <img className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src={project.image_url} alt={project.name} />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-primary/30">
-                      <Heart size={48} />
+                    <div className="text-primary/30">
+                      <Heart size={64} />
                     </div>
                   )}
                 </div>
                 {/* Content Panel */}
-                <div className="p-6 sm:w-3/5 flex flex-col justify-between gap-4">
-                  <div className="space-y-2">
+                <div className="p-8 md:w-3/5 flex flex-col justify-between gap-6">
+                  <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
                         project.status === 'completed' 
@@ -361,24 +379,29 @@ export default function AdminCharity() {
                         <button
                           onClick={() => openEditCampaign(project)}
                           className="p-1 text-on-surface-variant hover:text-primary transition-colors cursor-pointer border-none bg-transparent"
-                          title="Sửa chiến dịch"
+                          title="Sửa cấu hình chiến dịch"
                         >
-                          <Edit2 size={13} />
+                          <Edit2 size={14} />
                         </button>
                       </div>
                     </div>
-                    <h3 className="font-serif font-bold text-base text-[#442a22] leading-snug">{project.name}</h3>
-                    <p className="text-xs text-on-surface-variant/80 line-clamp-3 leading-relaxed">{project.description || 'Chưa có mô tả chi tiết cho dự án này.'}</p>
+                    <h3 className="font-serif font-bold text-2xl text-[#442a22] leading-snug">{project.name}</h3>
+                    {project.slogan && (
+                      <p className="text-xs text-primary font-serif font-semibold italic">
+                        Slogan: {project.slogan}
+                      </p>
+                    )}
+                    <p className="text-xs text-on-surface-variant/80 leading-relaxed">{project.description || 'Chưa có mô tả chi tiết cho dự án này.'}</p>
                   </div>
                   
                   {/* Progress Panel */}
                   <div className="space-y-2">
                     <div className="flex justify-between items-end text-[10px] font-semibold text-on-surface-variant/80">
-                      <span>Đạt được: {percent}%</span>
+                      <span>Tiến trình đạt được: {percent}%</span>
                       <span className="font-bold text-primary">{formatPrice(project.raised_amount)} / {formatPrice(project.target_amount)}</span>
                     </div>
                     {/* Bar */}
-                    <div className="w-full h-1.5 bg-[#eeeeee] rounded-full overflow-hidden">
+                    <div className="w-full h-2 bg-[#eeeeee] rounded-full overflow-hidden">
                       <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: `${percent}%` }} />
                     </div>
                     {project.status !== 'completed' && (
@@ -387,7 +410,7 @@ export default function AdminCharity() {
                           onClick={() => openDisburseModal(project.id)}
                           className="text-[10px] font-bold text-primary hover:text-primary-container bg-transparent border-none cursor-pointer uppercase tracking-wider"
                         >
-                          Giải ngân cho dự án
+                          Giải ngân cho chiến dịch
                         </button>
                       </div>
                     )}
@@ -395,7 +418,7 @@ export default function AdminCharity() {
                 </div>
               </div>
             )
-          })}
+          })()}
         </div>
       </section>
 
@@ -566,6 +589,18 @@ export default function AdminCharity() {
                 </div>
 
                 <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant block">Slogan chiến dịch *</label>
+                  <input
+                    type="text"
+                    required
+                    value={campaignForm.slogan}
+                    onChange={(e) => setCampaignForm(prev => ({ ...prev, slogan: e.target.value }))}
+                    className="w-full bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-primary/20"
+                    placeholder="e.g. Gieo hạt từ bi – Lan tỏa phúc lành."
+                  />
+                </div>
+
+                <div className="space-y-1">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant block">Mô tả dự án</label>
                   <textarea
                     rows={3}
@@ -603,13 +638,30 @@ export default function AdminCharity() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant block">URL hình ảnh đại diện</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant block">Hình ảnh đại diện *</label>
+                  <div className="flex items-center gap-4">
+                    {campaignForm.image_url && (
+                      <div className="w-16 h-16 rounded-lg overflow-hidden border border-[#eeeeee] flex-shrink-0 bg-neutral-100 flex items-center justify-center">
+                        <img src={campaignForm.image_url} alt="Preview" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        disabled={uploading}
+                        className="block w-full text-xs text-on-surface-variant file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer file:cursor-pointer"
+                      />
+                      {uploading && <p className="text-[10px] text-primary mt-1 animate-pulse">Đang tải ảnh lên...</p>}
+                    </div>
+                  </div>
                   <input
                     type="text"
                     value={campaignForm.image_url}
                     onChange={(e) => setCampaignForm(prev => ({ ...prev, image_url: e.target.value }))}
-                    className="w-full bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-primary/20"
-                    placeholder="Link hình ảnh dự án..."
+                    className="w-full bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-primary/20 mt-2"
+                    placeholder="Hoặc nhập URL hình ảnh tại đây..."
                   />
                 </div>
 

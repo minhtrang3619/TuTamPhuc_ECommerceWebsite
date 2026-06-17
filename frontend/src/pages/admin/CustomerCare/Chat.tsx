@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { 
   Search, 
   Send, 
@@ -59,6 +59,9 @@ export default function AdminCustomerChat() {
   const [activeId, setActiveId] = useState<number | null>(null)
   const [inputText, setInputText] = useState('')
 
+  const [searchParams] = useSearchParams()
+  const customerIdParam = searchParams.get('customerId')
+
   const fetchConversations = async () => {
     try {
       const res = await apiClient.get('/chat/conversations')
@@ -79,19 +82,38 @@ export default function AdminCustomerChat() {
       setConversations(mapped)
 
       if (mapped.length > 0 && activeId === null) {
-        setActiveId(mapped[0].id)
+        if (customerIdParam) {
+          const targetId = parseInt(customerIdParam, 10)
+          if (mapped.some(c => c.id === targetId)) {
+            setActiveId(targetId)
+          } else {
+            setActiveId(mapped[0].id)
+          }
+        } else {
+          setActiveId(mapped[0].id)
+        }
       }
     } catch (err) {
       console.error("Lỗi khi tải danh sách hội thoại:", err)
     }
   }
 
+  // Sync activeId with query parameters
+  useEffect(() => {
+    if (customerIdParam) {
+      const targetId = parseInt(customerIdParam, 10)
+      if (!isNaN(targetId) && activeId !== targetId) {
+        setActiveId(targetId)
+      }
+    }
+  }, [customerIdParam, activeId])
+
   // Poll for conversation list and messages
   useEffect(() => {
     fetchConversations()
     const interval = setInterval(fetchConversations, 4000)
     return () => clearInterval(interval)
-  }, [activeId])
+  }, [activeId, customerIdParam])
 
   // Mark messages as read when activeId changes
   useEffect(() => {

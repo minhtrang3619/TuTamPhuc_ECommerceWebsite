@@ -6,6 +6,7 @@ class CharityCampaign(BaseModel):
     __tablename__ = "charity_campaigns"
 
     name = Column(String(255), nullable=False)
+    slogan = Column(String(255), nullable=True)
     description = Column(Text, nullable=True)
     target_amount = Column(Float, nullable=False)
     raised_amount = Column(Float, default=0.0, nullable=False)
