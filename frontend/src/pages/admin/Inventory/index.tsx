@@ -20,7 +20,6 @@ interface SelectedVariant {
   size: string
   color: string
   colorHex?: string
-  cost_price: number
   quantity: number
 }
 
@@ -30,6 +29,8 @@ interface ReceiptVoucherItem {
   image: string
   sku: string
   price: number
+  cost_price: number
+  note: string
   variants: SelectedVariant[]
 }
 
@@ -139,25 +140,30 @@ export default function AdminInventory() {
       setVoucherItems(prev => {
         const clean = prev.filter(x => !x.id.startsWith('mock-'))
         
-        // 1. Get colors and sizes for the product
+        // 1. Get unique colors and sizes for the product (prevent duplicate color/size definitions)
         const rawVariants = foundProduct.variants || []
         const colorItems = rawVariants.filter((v: any) => v.name === 'Màu')
         const sizeItems = rawVariants.filter((v: any) => v.name === 'Kích cỡ' || v.name === 'Size' || v.name === 'size')
         
-        const colors = colorItems.map((c: any) => {
+        const uniqueColorsMap = new Map<string, string>()
+        colorItems.forEach((c: any) => {
           const parts = c.value.split('|')
-          const colorName = parts[0]
-          const colorHex = parts.length === 2 ? parts[1] : '#ece0dc'
-          return { name: colorName, hex: colorHex }
+          const name = parts[0].trim()
+          const hex = parts.length === 2 ? parts[1].trim() : '#ece0dc'
+          uniqueColorsMap.set(name, hex)
         })
+        const colors = Array.from(uniqueColorsMap.entries()).map(([name, hex]) => ({ name, hex }))
         if (colors.length === 0) {
           colors.push({ name: 'Mặc định', hex: '#ece0dc' })
         }
         
-        const sizes = sizeItems.map((s: any) => ({
-          name: s.value,
-          sku: s.sku || `${foundProduct.sku}-${s.value}`
-        }))
+        const uniqueSizesMap = new Map<string, string>()
+        sizeItems.forEach((s: any) => {
+          const name = s.value.trim()
+          const sku = s.sku || `${foundProduct.sku}-${name}`
+          uniqueSizesMap.set(name, sku)
+        })
+        const sizes = Array.from(uniqueSizesMap.entries()).map(([name, sku]) => ({ name, sku }))
         if (sizes.length === 0) {
           sizes.push({ name: 'Standard', sku: foundProduct.sku || '' })
         }
@@ -178,7 +184,6 @@ export default function AdminInventory() {
               size: sz.name,
               color: col.name,
               colorHex: col.hex,
-              cost_price: Math.round(foundProduct.price * 0.48),
               quantity: initialQty
             })
           })
@@ -215,6 +220,8 @@ export default function AdminInventory() {
             image: imageUrl,
             sku: foundProduct.sku || '',
             price: foundProduct.price || 0,
+            cost_price: Math.round(foundProduct.price * 0.48),
+            note: '',
             variants: productVariants
           }
           return [...clean, newVoucherItem]
@@ -244,7 +251,7 @@ export default function AdminInventory() {
         .map(v => ({
           sku: v.sku.trim(),
           quantity: v.quantity,
-          cost_price: v.cost_price,
+          cost_price: item.cost_price,
           color: v.color !== 'Mặc định' ? v.color : undefined
         }))
     )
@@ -270,6 +277,18 @@ export default function AdminInventory() {
     }
     const supplierName = supplierMap[voucherSupplier] || 'Xưởng may Khai Thanh (Quận Tân Phú)'
 
+    // Auto-compile line notes into the main notes block
+    let compiledNotes = voucherNotes || ""
+    const lineNotes = voucherItems
+      .filter(item => item.note?.trim())
+      .map(item => `${item.name}: ${item.note}`)
+      .join("; ")
+    if (lineNotes) {
+      compiledNotes = compiledNotes 
+        ? `${compiledNotes} | Chi tiết: ${lineNotes}`
+        : `Chi tiết: ${lineNotes}`
+    }
+
     setLoading(true)
     setError(null)
     try {
@@ -277,7 +296,7 @@ export default function AdminInventory() {
         voucher_code: voucherCode,
         supplier: supplierName,
         recipient: "Minh Tâm",
-        notes: voucherNotes || "",
+        notes: compiledNotes,
         items: itemsToProcess
       }
       
@@ -311,7 +330,7 @@ export default function AdminInventory() {
     0
   )
   const totalValue = voucherItems.reduce(
-    (sum, item) => sum + item.variants.reduce((vSum, v) => vSum + (v.quantity * v.cost_price), 0),
+    (sum, item) => sum + item.variants.reduce((vSum, v) => vSum + (v.quantity * item.cost_price), 0),
     0
   )
 
@@ -725,119 +744,154 @@ export default function AdminInventory() {
                   <thead>
                     <tr className="bg-surface-container-low border-b border-outline-variant/30">
                       <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant w-12 text-center uppercase tracking-wider">STT</th>
-                      <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider w-[25%]">Sản Phẩm</th>
-                      <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider" colSpan={4}>Chi Tiết Biến Thể &amp; Số Lượng Nhập</th>
-                      <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant text-right uppercase tracking-wider w-[15%]">Thành Tiền</th>
+                      <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider w-[20%]">Sản Phẩm</th>
+                      <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider w-[15%]">Giá Nhập (48% giá bán)</th>
+                      <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider w-[35%]">Phân Loại &amp; Số Lượng</th>
+                      <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider w-[15%]">Ghi Chú</th>
+                      <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant text-right uppercase tracking-wider w-[10%]">Thành Tiền</th>
                       <th className="py-4 px-6 w-12"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/10">
                     {voucherItems.map((item, index) => {
-                      const productTotalValue = item.variants.reduce((sum, v) => sum + (v.quantity * v.cost_price), 0)
+                      // Group variants by color
+                      const colorGroups: Record<string, { colorHex?: string, list: typeof item.variants }> = {}
+                      item.variants.forEach(v => {
+                        if (!colorGroups[v.color]) {
+                          colorGroups[v.color] = { colorHex: v.colorHex, list: [] }
+                        }
+                        colorGroups[v.color].list.push(v)
+                      })
+
+                      const totalQty = item.variants.reduce((sum, v) => sum + v.quantity, 0)
+                      const productTotalValue = totalQty * item.cost_price
+
                       return (
                         <tr key={item.id} className="hover:bg-surface-container-lowest transition-colors group">
                           {/* STT */}
-                          <td className="py-4 px-6 text-center text-on-surface-variant font-label-md align-top pt-6">{String(index + 1).padStart(2, '0')}</td>
+                          <td className="py-4 px-6 text-center text-on-surface-variant font-label-md align-middle">{String(index + 1).padStart(2, '0')}</td>
                           
                           {/* Product Info */}
-                          <td className="py-4 px-6 align-top pt-6">
-                            <div className="flex gap-4">
-                              <div className="w-14 h-14 rounded bg-secondary-fixed overflow-hidden flex-shrink-0 border border-outline-variant/10">
+                          <td className="py-4 px-6 align-middle">
+                            <div className="flex gap-3 items-center">
+                              <div className="w-12 h-12 rounded bg-secondary-fixed overflow-hidden flex-shrink-0 border border-outline-variant/10">
                                 <img className="w-full h-full object-cover" src={item.image} alt={item.name} />
                               </div>
                               <div className="min-w-0">
-                                <p className="font-headline-sm text-sm font-semibold text-primary line-clamp-2 leading-snug">{item.name}</p>
-                                <p className="font-mono text-[10px] text-on-surface-variant/80 mt-1 bg-surface-container px-1.5 py-0.5 rounded inline-block font-bold">Mã gốc: {item.sku}</p>
+                                <p className="font-semibold text-primary text-xs line-clamp-2 leading-snug">{item.name}</p>
+                                <div className="flex flex-col gap-0.5 mt-0.5">
+                                  <span className="font-mono text-[9px] text-on-surface-variant/80 font-bold">Mã: {item.sku}</span>
+                                  <span className="text-[9px] text-on-surface-variant/70 font-semibold">Giá bán: {item.price.toLocaleString('vi-VN')} đ</span>
+                                </div>
                               </div>
                             </div>
                           </td>
                           
-                          {/* Variant Details */}
-                          <td colSpan={4} className="p-0 border-x border-outline-variant/10">
-                            <div className="divide-y divide-outline-variant/10">
-                              {item.variants.map((v, vIdx) => (
-                                <div key={vIdx} className="grid grid-cols-12 gap-2 items-center py-3 px-4 hover:bg-surface-container-low/20 transition-colors">
-                                  {/* Variant Info */}
-                                  <div className="col-span-4 flex items-center gap-2">
-                                    {v.colorHex && v.color !== 'Mặc định' && (
-                                      <span 
-                                        className="w-3.5 h-3.5 rounded-full border border-outline-variant/30 flex-shrink-0"
-                                        style={{ backgroundColor: v.colorHex }}
-                                        title={v.color}
-                                      />
-                                    )}
-                                    <span className="font-semibold text-primary text-xs truncate">
-                                      {v.color !== 'Mặc định' ? v.color : ''} 
-                                      {v.size !== 'Standard' ? ` (Size ${v.size})` : (v.color === 'Mặc định' ? 'Bản tiêu chuẩn' : '')}
-                                    </span>
-                                  </div>
+                          {/* Cost Price Column */}
+                          <td className="py-4 px-6 align-middle">
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-1">
+                                <input 
+                                  className="w-20 bg-transparent border-0 border-b border-outline-variant/30 focus:border-primary p-0.5 font-bold text-primary focus:ring-0 text-xs font-mono text-left" 
+                                  type="number" 
+                                  value={item.cost_price}
+                                  min="0"
+                                  onChange={(e) => {
+                                    const val = parseFloat(e.target.value) || 0
+                                    setVoucherItems(prev => prev.map(p => p.id === item.id ? { ...p, cost_price: val } : p))
+                                  }}
+                                />
+                                <span className="text-xs text-primary font-bold">₫</span>
+                              </div>
+                              <span className="text-[9px] text-on-surface-variant/70 italic">(Gốc 48%: {Math.round(item.price * 0.48).toLocaleString('vi-VN')}₫)</span>
+                            </div>
+                          </td>
+                          
+                          {/* Varieties & Quantities Grid */}
+                          <td className="py-4 px-6 align-middle">
+                            <div className="flex flex-col gap-2.5 py-1">
+                              {Object.entries(colorGroups).map(([colorName, group]) => (
+                                <div key={colorName} className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                                  {/* Color Label */}
+                                  {colorName !== 'Mặc định' && (
+                                    <div className="flex items-center gap-1.5 min-w-[70px]">
+                                      {group.colorHex && (
+                                        <span 
+                                          className="w-3 h-3 rounded-full border border-outline-variant/30 flex-shrink-0"
+                                          style={{ backgroundColor: group.colorHex }}
+                                          title={colorName}
+                                        />
+                                      )}
+                                      <span className="font-semibold text-primary text-[11px] truncate max-w-[65px]" title={colorName}>
+                                        {colorName}
+                                      </span>
+                                    </div>
+                                  )}
                                   
-                                  {/* SKU */}
-                                  <div className="col-span-3 text-[10px] font-mono text-on-surface-variant font-medium select-all">
-                                    {v.sku}
-                                  </div>
-                                  
-                                  {/* Cost Price Input */}
-                                  <div className="col-span-3 flex items-center gap-1">
-                                    <span className="text-[9px] text-on-surface-variant/70 font-semibold uppercase">Giá:</span>
-                                    <input 
-                                      className="w-20 bg-transparent border-0 border-b border-outline-variant/20 focus:border-primary p-0.5 font-medium text-on-surface transition-all text-left focus:ring-0 text-xs font-mono" 
-                                      type="number" 
-                                      value={v.cost_price}
-                                      min="0"
-                                      onChange={(e) => {
-                                        const val = parseFloat(e.target.value) || 0
-                                        setVoucherItems(prev => {
-                                          return prev.map(pItem => {
-                                            if (pItem.id !== item.id) return pItem
-                                            const updatedVariants = [...pItem.variants]
-                                            updatedVariants[vIdx] = { ...updatedVariants[vIdx], cost_price: val }
-                                            return { ...pItem, variants: updatedVariants }
-                                          })
-                                        })
-                                      }}
-                                    />
-                                  </div>
-                                  
-                                  {/* Quantity Input */}
-                                  <div className="col-span-2 flex items-center gap-1 justify-end">
-                                    <span className="text-[9px] text-on-surface-variant/70 font-semibold uppercase">SL:</span>
-                                    <input 
-                                      className="w-12 bg-transparent border-0 border-b border-outline-variant/20 focus:border-primary p-0.5 font-bold text-primary transition-all text-center focus:ring-0 text-xs font-mono" 
-                                      type="number" 
-                                      value={v.quantity}
-                                      min="0"
-                                      onChange={(e) => {
-                                        const val = parseInt(e.target.value) || 0
-                                        setVoucherItems(prev => {
-                                          return prev.map(pItem => {
-                                            if (pItem.id !== item.id) return pItem
-                                            const updatedVariants = [...pItem.variants]
-                                            updatedVariants[vIdx] = { ...updatedVariants[vIdx], quantity: val }
-                                            return { ...pItem, variants: updatedVariants }
-                                          })
-                                        })
-                                      }}
-                                    />
+                                  {/* Sizes Inputs */}
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    {group.list.map((v) => {
+                                      const vIdx = item.variants.findIndex(x => x.sku === v.sku && x.color === v.color)
+                                      return (
+                                        <div key={v.sku} className="flex items-center gap-1 bg-surface-container-lowest px-1.5 py-0.5 rounded border border-outline-variant/10">
+                                          <span className="text-[9px] text-on-surface-variant/80 font-bold min-w-[12px] text-center">
+                                            {v.size !== 'Standard' ? v.size : 'Std'}
+                                          </span>
+                                          <input 
+                                            className={`w-8 bg-transparent border-0 border-b py-0.5 px-0.5 font-bold text-center focus:ring-0 text-xs font-mono transition-all ${
+                                              v.quantity > 0 
+                                                ? 'border-primary text-primary bg-primary/5 font-extrabold' 
+                                                : 'border-outline-variant/20 text-on-surface-variant/30'
+                                            }`}
+                                            type="number" 
+                                            value={v.quantity}
+                                            min="0"
+                                            onChange={(e) => {
+                                              const val = parseInt(e.target.value) || 0
+                                              setVoucherItems(prev => prev.map(pItem => {
+                                                if (pItem.id !== item.id) return pItem
+                                                const updatedVariants = [...pItem.variants]
+                                                updatedVariants[vIdx] = { ...updatedVariants[vIdx], quantity: val }
+                                                return { ...pItem, variants: updatedVariants }
+                                              }))
+                                            }}
+                                          />
+                                        </div>
+                                      )
+                                    })}
                                   </div>
                                 </div>
                               ))}
                             </div>
                           </td>
                           
+                          {/* Note Input */}
+                          <td className="py-4 px-6 align-middle">
+                            <input 
+                              className="w-full bg-transparent border-0 border-b border-outline-variant/30 focus:border-primary py-0.5 px-1 font-normal text-on-surface focus:ring-0 text-xs" 
+                              type="text" 
+                              value={item.note || ''}
+                              placeholder="Ghi chú dòng..."
+                              onChange={(e) => {
+                                const val = e.target.value
+                                setVoucherItems(prev => prev.map(p => p.id === item.id ? { ...p, note: val } : p))
+                              }}
+                            />
+                          </td>
+                          
                           {/* Product Total Value */}
-                          <td className="py-4 px-6 text-right font-semibold text-primary align-top pt-6 font-mono text-sm">
+                          <td className="py-4 px-6 text-right font-semibold text-primary align-middle font-mono text-sm">
                             {productTotalValue.toLocaleString('vi-VN')} ₫
                           </td>
                           
                           {/* Delete Action */}
-                          <td className="py-4 px-6 text-center align-top pt-6">
+                          <td className="py-4 px-6 text-center align-middle">
                             <button 
                               onClick={() => {
                                 setVoucherItems(prev => prev.filter(x => x.id !== item.id))
                               }}
                               className="text-on-surface-variant/40 hover:text-error transition-colors p-1 bg-transparent border-none cursor-pointer"
-                              title="Xóa toàn bộ sản phẩm này"
+                              title="Xóa sản phẩm"
                             >
                               <Trash2 size={16} />
                             </button>
@@ -848,7 +902,7 @@ export default function AdminInventory() {
 
                     {voucherItems.length === 0 && (
                       <tr>
-                        <td colSpan={8} className="py-20 text-center text-on-surface-variant opacity-60">
+                        <td colSpan={7} className="py-20 text-center text-on-surface-variant opacity-60">
                           <Package className="mx-auto mb-2 opacity-30" size={32} />
                           <p className="text-xs">Chưa có sản phẩm nào trong phiếu nhập. Hãy tìm kiếm sản phẩm bên trái để thêm.</p>
                         </td>
