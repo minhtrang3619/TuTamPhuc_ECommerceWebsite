@@ -160,6 +160,45 @@ export default function AdminOrders() {
     }
   }
 
+  const handleQuickApprove = async () => {
+    if (selectedOrder) {
+      try {
+        setLoading(true)
+        const updated = await orderService.updateStatus(selectedOrder.id, 'processing', selectedOrder.payment_status)
+        setOrders(prev => prev.map(o => o.id === selectedOrder.id ? updated : o))
+        setIsModalOpen(false)
+        setSelectedOrder(null)
+        setToastMessage('Đã duyệt đơn hàng thành công! Trạng thái chuyển thành Đang chuẩn bị.')
+        setTimeout(() => setToastMessage(null), 3000)
+      } catch (err: any) {
+        console.error('Lỗi khi duyệt đơn:', err)
+        alert(err?.response?.data?.detail || err?.message || 'Không thể duyệt đơn hàng.')
+      } finally {
+        setLoading(false)
+      }
+    }
+  }
+
+  const handleQuickShip = async () => {
+    if (selectedOrder) {
+      try {
+        setLoading(true)
+        const updated = await orderService.updateStatus(selectedOrder.id, 'shipped', selectedOrder.payment_status)
+        setOrders(prev => prev.map(o => o.id === selectedOrder.id ? updated : o))
+        setIsModalOpen(false)
+        setSelectedOrder(null)
+        setToastMessage('Xác nhận xuất kho & Giao hàng thành công! Tồn kho đã tự động cập nhật.')
+        setTimeout(() => setToastMessage(null), 3000)
+      } catch (err: any) {
+        console.error('Lỗi khi giao hàng:', err)
+        alert(err?.response?.data?.detail || err?.message || 'Không thể xác nhận xuất kho & giao hàng.')
+      } finally {
+        setLoading(false)
+      }
+    }
+  }
+
+
   const handleExport = () => {
     setToastMessage('Đang tạo báo cáo đơn hàng... Báo cáo dạng Excel đã được tải xuống bộ nhớ tạm thành công!')
     setTimeout(() => {
@@ -266,6 +305,7 @@ export default function AdminOrders() {
                     return 'bg-red-50 text-red-700'
                   }
                   const getShipColor = (st: string) => {
+                    if (st === 'pending') return 'bg-[#ece0dc] text-[#5d4037] border border-[#d4c3be]'
                     if (st === 'delivered') return 'bg-emerald-50 text-emerald-700 border-emerald-100'
                     if (st === 'shipped') return 'bg-blue-50 text-blue-700 border-blue-100'
                     if (st === 'confirmed' || st === 'processing') return 'bg-amber-50 text-amber-700 border-amber-100'
@@ -677,6 +717,22 @@ export default function AdminOrders() {
                 </button>
               ) : (
                 <>
+                  {selectedOrder.status === 'pending' && (
+                    <button
+                      onClick={handleQuickApprove}
+                      className="px-6 py-2.5 bg-[#5d4037] text-white rounded font-label-md text-xs hover:bg-[#442a22] transition-all cursor-pointer mr-auto"
+                    >
+                      Duyệt đơn
+                    </button>
+                  )}
+                  {(selectedOrder.status === 'confirmed' || selectedOrder.status === 'processing') && (
+                    <button
+                      onClick={handleQuickShip}
+                      className="px-6 py-2.5 bg-blue-600 text-white rounded font-label-md text-xs hover:bg-blue-700 transition-all cursor-pointer mr-auto"
+                    >
+                      Xác nhận xuất kho & Giao hàng
+                    </button>
+                  )}
                   <button 
                     onClick={() => setIsModalOpen(false)}
                     className="px-5 py-2.5 border border-outline-variant/50 rounded font-label-md text-xs text-on-surface-variant hover:bg-surface-container-low transition-colors"

@@ -66,8 +66,6 @@ class OrderService:
                     },
                 )
                 self.db.add(order_item)
-                # Deduct stock
-                product.stock -= item.quantity
 
             self.db.commit()
             self.db.refresh(order)
@@ -114,8 +112,6 @@ class OrderService:
                 },
             )
             self.db.add(order_item)
-            # Deduct stock
-            cart_item.product.stock -= cart_item.quantity
 
         # Clear cart
         for item in cart.items:
@@ -160,15 +156,18 @@ class OrderService:
 
     def cancel_order(self, order_id: int, user_id: int) -> Order:
         order = self.get_by_id(order_id, user_id)
-        if order.status not in [OrderStatus.PENDING, OrderStatus.CONFIRMED]:
+        if order.status not in [OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PROCESSING]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Không thể huỷ đơn hàng ở trạng thái này",
             )
+        old_status = order.status
         order.status = OrderStatus.CANCELLED
-        # Restore stock
-        for item in order.items:
-            item.product.stock += item.quantity
+        # Restore stock only if it was already shipped or delivered
+        if old_status in [OrderStatus.SHIPPED, OrderStatus.DELIVERED]:
+            for item in order.items:
+                if item.product:
+                    item.product.stock += item.quantity
         self.db.commit()
         self.db.refresh(order)
         return order
@@ -199,6 +198,18 @@ class OrderService:
         if new_payment_status is not None:
             order.payment_status = new_payment_status
             
+        # Deduct stock on outbound confirmation (SHIPPED)
+        if new_status == OrderStatus.SHIPPED and old_status not in [OrderStatus.SHIPPED, OrderStatus.DELIVERED]:
+            for item in order.items:
+                if item.product:
+                    item.product.stock -= item.quantity
+
+        # Restore stock if cancelled/refunded after being shipped/delivered
+        if new_status in [OrderStatus.CANCELLED, OrderStatus.REFUNDED] and old_status in [OrderStatus.SHIPPED, OrderStatus.DELIVERED]:
+            for item in order.items:
+                if item.product:
+                    item.product.stock += item.quantity
+
         # Add dynamic charity transaction of 5% product selling price (subtotal) when order is delivered
         if new_status == OrderStatus.DELIVERED and old_status != OrderStatus.DELIVERED:
             from app.models.charity import CharityTransaction, CharityCampaign

@@ -80,14 +80,17 @@ const getSearchItems = (role: string): SearchItem[] => {
       { id: 's-page1', title: 'Tổng quan hệ thống (Dashboard)', category: 'Trang quản trị', path: '/admin/dashboard' },
       { id: 's-page2', title: 'Báo cáo chuyên sâu', category: 'Trang quản trị', path: '/admin/bao-cao' },
       { id: 's-page3', title: 'Quỹ thiện nguyện Hạt Lành Từ Tâm', category: 'Trang quản trị', path: '/admin/tu-thien' },
-      { id: 's-page4', title: 'Cài đặt hệ thống', category: 'Trang quản trị', path: '/admin/cai-dat' }
+      { id: 's-page4', title: 'Cài đặt hệ thống', category: 'Trang quản trị', path: '/admin/cai-dat' },
+      { id: 's-page5', title: 'Quản lý Sản phẩm', category: 'Trang quản trị', path: '/admin/san-pham' },
+      { id: 's-page6', title: 'Quản lý Kho', category: 'Trang quản trị', path: '/admin/kho' }
     ]
   } else if (normalizedRole === 'shop_staff' || normalizedRole === 'staff') {
     return [
       ...baseItems,
       { id: 's-o1', title: 'Đơn hàng #DH-2048 (Nguyễn Văn A)', category: 'Đơn hàng', path: '/admin/don-hang' },
       { id: 's-o3', title: 'Đơn hàng #DH-2042 (Lê Văn C)', category: 'Đơn hàng', path: '/admin/don-hang' },
-      { id: 's-page1', title: 'Sản phẩm & Kho hàng', category: 'Trang quản trị', path: '/admin/san-pham' },
+      { id: 's-page1', title: 'Quản lý Sản phẩm', category: 'Trang quản trị', path: '/admin/san-pham' },
+      { id: 's-page1-2', title: 'Quản lý Kho', category: 'Trang quản trị', path: '/admin/kho' },
       { id: 's-page2', title: 'Quản lý Đơn hàng', category: 'Trang quản trị', path: '/admin/don-hang' }
     ]
   } else if (normalizedRole === 'customer_service') {

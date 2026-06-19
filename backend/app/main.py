@@ -18,6 +18,12 @@ async def lifespan(app: FastAPI):
     os.makedirs(f"{settings.UPLOAD_DIR}/blog", exist_ok=True)
     os.makedirs(f"{settings.UPLOAD_DIR}/returns", exist_ok=True)
     os.makedirs(f"{settings.UPLOAD_DIR}/reviews", exist_ok=True)
+    
+    # Auto-create database tables (including new StockVoucher tables)
+    from app.database.session import engine, Base
+    import app.models
+    Base.metadata.create_all(bind=engine)
+    
     yield
     # Shutdown
 

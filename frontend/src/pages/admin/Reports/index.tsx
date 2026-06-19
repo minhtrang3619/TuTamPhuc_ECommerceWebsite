@@ -151,7 +151,7 @@ export default function AdminReports() {
       </div>
 
       {/* KPI Cards Grid */}
-      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 transition-opacity duration-200 ${isRefreshing ? 'opacity-50' : ''}`}>
+      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 transition-opacity duration-200 ${isRefreshing ? 'opacity-50' : ''}`}>
         {/* Revenue Card */}
         <div className="bg-surface p-6 rounded-xl border border-outline-variant/30 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
@@ -165,6 +165,28 @@ export default function AdminReports() {
             <div className="flex items-center gap-1.5 mt-2 text-xs">
               <span className="text-emerald-600 font-bold flex items-center gap-0.5">
                 <TrendingUp size={12} /> +{currentData.summary.revenueChange}%
+              </span>
+              <span className="text-on-surface-variant/70">so với kỳ trước</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Gross Profit Card */}
+        <div className="bg-surface p-6 rounded-xl border border-outline-variant/30 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-[#504441] tracking-wide uppercase">Lợi nhuận gộp</span>
+            <div className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700">
+              <TrendingUp size={16} />
+            </div>
+          </div>
+          <div className="mt-4">
+            <h3 className="text-xl font-serif font-bold text-primary">{formatPrice(currentData.summary.gross_profit || 0)}</h3>
+            <div className="flex items-center gap-1.5 mt-2 text-xs">
+              <span className={`font-bold flex items-center gap-0.5 ${
+                (currentData.summary.gross_profitChange || 0) >= 0 ? 'text-emerald-600' : 'text-error'
+              }`}>
+                <TrendingUp size={12} className={(currentData.summary.gross_profitChange || 0) >= 0 ? '' : 'rotate-180'} />
+                {((currentData.summary.gross_profitChange || 0) >= 0 ? '+' : '')}{currentData.summary.gross_profitChange || 0}%
               </span>
               <span className="text-on-surface-variant/70">so với kỳ trước</span>
             </div>

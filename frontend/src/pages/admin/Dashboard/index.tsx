@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
-import { 
-  DollarSign, 
-  ShoppingBag, 
-  UserPlus, 
-  CheckCircle2, 
-  TrendingUp, 
-  Leaf, 
+import {
+  DollarSign,
+  ShoppingBag,
+  UserPlus,
+  CheckCircle2,
+  TrendingUp,
+  Leaf,
   ChevronDown,
   Layers,
   AlertTriangle,
@@ -28,13 +28,14 @@ export default function AdminDashboard() {
   const { user } = useAuthStore()
   const [animate, setAnimate] = useState(false)
   const [timeRange, setTimeRange] = useState('6 tháng qua')
-  const [activeSubTab, setActiveSubTab] = useState<'inventory' | 'sales'>('inventory')
+  const [activeSubTab, setActiveSubTab] = useState<'inventory' | 'sales' | 'forecasting'>('inventory')
   const [bestSellersPeriod, setBestSellersPeriod] = useState<'7days' | '3months'>('7days')
 
   // API State
   const [orders, setOrders] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
   const [customersCount, setCustomersCount] = useState(0)
+  const [forecastData, setForecastData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -72,6 +73,15 @@ export default function AdminDashboard() {
             setCustomersCount(customersRes.data?.length || 0)
           } catch (err) {
             console.warn('Could not fetch customers:', err)
+          }
+        }
+
+        if (role === 'shop_staff') {
+          try {
+            const forecastRes = await apiClient.get('/analytics/forecast')
+            setForecastData(forecastRes.data)
+          } catch (err) {
+            console.warn('Could not fetch forecast data:', err)
           }
         }
       } catch (err: any) {
@@ -205,8 +215,8 @@ export default function AdminDashboard() {
         sku: p.sku || `SKU-${p.id}`,
         size: 'M',
         stock: p.stock,
-        image: p.images?.[0]?.url 
-          ? getImageUrl(p.images[0].url) 
+        image: p.images?.[0]?.url
+          ? getImageUrl(p.images[0].url)
           : 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?auto=format&fit=crop&w=600&q=80'
       }))
   }, [products])
@@ -241,8 +251,8 @@ export default function AdminDashboard() {
     return top4.map(p => ({
       name: p.name,
       count: p.count,
-      image: p.image 
-        ? getImageUrl(p.image) 
+      image: p.image
+        ? getImageUrl(p.image)
         : 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?auto=format&fit=crop&w=600&q=80'
     }))
   }, [orders, bestSellersPeriod])
@@ -267,8 +277,8 @@ export default function AdminDashboard() {
       name: p.name,
       stock: p.stock,
       days: 60 + (p.id % 5) * 6,
-      image: p.images?.[0]?.url 
-        ? getImageUrl(p.images[0].url) 
+      image: p.images?.[0]?.url
+        ? getImageUrl(p.images[0].url)
         : 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?auto=format&fit=crop&w=600&q=80'
     }))
   }, [products, orders])
@@ -325,7 +335,7 @@ export default function AdminDashboard() {
   const weeklyOrderTrend = useMemo(() => {
     const now = new Date()
     const day = now.getDay()
-    const diff = now.getDate() - day + (day === 0 ? -6 : 1) 
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1)
     const startOfWeek = new Date(now.setDate(diff))
     startOfWeek.setHours(0, 0, 0, 0)
 
@@ -334,7 +344,7 @@ export default function AdminDashboard() {
     orders.forEach(order => {
       const orderDate = new Date(order.created_at)
       if (orderDate >= startOfWeek) {
-        const dIndex = orderDate.getDay() 
+        const dIndex = orderDate.getDay()
         const mappedIndex = dIndex === 0 ? 6 : dIndex - 1
         dailyCounts[mappedIndex]++
       }
@@ -366,8 +376,8 @@ export default function AdminDashboard() {
     return sorted.slice(0, 3).map(p => ({
       name: p.name,
       count: `${p.count} đơn hàng`,
-      image: p.image 
-        ? getImageUrl(p.image) 
+      image: p.image
+        ? getImageUrl(p.image)
         : 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?auto=format&fit=crop&w=600&q=80'
     }))
   }, [orders])
@@ -404,6 +414,45 @@ export default function AdminDashboard() {
       }
     }
   }
+
+  const handleQuickApprove = async () => {
+    if (selectedOrder) {
+      try {
+        setLoading(true)
+        const updated = await orderService.updateStatus(selectedOrder.id, 'processing', selectedOrder.payment_status)
+        setOrders(prev => prev.map(o => o.id === selectedOrder.id ? updated : o))
+        setIsModalOpen(false)
+        setSelectedOrder(null)
+        setToastMessage('Đã duyệt đơn hàng thành công! Trạng thái chuyển thành Đang chuẩn bị.')
+        setTimeout(() => setToastMessage(null), 3000)
+      } catch (err: any) {
+        console.error('Lỗi khi duyệt đơn:', err)
+        alert(err?.response?.data?.detail || err?.message || 'Không thể duyệt đơn hàng.')
+      } finally {
+        setLoading(false)
+      }
+    }
+  }
+
+  const handleQuickShip = async () => {
+    if (selectedOrder) {
+      try {
+        setLoading(true)
+        const updated = await orderService.updateStatus(selectedOrder.id, 'shipped', selectedOrder.payment_status)
+        setOrders(prev => prev.map(o => o.id === selectedOrder.id ? updated : o))
+        setIsModalOpen(false)
+        setSelectedOrder(null)
+        setToastMessage('Xác nhận xuất kho & Giao hàng thành công! Tồn kho đã tự động cập nhật.')
+        setTimeout(() => setToastMessage(null), 3000)
+      } catch (err: any) {
+        console.error('Lỗi khi giao hàng:', err)
+        alert(err?.response?.data?.detail || err?.message || 'Không thể xác nhận xuất kho & giao hàng.')
+      } finally {
+        setLoading(false)
+      }
+    }
+  }
+
 
   const handleUpdateReturnRequestStatus = async (returnId: number, newStatus: 'approved' | 'rejected') => {
     if (!selectedOrder) return
@@ -482,11 +531,10 @@ export default function AdminDashboard() {
         <div className="flex gap-8 border-b border-[#e5e1de]/60 pb-4">
           <button
             onClick={() => setActiveSubTab('inventory')}
-            className={`pb-2 text-xs uppercase tracking-widest font-label-md transition-all relative ${
-              activeSubTab === 'inventory' 
-                ? 'text-primary font-bold' 
+            className={`pb-2 text-xs uppercase tracking-widest font-label-md transition-all relative ${activeSubTab === 'inventory'
+                ? 'text-primary font-bold'
                 : 'text-on-surface-variant/60 hover:text-primary'
-            }`}
+              }`}
           >
             Thống kê hàng hóa
             {activeSubTab === 'inventory' && (
@@ -495,14 +543,25 @@ export default function AdminDashboard() {
           </button>
           <button
             onClick={() => setActiveSubTab('sales')}
-            className={`pb-2 text-xs uppercase tracking-widest font-label-md transition-all relative ${
-              activeSubTab === 'sales' 
-                ? 'text-primary font-bold' 
+            className={`pb-2 text-xs uppercase tracking-widest font-label-md transition-all relative ${activeSubTab === 'sales'
+                ? 'text-primary font-bold'
                 : 'text-on-surface-variant/60 hover:text-primary'
-            }`}
+              }`}
           >
             Thống kê đơn hàng & doanh thu
             {activeSubTab === 'sales' && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary animate-in fade-in duration-300"></span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveSubTab('forecasting')}
+            className={`pb-2 text-xs uppercase tracking-widest font-label-md transition-all relative ${activeSubTab === 'forecasting'
+                ? 'text-primary font-bold'
+                : 'text-on-surface-variant/60 hover:text-primary'
+              }`}
+          >
+            Dự báo sản phẩm & kho
+            {activeSubTab === 'forecasting' && (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary animate-in fade-in duration-300"></span>
             )}
           </button>
@@ -516,23 +575,21 @@ export default function AdminDashboard() {
               {statsInventoryStaff.map((stat, idx) => {
                 const Icon = stat.icon
                 return (
-                  <div 
-                    key={idx} 
+                  <div
+                    key={idx}
                     className="bg-surface-container-lowest p-6 rounded-xl shadow-[0_10px_32px_-4px_rgba(68,42,34,0.05)] border border-outline-variant/10 group hover:border-primary/20 transition-all duration-500"
                   >
                     <div className="flex justify-between items-start mb-4">
                       <span className="text-on-surface-variant font-label-md text-label-md uppercase tracking-wider">{stat.title}</span>
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        stat.isPositive ? 'bg-primary/5 text-primary' : 'bg-red-50 text-red-600'
-                      }`}>
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${stat.isPositive ? 'bg-primary/5 text-primary' : 'bg-red-50 text-red-600'
+                        }`}>
                         <Icon size={20} strokeWidth={1.5} />
                       </div>
                     </div>
                     <div className="flex items-baseline gap-2">
                       <span className="font-display-lg text-[28px] text-primary">{stat.value}</span>
-                      <span className={`text-[10px] uppercase font-bold tracking-wider ${
-                        stat.isPositive ? 'text-on-surface-variant/60' : 'text-red-500'
-                      }`}>
+                      <span className={`text-[10px] uppercase font-bold tracking-wider ${stat.isPositive ? 'text-on-surface-variant/60' : 'text-red-500'
+                        }`}>
                         {stat.change}
                       </span>
                     </div>
@@ -553,17 +610,17 @@ export default function AdminDashboard() {
                     </div>
                     <AlertTriangle className="text-red-500 opacity-60" size={24} />
                   </div>
-                  
+
                   <div className="space-y-4">
                     {lowStockAlerts.map((item, idx) => (
-                      <div 
-                        key={idx} 
+                      <div
+                        key={idx}
                         className="flex items-center gap-4 p-4 rounded-lg bg-surface-container-low/30 border-l-4 border-red-500/40 transition-all hover:bg-surface-container-low/60 group"
                       >
                         <div className="w-12 h-12 rounded object-cover overflow-hidden bg-surface-container-low shrink-0">
-                          <img 
-                            src={item.image} 
-                            alt={item.name} 
+                          <img
+                            src={item.image}
+                            alt={item.name}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                           />
                         </div>
@@ -582,8 +639,8 @@ export default function AdminDashboard() {
                     )}
                   </div>
                 </div>
-                
-                <button 
+
+                <button
                   onClick={() => {
                     setToastMessage('Đã tạo phiếu yêu cầu nhập hàng cho toàn bộ sản phẩm cảnh báo!')
                     setTimeout(() => setToastMessage(null), 3000)
@@ -602,21 +659,19 @@ export default function AdminDashboard() {
                     <div className="flex bg-surface-container-low p-0.5 rounded-full border border-outline-variant/30">
                       <button
                         onClick={() => setBestSellersPeriod('7days')}
-                        className={`px-3 py-1 text-[10px] uppercase font-bold tracking-wider rounded-full transition-all duration-300 ${
-                          bestSellersPeriod === '7days'
+                        className={`px-3 py-1 text-[10px] uppercase font-bold tracking-wider rounded-full transition-all duration-300 ${bestSellersPeriod === '7days'
                             ? 'bg-primary text-white shadow-sm'
                             : 'text-on-surface-variant/60 hover:text-primary'
-                        }`}
+                          }`}
                       >
                         7 ngày
                       </button>
                       <button
                         onClick={() => setBestSellersPeriod('3months')}
-                        className={`px-3 py-1 text-[10px] uppercase font-bold tracking-wider rounded-full transition-all duration-300 ${
-                          bestSellersPeriod === '3months'
+                        className={`px-3 py-1 text-[10px] uppercase font-bold tracking-wider rounded-full transition-all duration-300 ${bestSellersPeriod === '3months'
                             ? 'bg-primary text-white shadow-sm'
                             : 'text-on-surface-variant/60 hover:text-primary'
-                        }`}
+                          }`}
                       >
                         3 tháng
                       </button>
@@ -626,31 +681,30 @@ export default function AdminDashboard() {
                     Xếp hạng top các sản phẩm bán chạy nhất trong {bestSellersPeriod === '7days' ? '7 ngày qua' : '3 tháng qua'}.
                   </p>
                 </div>
-                
+
                 <div className="space-y-4 mt-8 flex-grow">
                   {topSellersInventoryChart.map((item, idx) => (
-                    <div 
-                      key={idx} 
+                    <div
+                      key={idx}
                       className="flex items-center gap-4 p-4 rounded-lg bg-surface-container-low/30 border border-outline-variant/10 transition-all hover:bg-surface-container-low/60 group animate-in fade-in duration-500"
                     >
                       {/* Rank Badge */}
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
-                        idx === 0 
-                          ? 'bg-[#E5D5C5] text-primary' 
-                          : idx === 1 
-                          ? 'bg-[#EADED2] text-primary/80' 
-                          : idx === 2 
-                          ? 'bg-[#F2EAE1] text-primary/60' 
-                          : 'bg-surface-container text-on-surface-variant/70'
-                      }`}>
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${idx === 0
+                          ? 'bg-[#E5D5C5] text-primary'
+                          : idx === 1
+                            ? 'bg-[#EADED2] text-primary/80'
+                            : idx === 2
+                              ? 'bg-[#F2EAE1] text-primary/60'
+                              : 'bg-surface-container text-on-surface-variant/70'
+                        }`}>
                         {idx + 1}
                       </div>
 
                       {/* Product Image */}
                       <div className="w-12 h-12 rounded overflow-hidden bg-surface-container-low shrink-0 border border-outline-variant/10">
-                        <img 
-                          src={item.image} 
-                          alt={item.name} 
+                        <img
+                          src={item.image}
+                          alt={item.name}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
                       </div>
@@ -690,9 +744,9 @@ export default function AdminDashboard() {
                 {slowInventory.map((item, idx) => (
                   <div key={idx} className="bg-surface-container-lowest rounded-xl overflow-hidden border border-outline-variant/10 hover:border-primary/20 transition-all duration-500 group flex flex-col justify-between">
                     <div className="aspect-video relative overflow-hidden bg-surface-container-low shrink-0">
-                      <img 
-                        src={item.image} 
-                        alt={item.name} 
+                      <img
+                        src={item.image}
+                        alt={item.name}
                         className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-700"
                       />
                       <div className="absolute top-3 left-3 bg-surface-container-lowest/90 backdrop-blur-sm px-2.5 py-1 rounded-full border border-outline-variant/20 shadow-sm">
@@ -710,7 +764,7 @@ export default function AdminDashboard() {
                         </div>
                         <div className="mt-4 flex justify-between items-center text-[10px]">
                           <span className="text-on-surface-variant/60 uppercase tracking-wider">Biến động: 0%</span>
-                          <button 
+                          <button
                             onClick={() => {
                               setToastMessage(`Đã lập đề xuất chương trình khuyến mãi cho ${item.name}!`)
                               setTimeout(() => setToastMessage(null), 3000)
@@ -740,8 +794,8 @@ export default function AdminDashboard() {
               {statsSalesStaff.map((stat, idx) => {
                 const Icon = stat.icon
                 return (
-                  <div 
-                    key={idx} 
+                  <div
+                    key={idx}
                     className="bg-surface-container-lowest p-6 rounded-xl shadow-[0_10px_32px_-4px_rgba(68,42,34,0.05)] border border-outline-variant/10 group hover:border-primary/20 transition-all duration-500"
                   >
                     <div className="flex justify-between items-start mb-4">
@@ -775,7 +829,7 @@ export default function AdminDashboard() {
                   {weeklyOrderTrend.map((bar, idx) => (
                     <div key={idx} className="flex flex-col items-center group w-full">
                       <div className="w-2 bg-primary/10 h-32 rounded-t-full relative">
-                        <div 
+                        <div
                           className="absolute bottom-0 w-full bg-primary rounded-t-full transition-all duration-700 group-hover:bg-primary-container"
                           style={{ height: animate ? bar.height : '0%' }}
                         ></div>
@@ -796,8 +850,8 @@ export default function AdminDashboard() {
                   {topProductsSales.map((product, idx) => (
                     <div key={idx} className="flex items-center gap-4 group cursor-pointer">
                       <div className="w-12 h-16 bg-surface-container rounded overflow-hidden">
-                        <img 
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                        <img
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                           src={product.image}
                           alt={product.name}
                         />
@@ -841,7 +895,9 @@ export default function AdminDashboard() {
                           <td className="px-8 py-5 font-label-md text-label-md text-primary text-sm font-semibold">{formatPrice(order.total)}</td>
                           <td className="px-8 py-5">
                             <span className={`px-2.5 py-1 rounded text-[10px] font-label-md uppercase tracking-wider font-semibold ${
-                              order.status === 'pending' || order.status === 'confirmed' || order.status === 'processing'
+                              order.status === 'pending'
+                                ? 'bg-[#ece0dc] text-[#5d4037] border border-[#d4c3be]'
+                                : order.status === 'confirmed' || order.status === 'processing'
                                 ? 'bg-amber-50 text-amber-700 border border-amber-100'
                                 : order.status === 'delivered' || order.status === 'shipped'
                                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
@@ -851,7 +907,7 @@ export default function AdminDashboard() {
                             </span>
                           </td>
                           <td className="px-8 py-5 text-right">
-                            <button 
+                            <button
                               onClick={() => handleOpenEdit(order)}
                               className="text-primary hover:bg-primary/5 p-2 rounded-full transition-all cursor-pointer"
                               title="Xem chi tiết đơn hàng"
@@ -874,6 +930,207 @@ export default function AdminDashboard() {
               </div>
             </div>
           </>
+        )}
+
+        {/* TAB 3: FORECASTING */}
+        {activeSubTab === 'forecasting' && (
+          <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            {/* Introductory card */}
+            <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/15 shadow-[0_10px_30px_rgba(93,64,55,0.02)] flex flex-col md:flex-row gap-6 items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-primary/5 rounded-full flex items-center justify-center text-primary shrink-0">
+                  <TrendingUp size={22} strokeWidth={1.5} />
+                </div>
+                <div>
+                  <h3 className="font-serif font-bold text-primary text-base">Hệ Thống Dự Báo Tồn Kho & Nhu Cầu Thông Minh</h3>
+                  <p className="text-xs text-on-surface-variant leading-relaxed">
+                    Sử dụng dữ liệu bán hàng 30 ngày qua kết hợp hệ số mùa lễ hội Phật giáo để tối ưu lượng hàng tồn, tránh đọng kho và sẵn sàng phục vụ Phật tử.
+                  </p>
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                  Cập nhật thời gian thực
+                </span>
+              </div>
+            </div>
+
+            {/* Grid for Stock Depletion & Overstock */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              {/* Column 1: Stock Depletion (Out of Stock Alert) */}
+              <div className="lg:col-span-7 bg-surface-container-lowest p-8 rounded-xl shadow-[0_10px_32px_-4px_rgba(68,42,34,0.05)] border border-outline-variant/10 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="font-headline-sm text-headline-sm text-primary">Dự báo cạn kiệt kho</h3>
+                      <p className="font-body-md text-on-surface-variant text-sm mt-1">Sản phẩm dự kiến sẽ hết hàng dựa trên tốc độ bán.</p>
+                    </div>
+                    <AlertTriangle className="text-amber-500 opacity-80" size={24} />
+                  </div>
+
+                  <div className="space-y-4">
+                    {forecastData?.stockDepletion?.map((item: any, idx: number) => {
+                      const isCritical = item.priority === 'critical';
+                      return (
+                        <div
+                          key={idx}
+                          className={`flex items-center gap-4 p-4 rounded-lg border transition-all hover:bg-surface-container-low/60 group ${isCritical ? 'bg-red-50/20 border-red-200/50 border-l-4 border-l-red-500' : 'bg-surface-container-low/30 border-outline-variant/10 border-l-4 border-l-amber-500'
+                            }`}
+                        >
+                          <div className="w-12 h-16 rounded object-cover overflow-hidden bg-surface-container-low shrink-0 border border-outline-variant/20">
+                            <img
+                              src={item.image ? getImageUrl(item.image) : 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?auto=format&fit=crop&w=600&q=80'}
+                              alt={item.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-body-md font-semibold text-on-surface truncate text-sm">{item.name}</h4>
+                            <p className="text-[10px] text-on-surface-variant/70 mt-1 uppercase tracking-wider font-mono">
+                              SKU: {item.sku} | Tồn: {item.stock} cái
+                            </p>
+                            <p className="text-[11px] text-on-surface-variant mt-1.5 font-medium">
+                              Tốc độ: <span className="text-primary font-bold">{item.velocity}</span> sản phẩm/ngày
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider mb-2 ${isCritical ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                              }`}>
+                              {isCritical ? 'Nguy cấp' : 'Cảnh báo'}
+                            </span>
+                            <p className="text-xs text-on-surface-variant/80 font-medium">
+                              {item.daysRemaining === 0 ? 'Hết hàng hôm nay' : `Hết trong ~${item.daysRemaining} ngày`}
+                            </p>
+                            <button
+                              onClick={() => {
+                                setToastMessage(`Đã lập yêu cầu nhập hàng ${item.reorderQuantity} chiếc cho ${item.name}!`);
+                                setTimeout(() => setToastMessage(null), 3000);
+                              }}
+                              className="text-[10px] font-bold text-primary hover:text-primary-container underline underline-offset-4 mt-2 block cursor-pointer bg-transparent border-none p-0"
+                            >
+                              Yêu Cầu Nhập ({item.reorderQuantity})
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {(!forecastData || forecastData?.stockDepletion?.length === 0) && (
+                      <p className="text-xs text-on-surface-variant/60 text-center py-12">Không có sản phẩm nào có rủi ro cạn kiệt kho.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Column 2: Overstock Risk (Slow items) */}
+              <div className="lg:col-span-5 bg-surface-container-lowest p-8 rounded-xl shadow-[0_10px_32px_-4px_rgba(68,42,34,0.05)] border border-outline-variant/10 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="font-headline-sm text-headline-sm text-primary">Cảnh báo hàng đọng kho</h3>
+                      <p className="font-body-md text-on-surface-variant text-sm mt-1">Sản phẩm tồn cao nhưng không có lượt bán trong 30 ngày.</p>
+                    </div>
+                    <Layers className="text-primary opacity-60" size={24} />
+                  </div>
+
+                  <div className="space-y-4">
+                    {forecastData?.overstockRisk?.map((item: any, idx: number) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-4 p-4 rounded-lg bg-surface-container-low/30 border border-outline-variant/10 transition-all hover:bg-surface-container-low/60 group"
+                      >
+                        <div className="w-12 h-16 rounded overflow-hidden bg-surface-container-low shrink-0 border border-outline-variant/10">
+                          <img
+                            src={item.image ? getImageUrl(item.image) : 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?auto=format&fit=crop&w=600&q=80'}
+                            alt={item.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-body-md font-semibold text-on-surface truncate text-xs">{item.name}</h4>
+                          <p className="text-[10px] text-on-surface-variant/70 mt-1">
+                            Tồn: <span className="font-bold text-primary">{item.stock}</span> chiếc | Đọng {item.daysWithoutSales} ngày
+                          </p>
+                          <p className="text-[10px] text-on-surface-variant/80 mt-1 italic">
+                            Tổn thất lưu kho: <span className="font-bold text-red-600">{formatPrice(item.holdingCostEst)}</span>/tháng
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <button
+                            onClick={() => {
+                              setToastMessage(`Đã tạo chiến dịch: "${item.recommendation}" cho ${item.name}!`);
+                              setTimeout(() => setToastMessage(null), 3000);
+                            }}
+                            className="text-[10px] font-bold border border-primary/40 text-primary hover:bg-primary hover:text-white px-2.5 py-1.5 rounded transition-all cursor-pointer bg-transparent"
+                          >
+                            Áp Dụng Đề Xuất
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {(!forecastData || forecastData?.overstockRisk?.length === 0) && (
+                      <p className="text-xs text-on-surface-variant/60 text-center py-12">Không phát hiện hàng đọng kho có rủi ro cao.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 3: AI Demand Projections */}
+            <div className="space-y-6">
+              <div>
+                <h3 className="font-headline-sm text-headline-sm text-primary">Dự báo nhu cầu 30 ngày tới</h3>
+                <p className="font-body-md text-on-surface-variant text-sm mt-1">
+                  Xu hướng mua sắm ước tính được hỗ trợ bởi hệ số sự kiện lễ hội tâm linh.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                {forecastData?.demandForecast?.slice(0, 4).map((item: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className="bg-surface-container-lowest rounded-xl overflow-hidden border border-outline-variant/10 hover:border-primary/20 transition-all duration-500 group flex flex-col justify-between shadow-[0_10px_30px_rgba(68,42,34,0.02)]"
+                  >
+                    <div className="aspect-[4/3] relative overflow-hidden bg-surface-container-low shrink-0">
+                      <img
+                        src={item.image ? getImageUrl(item.image) : 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?auto=format&fit=crop&w=600&q=80'}
+                        alt={item.name}
+                        className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-700"
+                      />
+                      <div className="absolute top-3 left-3 bg-emerald-500/90 text-white backdrop-blur-sm px-2.5 py-0.5 rounded-full border border-emerald-400/20 shadow-sm text-[9px] font-bold tracking-wider">
+                        ĐỘ TIN CẬY: {item.confidence}
+                      </div>
+                    </div>
+                    <div className="p-5 flex-grow flex flex-col justify-between space-y-4">
+                      <div>
+                        <h4 className="font-headline-sm text-sm text-primary line-clamp-1">{item.name}</h4>
+                        <p className="text-[10px] text-emerald-600 font-bold mt-1 uppercase tracking-wide">
+                          Dự kiến bán: {item.projectedSales} chiếc (+{item.growthRate}%)
+                        </p>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-on-surface-variant bg-surface-container-low p-2 rounded border border-outline-variant/10">
+                          <span className="font-semibold text-primary block text-[8px] uppercase tracking-wider opacity-80 mb-0.5">Yếu tố thúc đẩy</span>
+                          {item.seasonalityFactor}
+                        </div>
+                        <button
+                          onClick={() => {
+                            setToastMessage(`Đã ghi nhận kế hoạch chuẩn bị hàng cho ${item.name}!`);
+                            setTimeout(() => setToastMessage(null), 3000);
+                          }}
+                          className="w-full text-center mt-3 bg-primary text-white py-2 text-[10px] font-bold uppercase tracking-wider rounded-sm hover:opacity-90 transition-all cursor-pointer border-none"
+                        >
+                          Chuẩn Bị Sẵn Hàng
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {(!forecastData || forecastData?.demandForecast?.length === 0) && (
+                  <p className="text-xs text-on-surface-variant/60 text-center col-span-4 py-12">Chưa có dự báo nhu cầu.</p>
+                )}
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Floating Zen Philosophy Info banner */}
@@ -918,8 +1175,8 @@ export default function AdminDashboard() {
         {statsAdmin.map((stat, idx) => {
           const Icon = stat.icon
           return (
-            <div 
-              key={idx} 
+            <div
+              key={idx}
               className="bg-surface-container-lowest p-6 rounded-xl shadow-[0_10px_32px_-4px_rgba(68,42,34,0.05)] border border-outline-variant/10 group hover:border-primary/20 transition-all duration-500"
             >
               <div className="flex justify-between items-start mb-4">
@@ -930,11 +1187,10 @@ export default function AdminDashboard() {
               </div>
               <div className="flex items-baseline gap-2">
                 <span className="font-display-lg text-[28px] text-primary">{stat.value}</span>
-                <span className={`text-caption font-caption ${
-                  stat.change === 'Mới' || stat.change === 'Đang chạy' 
-                    ? 'text-secondary' 
+                <span className={`text-caption font-caption ${stat.change === 'Mới' || stat.change === 'Đang chạy'
+                    ? 'text-secondary'
                     : 'text-emerald-600'
-                } flex items-center`}>
+                  } flex items-center`}>
                   {stat.change}
                 </span>
               </div>
@@ -953,7 +1209,7 @@ export default function AdminDashboard() {
               <p className="font-caption text-caption text-on-surface-variant">Tóm tắt hiệu suất hàng tháng</p>
             </div>
             <div className="relative">
-              <select 
+              <select
                 value={timeRange}
                 onChange={(e) => setTimeRange(e.target.value)}
                 className="appearance-none bg-surface-container-low border-none rounded-lg text-label-md font-label-md pr-10 pl-4 py-2 focus:ring-primary/20 cursor-pointer text-on-surface-variant outline-none"
@@ -968,7 +1224,7 @@ export default function AdminDashboard() {
             {/* Simulated CSS Chart with Meditative Animation */}
             <div className="flex-grow flex items-end justify-between h-full px-2">
               {chartBarsAdmin.map((bar, idx) => (
-                <div 
+                <div
                   key={idx}
                   className="w-12 bg-primary/10 hover:bg-primary/20 transition-all duration-[1500ms] ease-out rounded-t-sm relative group cursor-pointer"
                   style={{ height: animate ? bar.height : '0%' }}
@@ -994,9 +1250,9 @@ export default function AdminDashboard() {
         {/* Visual Accent Component */}
         <div className="bg-primary/5 p-8 rounded-xl border border-primary/10 flex flex-col justify-center items-center text-center relative overflow-hidden group min-h-[300px]">
           <div className="absolute inset-0 opacity-10 group-hover:scale-110 transition-transform duration-[2000ms] ease-out">
-            <img 
-              className="w-full h-full object-cover grayscale" 
-              alt="A macro shot of fine linen fabric texture, showcasing the intricate weave and natural fibers." 
+            <img
+              className="w-full h-full object-cover grayscale"
+              alt="A macro shot of fine linen fabric texture, showcasing the intricate weave and natural fibers."
               src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvnKFWQ4aIswigYB94XDBhlk10FQkQKrxf-GS0Vk7tNq5HNDHBZovqLCbzsUQYfSguw5NudXQEaKNpF5bnbCf0S2viSoluJPf3yruRs9R4pZ-MVoC_-JMSJYnvfeaJlvisLXUwg2NuTW2E2iyBQn2c6aK2KXtbo6br4ri-xqZjp_W-VF3Us3TVU2tc1DDDHsDSQyYYbjCzWInmhSjQzmtonv5bDbi9CPqbfbaouyC5b0t_oePrbfMPdUfqO2YMoqEAXWRrOQjQaXZ5"
             />
           </div>
@@ -1042,7 +1298,9 @@ export default function AdminDashboard() {
                     <td className="px-8 py-5 text-on-surface-variant font-caption text-caption text-xs">{new Date(order.created_at).toLocaleDateString('vi-VN')}</td>
                     <td className="px-8 py-5">
                       <span className={`px-2.5 py-1 rounded text-[10px] font-label-md uppercase tracking-wider font-semibold ${
-                        order.status === 'pending' || order.status === 'confirmed' || order.status === 'processing'
+                        order.status === 'pending'
+                          ? 'bg-[#ece0dc] text-[#5d4037] border border-[#d4c3be]'
+                          : order.status === 'confirmed' || order.status === 'processing'
                           ? 'bg-amber-50 text-amber-700 border border-amber-100'
                           : order.status === 'delivered' || order.status === 'shipped'
                           ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
@@ -1053,7 +1311,7 @@ export default function AdminDashboard() {
                     </td>
                     <td className="px-8 py-5 font-label-md text-label-md text-primary font-semibold">{formatPrice(order.total)}</td>
                     <td className="px-8 py-5 text-right">
-                      <button 
+                      <button
                         onClick={() => handleOpenEdit(order)}
                         className="text-primary hover:bg-primary/5 p-2 rounded-full transition-all cursor-pointer"
                         title="Xem chi tiết đơn hàng"
@@ -1090,7 +1348,7 @@ export default function AdminDashboard() {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-300">
         <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl w-full shadow-2xl p-6 md:p-8 relative animate-in slide-in-from-bottom-8 duration-500 max-h-[92vh] overflow-y-auto max-w-4xl font-sans text-left">
-          <button 
+          <button
             onClick={() => {
               setIsModalOpen(false)
               setSelectedOrder(null)
@@ -1099,7 +1357,7 @@ export default function AdminDashboard() {
           >
             <X size={20} />
           </button>
-          
+
           <div className="border-b border-outline-variant/20 pb-4 mb-6">
             <div className="flex flex-wrap items-center gap-3">
               <h3 className="font-headline-sm text-2xl font-bold text-primary">Chi tiết đơn hàng</h3>
@@ -1198,10 +1456,10 @@ export default function AdminDashboard() {
                     return (
                       <div key={item.id} className="flex items-center justify-between gap-4 p-3 bg-surface-container-low rounded-xl border border-outline-variant/10 group/item hover:border-primary/25 transition-all">
                         <div className="flex items-center gap-3">
-                          <img 
-                            src={imgUrl} 
-                            alt={name} 
-                            className="w-10 h-14 object-cover rounded border border-outline-variant/20 bg-white" 
+                          <img
+                            src={imgUrl}
+                            alt={name}
+                            className="w-10 h-14 object-cover rounded border border-outline-variant/20 bg-white"
                           />
                           <div>
                             <p className="font-semibold text-primary text-xs leading-snug">{name}</p>
@@ -1252,7 +1510,7 @@ export default function AdminDashboard() {
                     <label className="text-[10px] uppercase tracking-wider text-on-surface-variant opacity-75 font-semibold block mb-1">
                       Thanh toán
                     </label>
-                    <select 
+                    <select
                       value={editPaymentStatus}
                       onChange={(e) => setEditPaymentStatus(e.target.value as PaymentStatus)}
                       className="w-full bg-white border border-outline-variant/30 rounded px-3 py-2 text-xs text-primary focus:ring-1 focus:ring-primary/20 cursor-pointer outline-none transition-all"
@@ -1270,7 +1528,7 @@ export default function AdminDashboard() {
                     <label className="text-[10px] uppercase tracking-wider text-on-surface-variant opacity-75 font-semibold block mb-1">
                       Vận chuyển
                     </label>
-                    <select 
+                    <select
                       value={editStatus}
                       onChange={(e) => setEditStatus(e.target.value as OrderStatus)}
                       className="w-full bg-white border border-outline-variant/30 rounded px-3 py-2 text-xs text-primary focus:ring-1 focus:ring-primary/20 cursor-pointer outline-none transition-all"
@@ -1292,22 +1550,21 @@ export default function AdminDashboard() {
                 <div className="p-5 border border-[#d4c3be]/40 rounded-xl bg-surface-container-low text-xs space-y-3 shadow-[0_10px_30px_rgba(93,64,55,0.02)]">
                   <h4 className="font-serif text-sm font-bold text-primary border-b border-outline-variant/20 pb-1 flex items-center justify-between">
                     <span>Yêu cầu Trả hàng / Hoàn tiền</span>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-bold border ${
-                      selectedOrder.return_request.status === 'pending'
+                    <span className={`px-2.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-bold border ${selectedOrder.return_request.status === 'pending'
                         ? 'bg-amber-50 text-amber-700 border-amber-200'
                         : selectedOrder.return_request.status === 'approved'
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        : 'bg-red-50 text-red-700 border-red-200'
-                    }`}>
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-red-50 text-red-700 border-red-200'
+                      }`}>
                       {selectedOrder.return_request.status === 'pending' ? 'Chờ duyệt' : selectedOrder.return_request.status === 'approved' ? 'Đã duyệt' : 'Từ chối'}
                     </span>
                   </h4>
-                  
+
                   <p><span className="font-semibold text-primary">Lý do:</span> {selectedOrder.return_request.reason}</p>
                   {selectedOrder.return_request.description && (
                     <p><span className="font-semibold text-primary">Chi tiết:</span> {selectedOrder.return_request.description}</p>
                   )}
-                  
+
                   {selectedOrder.return_request.status === 'pending' && (
                     <div className="flex gap-3 pt-2.5 border-t border-outline-variant/20">
                       <button
@@ -1333,7 +1590,23 @@ export default function AdminDashboard() {
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-3 border-t border-outline-variant/15 pt-5">
-            <button 
+            {selectedOrder.status === 'pending' && (
+              <button
+                onClick={handleQuickApprove}
+                className="px-6 py-2.5 bg-[#5d4037] text-white rounded font-label-md text-xs hover:bg-[#442a22] transition-all cursor-pointer mr-auto border-none"
+              >
+                Duyệt đơn
+              </button>
+            )}
+            {(selectedOrder.status === 'confirmed' || selectedOrder.status === 'processing') && (
+              <button
+                onClick={handleQuickShip}
+                className="px-6 py-2.5 bg-blue-600 text-white rounded font-label-md text-xs hover:bg-blue-700 transition-all cursor-pointer mr-auto border-none"
+              >
+                Xác nhận xuất kho & Giao hàng
+              </button>
+            )}
+            <button
               onClick={() => {
                 setIsModalOpen(false)
                 setSelectedOrder(null)
@@ -1342,7 +1615,7 @@ export default function AdminDashboard() {
             >
               Hủy bỏ
             </button>
-            <button 
+            <button
               onClick={handleSaveOrder}
               className="px-6 py-2.5 bg-primary text-white rounded font-label-md text-xs hover:bg-on-primary-fixed-variant transition-colors cursor-pointer"
             >

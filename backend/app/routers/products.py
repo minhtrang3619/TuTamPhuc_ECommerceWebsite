@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
@@ -77,3 +77,185 @@ def delete_product(
     _: User = Depends(require_shop_staff_or_admin_write),
 ):
     ProductService(db).delete(product_id)
+
+
+@router.patch("/sku/{sku}/quick-update", response_model=ProductResponse)
+def quick_update_product_by_sku(
+    sku: str,
+    data: ProductUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_shop_staff_or_admin_write),
+):
+    """Cập nhật nhanh kho hàng và trạng thái hiển thị của sản phẩm bằng SKU."""
+    from app.models.product import Product, ProductVariant
+    product = db.query(Product).filter(Product.sku == sku).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Sản phẩm không tồn tại với SKU này")
+    
+    # 1. Update variants if provided
+    has_sizes = False
+    total_stock = 0
+    if data.variants is not None:
+        db.query(ProductVariant).filter(ProductVariant.product_id == product.id).delete()
+        for v in data.variants:
+            variant = ProductVariant(product_id=product.id, **v.model_dump())
+            db.add(variant)
+            if v.name in ["Kích cỡ", "Size", "size"]:
+                total_stock += v.stock
+                has_sizes = True
+        
+        if has_sizes:
+            product.stock = total_stock
+            # Log the change: "User SHOP_STAFF updated SKU X to quantity Y"
+            log_msg = f"User SHOP_STAFF updated SKU {sku} to quantity {total_stock}"
+            print(log_msg)
+            import logging
+            logging.getLogger("app.routers.products").info(log_msg)
+
+    # 2. Update stock if provided and variants not updated with sizes
+    if data.stock is not None and not has_sizes:
+        product.stock = data.stock
+        # Log the change: "User SHOP_STAFF updated SKU X to quantity Y"
+        log_msg = f"User SHOP_STAFF updated SKU {sku} to quantity {data.stock}"
+        print(log_msg)
+        import logging
+        logging.getLogger("app.routers.products").info(log_msg)
+        
+    # 3. Update price if provided
+    if data.price is not None:
+        product.price = data.price
+        
+    # 4. Update status if provided
+    if data.status is not None:
+        product.status = data.status
+        
+    db.commit()
+    db.refresh(product)
+    return product
+
+
+from pydantic import BaseModel as PydanticBaseModel
+from typing import List
+
+class StockReceiptItem(PydanticBaseModel):
+    sku: str
+    quantity: int
+    cost_price: float
+    color: Optional[str] = None
+
+class StockReceiptCreate(PydanticBaseModel):
+    voucher_code: str
+    supplier: str
+    recipient: str
+    notes: Optional[str] = None
+    items: List[StockReceiptItem]
+
+@router.post("/receive-stock")
+def receive_stock(
+    data: StockReceiptCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_shop_staff_or_admin_write),
+):
+    from app.models.product import Product, ProductVariant, StockVoucher, StockVoucherItem
+    import logging
+    
+    # 1. Check if voucher_code already exists
+    existing = db.query(StockVoucher).filter(StockVoucher.voucher_code == data.voucher_code.strip()).first()
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Mã phiếu nhập kho '{data.voucher_code}' đã tồn tại trong hệ thống."
+        )
+
+    # 2. Create StockVoucher
+    voucher = StockVoucher(
+        voucher_code=data.voucher_code.strip(),
+        supplier=data.supplier.strip(),
+        recipient=data.recipient.strip(),
+        notes=data.notes.strip() if data.notes else None,
+        total_quantity=0,
+        total_value=0.0
+    )
+    db.add(voucher)
+    db.flush() # to get voucher.id
+
+    total_qty = 0
+    total_val = 0.0
+
+    for item in data.items:
+        # Search main product SKU
+        product = db.query(Product).filter(Product.sku == item.sku.strip()).first()
+        variant = None
+        if not product:
+            # Search variant SKU
+            variant = db.query(ProductVariant).filter(ProductVariant.sku == item.sku.strip()).first()
+            if variant:
+                product = variant.product
+            else:
+                raise HTTPException(
+                    status_code=404, 
+                    detail=f"Sản phẩm hoặc biến thể có SKU '{item.sku}' không tồn tại trong hệ thống"
+                )
+        
+        current_stock = product.stock
+        current_cost = product.cost_price or 0.0
+        received_qty = item.quantity
+        batch_cost = item.cost_price
+        
+        if current_stock + received_qty <= 0:
+            new_cost = batch_cost
+        elif current_stock <= 0:
+            new_cost = batch_cost
+        else:
+            new_cost = (current_stock * current_cost + received_qty * batch_cost) / (current_stock + received_qty)
+            
+        if variant:
+            variant.stock = variant.stock + received_qty
+            product.stock = current_stock + received_qty
+            
+            color_variants = db.query(ProductVariant).filter(
+                ProductVariant.product_id == product.id,
+                ProductVariant.name == "Màu"
+            ).all()
+            for cv in color_variants:
+                cv.stock = product.stock
+        else:
+            product.stock = current_stock + received_qty
+            
+        product.cost_price = round(new_cost, 2)
+        
+        # Save StockVoucherItem
+        voucher_item = StockVoucherItem(
+            voucher_id=voucher.id,
+            product_id=product.id,
+            sku=item.sku.strip(),
+            quantity=received_qty,
+            cost_price=batch_cost,
+            color=item.color if hasattr(item, 'color') else None
+        )
+        db.add(voucher_item)
+
+        total_qty += received_qty
+        total_val += (received_qty * batch_cost)
+
+        log_msg = f"User SHOP_STAFF received stock for SKU {item.sku}: quantity +{received_qty}, batch cost {batch_cost}, new average cost {product.cost_price}"
+        print(log_msg)
+        logging.getLogger("app.routers.products").info(log_msg)
+        
+    voucher.total_quantity = total_qty
+    voucher.total_value = total_val
+
+    db.commit()
+    return {"message": "Nhập kho và cập nhật giá vốn trung bình thành công", "voucher_id": voucher.id}
+
+
+@router.get("/stock-vouchers")
+def list_stock_vouchers(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_shop_staff_or_admin)
+):
+    from app.models.product import StockVoucher
+    vouchers = db.query(StockVoucher).order_by(StockVoucher.created_at.desc()).all()
+    return vouchers
+
+

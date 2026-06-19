@@ -27,6 +27,7 @@ const ChatPage = lazy(() => import('@/pages/Chat'))
 // Admin pages
 const AdminDashboard = lazy(() => import('@/pages/admin/Dashboard'))
 const AdminProducts = lazy(() => import('@/pages/admin/Products'))
+const AdminInventory = lazy(() => import('@/pages/admin/Inventory'))
 const AdminOrders = lazy(() => import('@/pages/admin/Orders'))
 const AdminStaff = lazy(() => import('@/pages/admin/Staff'))
 const AdminCustomers = lazy(() => import('@/pages/admin/Customers'))
@@ -77,6 +78,7 @@ export function AppRoutes() {
             <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/admin/san-pham" element={<AdminProducts />} />
+            <Route path="/admin/kho" element={<AdminInventory />} />
             <Route path="/admin/don-hang" element={<AdminOrders />} />
             <Route path="/admin/nhan-su" element={<AdminStaff />} />
             <Route path="/admin/khach-hang" element={<AdminCustomers />} />

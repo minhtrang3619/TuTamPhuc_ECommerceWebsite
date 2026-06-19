@@ -326,6 +326,8 @@ export default function AdminCustomerReviews() {
                               ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                               : r.order_status === 'cancelled'
                               ? 'bg-red-50 text-red-700 border-red-200'
+                              : r.order_status === 'pending'
+                              ? 'bg-[#ece0dc] text-[#5d4037] border border-[#d4c3be]'
                               : 'bg-amber-50 text-amber-700 border-amber-200'
                           }`}>
                             {getStatusText(r.order_status)}

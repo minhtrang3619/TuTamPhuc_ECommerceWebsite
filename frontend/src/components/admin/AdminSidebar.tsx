@@ -14,7 +14,8 @@ import {
   BarChart3,
   Settings,
   X,
-  Heart
+  Heart,
+  Layers
 } from 'lucide-react'
 
 interface AdminSidebarProps {
@@ -95,9 +96,15 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
       roles: ['admin', 'staff', 'shop_staff']
     },
     {
-      title: 'Sản phẩm & Kho',
+      title: 'Quản lý Sản phẩm',
       path: '/admin/san-pham',
       icon: Package,
+      roles: ['admin', 'staff', 'shop_staff']
+    },
+    {
+      title: 'Quản lý Kho',
+      path: '/admin/kho',
+      icon: Layers,
       roles: ['admin', 'staff', 'shop_staff']
     },
     {

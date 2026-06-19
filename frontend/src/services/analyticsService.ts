@@ -11,6 +11,8 @@ export interface PeriodSummary {
   conversionChange: number;
   charity: number;
   charityChange: number;
+  gross_profit?: number;
+  gross_profitChange?: number;
 }
 
 export interface ChartDataPoint {
@@ -40,11 +42,57 @@ export interface ReportData {
   charityProjects: CharityProject[];
 }
 
+export interface StockDepletionForecast {
+  id: number;
+  name: string;
+  sku: string;
+  stock: number;
+  velocity: number;
+  daysRemaining: number;
+  reorderQuantity: number;
+  priority: 'critical' | 'warning';
+  image: string;
+}
+
+export interface DemandForecast {
+  id: number;
+  name: string;
+  sku: string;
+  currentSales30d: number;
+  projectedSales: number;
+  growthRate: number;
+  confidence: string;
+  seasonalityFactor: string;
+  image: string;
+}
+
+export interface OverstockForecast {
+  id: number;
+  name: string;
+  sku: string;
+  stock: number;
+  daysWithoutSales: number;
+  holdingCostEst: number;
+  recommendation: string;
+  image: string;
+}
+
+export interface ForecastData {
+  stockDepletion: StockDepletionForecast[];
+  demandForecast: DemandForecast[];
+  overstockRisk: OverstockForecast[];
+}
+
 export const analyticsService = {
   getReportData: async (period: '7days' | '30days' | 'year'): Promise<ReportData> => {
     const response = await apiClient.get<ReportData>('/analytics/reports', {
       params: { period }
     })
     return response.data
+  },
+  getForecastData: async (): Promise<ForecastData> => {
+    const response = await apiClient.get<ForecastData>('/analytics/forecast')
+    return response.data
   }
 }
+

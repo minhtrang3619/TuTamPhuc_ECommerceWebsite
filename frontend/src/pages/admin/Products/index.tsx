@@ -1384,7 +1384,7 @@ export default function AdminProducts() {
           className={`py-3 font-label-md text-sm transition-colors border-b-2 ${activeTab === 'products' ? 'border-primary text-primary font-bold' : 'border-transparent text-on-surface-variant hover:text-primary'}`}
           onClick={() => setActiveTab('products')}
         >
-          Sản phẩm & Kho
+          Sản phẩm
         </button>
         <button 
           className={`py-3 font-label-md text-sm transition-colors border-b-2 ${activeTab === 'categories' ? 'border-primary text-primary font-bold' : 'border-transparent text-on-surface-variant hover:text-primary'}`}
@@ -1629,3 +1629,6 @@ export default function AdminProducts() {
     </div>
   )
 }
+
+
+
