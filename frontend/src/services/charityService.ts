@@ -9,8 +9,13 @@ export interface CharityCampaign {
   raised_amount: number;
   image_url?: string;
   status: string; // "active", "completed", "closing"
+  gallery_images?: string;
+  content?: string;
+  quote?: string;
+  address?: string;
   created_at: string;
   updated_at: string;
+  unique_donors_count?: number;
 }
 
 export interface CharityTransaction {
@@ -21,6 +26,7 @@ export interface CharityTransaction {
   transaction_type: string; // "donation", "expense"
   description?: string;
   created_at: string;
+  order_code?: string;
 }
 
 export interface CharityOverview {
@@ -62,10 +68,13 @@ export const charityService = {
     await apiClient.delete(`/charity/campaigns/${id}`)
   },
   
-  getTransactions: async (page = 1, pageSize = 20, type?: 'donation' | 'expense'): Promise<PaginatedTransactions> => {
+  getTransactions: async (page = 1, pageSize = 20, type?: 'donation' | 'expense', campaignId?: number): Promise<PaginatedTransactions> => {
     const params: any = { page, page_size: pageSize }
     if (type) {
       params.transaction_type = type
+    }
+    if (campaignId) {
+      params.campaign_id = campaignId
     }
     const response = await apiClient.get<PaginatedTransactions>('/charity/transactions', { params })
     return response.data

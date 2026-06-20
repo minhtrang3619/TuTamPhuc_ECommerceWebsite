@@ -9,6 +9,10 @@ class CharityCampaignBase(BaseModel):
     target_amount: float
     image_url: Optional[str] = None
     status: Optional[str] = "active"
+    gallery_images: Optional[str] = None
+    content: Optional[str] = None
+    quote: Optional[str] = None
+    address: Optional[str] = None
 
 class CharityCampaignCreate(CharityCampaignBase):
     pass
@@ -20,12 +24,17 @@ class CharityCampaignUpdate(BaseModel):
     target_amount: Optional[float] = None
     image_url: Optional[str] = None
     status: Optional[str] = None
+    gallery_images: Optional[str] = None
+    content: Optional[str] = None
+    quote: Optional[str] = None
+    address: Optional[str] = None
 
 class CharityCampaignResponse(CharityCampaignBase):
     id: int
     raised_amount: float
     created_at: datetime
     updated_at: datetime
+    unique_donors_count: Optional[int] = 0
 
     class Config:
         from_attributes = True
@@ -36,6 +45,7 @@ class CharityTransactionBase(BaseModel):
     amount: float
     transaction_type: str
     description: Optional[str] = None
+    order_code: Optional[str] = None
 
 class CharityTransactionCreate(CharityTransactionBase):
     pass

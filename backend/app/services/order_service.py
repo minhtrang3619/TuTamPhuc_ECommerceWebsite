@@ -227,12 +227,19 @@ class OrderService:
                 self.db.flush()
                 
             donation_amount = order.subtotal * 0.05
+            is_anon = order.shipping_address.get("is_charity_anonymous", False)
+            donor = "Khách hàng ẩn danh" if is_anon else order.shipping_address.get("full_name", "Khách hàng Từ Tâm Phục")
+            charity_msg = order.shipping_address.get("charity_message") or order.notes
+            if not charity_msg or not charity_msg.strip():
+                charity_msg = "Gửi vạn điều an lành"
+
             db_tx = CharityTransaction(
                 campaign_id=campaign.id,
-                donor_recipient=order.shipping_address.get("full_name", f"Đơn hàng #{order.order_code}"),
+                donor_recipient=donor,
                 amount=donation_amount,
                 transaction_type="donation",
-                description=f"Trích 5% doanh số từ đơn hàng #{order.order_code}"
+                description=charity_msg,
+                order_code=order.order_code
             )
             self.db.add(db_tx)
             campaign.raised_amount += donation_amount

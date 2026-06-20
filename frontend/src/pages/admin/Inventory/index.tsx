@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react'
-import { 
-  Search, 
-  Check, 
-  Coins, 
-  AlertTriangle, 
-  Clock, 
-  ShieldCheck, 
-  Plus, 
+import {
+  Search,
+  Check,
+  Coins,
+  AlertTriangle,
+  Clock,
+  ShieldCheck,
+  Plus,
   ClipboardCheck,
   Package,
   Trash2,
-  ChevronDown
+  ChevronDown,
+  Printer,
+  CheckCircle2,
+  X
 } from 'lucide-react'
 import apiClient from '@/services/apiClient'
 import { getImageUrl } from '@/utils/productMapper'
@@ -52,10 +55,12 @@ export default function AdminInventory() {
   const [searchSku, setSearchSku] = useState('')
   const [allProducts, setAllProducts] = useState<any[]>([])
   const [showProductDropdown, setShowProductDropdown] = useState(false)
+  const [successVoucher, setSuccessVoucher] = useState<any>(null)
 
   // Loading and Error States
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // @ts-ignore
   const [toastMsg, setToastMsg] = useState<string | null>(null)
 
   const fetchAnalytics = async () => {
@@ -93,7 +98,7 @@ export default function AdminInventory() {
       // 1. Search in preloaded allProducts list first
       let foundProduct = allProducts.find((item: any) => item.sku?.toLowerCase() === targetSku.trim().toLowerCase())
       let foundVariant = null
-      
+
       if (!foundProduct) {
         for (const item of allProducts) {
           const v = item.variants?.find((varItem: any) => {
@@ -112,7 +117,7 @@ export default function AdminInventory() {
       if (!foundProduct) {
         const res = await apiClient.get('/products?page_size=1000&status=all')
         const items = res.data?.items || []
-        
+
         foundProduct = items.find((item: any) => item.sku?.toLowerCase() === targetSku.trim().toLowerCase())
         if (!foundProduct) {
           for (const item of items) {
@@ -128,23 +133,23 @@ export default function AdminInventory() {
           }
         }
       }
-      
+
       if (!foundProduct) {
         setError('Không tìm thấy sản phẩm hoặc biến thể nào có mã SKU này.')
         return
       }
-      
+
       const imageUrl = getImageUrl(foundProduct.images?.[0]?.url)
-      
+
       // Clean up mock rows on first real item insert to keep data clean
       setVoucherItems(prev => {
         const clean = prev.filter(x => !x.id.startsWith('mock-'))
-        
+
         // 1. Get unique colors and sizes for the product (prevent duplicate color/size definitions)
         const rawVariants = foundProduct.variants || []
         const colorItems = rawVariants.filter((v: any) => v.name === 'Màu')
         const sizeItems = rawVariants.filter((v: any) => v.name === 'Kích cỡ' || v.name === 'Size' || v.name === 'size')
-        
+
         const uniqueColorsMap = new Map<string, string>()
         colorItems.forEach((c: any) => {
           const parts = c.value.split('|')
@@ -156,8 +161,16 @@ export default function AdminInventory() {
         if (colors.length === 0) {
           colors.push({ name: 'Mặc định', hex: '#ece0dc' })
         }
-        
+
         const uniqueSizesMap = new Map<string, string>()
+        
+        if (sizeItems.length > 0) {
+          const standardSizes = ['S', 'M', 'L', 'XL']
+          standardSizes.forEach(sz => {
+            uniqueSizesMap.set(sz, `${foundProduct.sku}-${sz}`)
+          })
+        }
+
         sizeItems.forEach((s: any) => {
           const name = s.value.trim()
           const sku = s.sku || `${foundProduct.sku}-${name}`
@@ -167,7 +180,7 @@ export default function AdminInventory() {
         if (sizes.length === 0) {
           sizes.push({ name: 'Standard', sku: foundProduct.sku || '' })
         }
-        
+
         // 2. Generate Cartesian product of colors x sizes
         const productVariants: SelectedVariant[] = []
         colors.forEach((col: { name: string; hex: string }) => {
@@ -178,7 +191,7 @@ export default function AdminInventory() {
               const isSizeMatch = sz.name === foundVariant.value
               initialQty = isSizeMatch ? 10 : 0
             }
-            
+
             productVariants.push({
               sku: sz.sku,
               size: sz.name,
@@ -194,7 +207,7 @@ export default function AdminInventory() {
           // Product already exists in the voucher, update the specific variant's quantity
           const updated = [...clean]
           const existingItem = { ...updated[existingIdx] }
-          
+
           if (foundVariant) {
             existingItem.variants = existingItem.variants.map(v => {
               if (v.size === foundVariant.value) {
@@ -209,7 +222,7 @@ export default function AdminInventory() {
               quantity: v.quantity + 10
             }))
           }
-          
+
           updated[existingIdx] = existingItem
           return updated
         } else {
@@ -227,7 +240,7 @@ export default function AdminInventory() {
           return [...clean, newVoucherItem]
         }
       })
-      
+
       setSearchSku('')
     } catch (err) {
       console.error(err)
@@ -245,14 +258,14 @@ export default function AdminInventory() {
   }
 
   const handleConfirmVoucher = async () => {
-    const itemsToProcess = voucherItems.flatMap(item => 
+    const itemsToProcess = voucherItems.flatMap(item =>
       item.variants
         .filter(v => v.quantity > 0)
         .map(v => ({
-          sku: v.sku.trim(),
+          sku: item.sku.trim(),
           quantity: v.quantity,
           cost_price: item.cost_price,
-          color: v.color !== 'Mặc định' ? v.color : undefined
+          color: v.color !== 'Mặc định' ? `${v.color} - Size ${v.size}` : `Size ${v.size}`
         }))
     )
 
@@ -284,7 +297,7 @@ export default function AdminInventory() {
       .map(item => `${item.name}: ${item.note}`)
       .join("; ")
     if (lineNotes) {
-      compiledNotes = compiledNotes 
+      compiledNotes = compiledNotes
         ? `${compiledNotes} | Chi tiết: ${lineNotes}`
         : `Chi tiết: ${lineNotes}`
     }
@@ -299,20 +312,28 @@ export default function AdminInventory() {
         notes: compiledNotes,
         items: itemsToProcess
       }
-      
+
       await apiClient.post('/products/receive-stock', payload)
-      
-      setToastMsg(`Chốt sổ phiếu ${voucherCode} thành công! Đã đồng bộ số lượng & giá vốn.`)
-      setTimeout(() => setToastMsg(null), 4000)
-      
+
+      const completedVoucher = {
+        voucherCode,
+        supplierName,
+        recipient: "Minh Tâm",
+        totalQuantity,
+        totalValue,
+        items: itemsToProcess,
+        date: new Date().toLocaleDateString('vi-VN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+      }
+      setSuccessVoucher(completedVoucher)
+
       // Reset form
       setVoucherItems([])
       setVoucherNotes('')
-      
+
       // Generate new voucher code
       const today = new Date().toISOString().slice(0, 10).replace(/-/g, '')
       setVoucherCode(`PNK-${today}-${String(Math.floor(Math.random() * 900) + 100)}`)
-      
+
       // Refresh dashboard analytics & dropdown list
       fetchAnalytics()
       fetchAllProductsForDropdown()
@@ -339,21 +360,19 @@ export default function AdminInventory() {
       {/* Navigation Tabs */}
       <div className="flex items-center gap-6 border-b border-outline-variant/30 mb-6">
         <button
-          className={`py-3 font-label-md text-sm transition-colors border-b-2 font-semibold ${
-            activeTab === 'overview'
+          className={`py-3 font-label-md text-sm transition-colors border-b-2 font-semibold ${activeTab === 'overview'
               ? 'border-primary text-primary font-bold'
               : 'border-transparent text-on-surface-variant hover:text-primary'
-          }`}
+            }`}
           onClick={() => setActiveTab('overview')}
         >
           Tổng quan kho
         </button>
         <button
-          className={`py-3 font-label-md text-sm transition-colors border-b-2 font-semibold ${
-            activeTab === 'update'
+          className={`py-3 font-label-md text-sm transition-colors border-b-2 font-semibold ${activeTab === 'update'
               ? 'border-primary text-primary font-bold'
               : 'border-transparent text-on-surface-variant hover:text-primary'
-          }`}
+            }`}
           onClick={() => setActiveTab('update')}
         >
           Nhập &amp; Kiểm kho
@@ -371,14 +390,14 @@ export default function AdminInventory() {
               </p>
             </div>
             <div className="flex gap-4">
-              <button 
+              <button
                 onClick={() => setActiveTab('update')}
                 className="px-6 py-2.5 border border-primary text-primary font-semibold text-xs tracking-wider rounded-lg hover:bg-primary/5 transition-all duration-300 flex items-center gap-2 cursor-pointer bg-transparent"
               >
                 <Plus size={16} />
                 Tạo phiếu nhập kho mới
               </button>
-              <button 
+              <button
                 onClick={() => handleQuickUpdateTransition()}
                 className="px-6 py-2.5 bg-primary text-white font-semibold text-xs tracking-wider rounded-lg hover:opacity-90 transition-all duration-300 flex items-center gap-2 cursor-pointer border-none font-bold"
               >
@@ -490,11 +509,10 @@ export default function AdminInventory() {
                               <td className="py-4 font-semibold text-primary text-sm group-hover:text-primary transition-colors">{mov.product_name}</td>
                               <td className="py-4 text-on-surface-variant text-xs font-medium font-mono">{mov.sku}</td>
                               <td className="py-4">
-                                <span className={`px-2 py-0.5 text-[10px] rounded border uppercase tracking-wider font-semibold ${
-                                  mov.type === 'Nhập'
+                                <span className={`px-2 py-0.5 text-[10px] rounded border uppercase tracking-wider font-semibold ${mov.type === 'Nhập'
                                     ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
                                     : 'bg-red-50 text-error border-red-100'
-                                }`}>
+                                  }`}>
                                   {mov.type}
                                 </span>
                               </td>
@@ -523,9 +541,8 @@ export default function AdminInventory() {
                             <p className="font-semibold text-primary text-xs leading-snug">{inc.name}</p>
                             <p className="text-[10px] text-on-surface-variant/70 mt-0.5">Nguồn: {inc.source}</p>
                             <div className="mt-2 flex items-center gap-1.5">
-                              <span className={`w-1.5 h-1.5 rounded-full ${
-                                inc.status === 'Đang vận chuyển' ? 'bg-primary animate-pulse' : 'bg-[#8d9b91]'
-                              }`}></span>
+                              <span className={`w-1.5 h-1.5 rounded-full ${inc.status === 'Đang vận chuyển' ? 'bg-primary animate-pulse' : 'bg-[#8d9b91]'
+                                }`}></span>
                               <span className="text-[9px] text-on-surface-variant italic font-semibold uppercase tracking-wider">{inc.status}</span>
                             </div>
                           </div>
@@ -550,7 +567,7 @@ export default function AdminInventory() {
                       Cần ưu tiên đặt hàng sớm để đảm bảo cung ứng đầy đủ.
                     </p>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setActiveTab('update')}
                     className="text-error hover:text-error/90 font-bold text-xs flex items-center gap-2 bg-transparent border-none cursor-pointer uppercase tracking-wider font-sans"
                   >
@@ -558,19 +575,19 @@ export default function AdminInventory() {
                     Tạo phiếu nhập kho mới
                   </button>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {analyticsData?.low_stock_items?.map((item: any, idx: number) => (
-                    <div 
+                    <div
                       key={idx}
                       onClick={() => handleQuickUpdateTransition(item.sku)}
                       className="bg-white p-4 rounded-xl border border-outline-variant/30 flex gap-4 group hover:scale-[1.02] transition-all duration-500 hover:shadow-[0_24px_48px_-15px_rgba(68,42,34,0.06)] cursor-pointer"
                     >
                       <div className="w-20 h-20 rounded bg-surface-container-high overflow-hidden shrink-0">
-                        <img 
-                          className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500" 
-                          src={getImageUrl(item.image)} 
-                          alt={item.name} 
+                        <img
+                          className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500"
+                          src={getImageUrl(item.image)}
+                          alt={item.name}
                         />
                       </div>
                       <div className="flex-grow flex flex-col justify-between">
@@ -596,9 +613,9 @@ export default function AdminInventory() {
           )}
         </div>
       ) : (
-        <div className="animate-in fade-in duration-500 flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto w-full text-left font-sans">
-          {/* Left Panel (30% width) */}
-          <aside className="w-full lg:w-[30%] flex flex-col gap-6">
+        <div className="animate-in fade-in duration-500 flex flex-col lg:flex-row gap-6 w-full text-left font-sans">
+          {/* Left Panel (25% width) */}
+          <aside className="w-full lg:w-[25%] 2xl:w-[20%] flex flex-col gap-6">
             <div className="mb-2">
               <h1 className="font-headline-md text-headline-md text-primary mb-1">Phiếu Nhập Kho</h1>
               <p className="text-on-surface-variant font-caption text-caption uppercase tracking-widest">Hệ Thống Quản Trị Zen</p>
@@ -612,26 +629,26 @@ export default function AdminInventory() {
               <div className="space-y-5">
                 <div className="flex flex-col gap-1">
                   <label className="font-caption text-caption text-on-surface-variant">Mã Phiếu</label>
-                  <input 
-                    className="bg-surface-container-low border-0 border-b border-outline-variant/50 py-2 font-medium text-on-surface cursor-not-allowed font-mono focus:ring-0 w-full" 
-                    disabled 
-                    type="text" 
+                  <input
+                    className="bg-surface-container-low border-0 border-b border-outline-variant/50 py-2 font-medium text-on-surface cursor-not-allowed font-mono focus:ring-0 w-full"
+                    disabled
+                    type="text"
                     value={voucherCode}
                   />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="font-caption text-caption text-on-surface-variant">Nhân Viên Tiếp Nhận</label>
-                  <input 
-                    className="bg-surface-container-low border-0 border-b border-outline-variant/50 py-2 font-medium text-on-surface cursor-not-allowed focus:ring-0 w-full" 
-                    disabled 
-                    type="text" 
+                  <input
+                    className="bg-surface-container-low border-0 border-b border-outline-variant/50 py-2 font-medium text-on-surface cursor-not-allowed focus:ring-0 w-full"
+                    disabled
+                    type="text"
                     value="Minh Tâm"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="font-caption text-caption text-on-surface-variant">Nhà Cung Cấp</label>
                   <div className="relative">
-                    <select 
+                    <select
                       value={voucherSupplier}
                       onChange={(e) => setVoucherSupplier(e.target.value)}
                       className="w-full bg-transparent border-0 border-b border-outline-variant py-2 pr-8 font-medium text-on-surface appearance-none focus:ring-0 cursor-pointer"
@@ -655,9 +672,9 @@ export default function AdminInventory() {
                 </div>
                 <div className="relative group">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant"><Search size={16} /></span>
-                  <input 
-                    className="w-full bg-surface-container-low border-0 border-b border-outline-variant py-3 pl-10 pr-10 transition-all duration-300 focus:border-primary text-sm focus:ring-0 font-medium placeholder:text-on-surface-variant/40" 
-                    placeholder="Tìm kiếm sản phẩm..." 
+                  <input
+                    className="w-full bg-surface-container-low border-0 border-b border-outline-variant py-3 pl-10 pr-10 transition-all duration-300 focus:border-primary text-sm focus:ring-0 font-medium placeholder:text-on-surface-variant/40"
+                    placeholder="Tìm kiếm sản phẩm..."
                     type="text"
                     value={searchSku}
                     onChange={(e) => {
@@ -667,64 +684,64 @@ export default function AdminInventory() {
                     onKeyDown={(e) => e.key === 'Enter' && handleSearchAndAdd(searchSku)}
                     onFocus={() => setShowProductDropdown(true)}
                   />
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setShowProductDropdown(!showProductDropdown)}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer bg-transparent border-none p-1 flex items-center justify-center"
                   >
                     <ChevronDown size={18} />
                   </button>
-                </div>
-                
-                {showProductDropdown && (
-                  <>
-                    <div 
-                      className="fixed inset-0 z-40 bg-transparent" 
-                      onClick={() => setShowProductDropdown(false)}
-                    />
-                    <div className="absolute left-6 right-6 z-50 mt-1 max-h-60 overflow-y-auto bg-white border border-outline-variant/30 rounded-lg shadow-xl divide-y divide-outline-variant/10 scrollbar-thin">
-                      {(() => {
-                        const filtered = allProducts.filter(prod => 
-                          !searchSku || 
-                          (prod.sku || '').toLowerCase().includes(searchSku.toLowerCase()) || 
-                          (prod.name || '').toLowerCase().includes(searchSku.toLowerCase())
-                        )
 
-                        if (filtered.length === 0) {
-                          return (
-                            <div className="p-4 text-center text-xs text-on-surface-variant opacity-60">
-                              Không tìm thấy sản phẩm nào
-                            </div>
+                  {showProductDropdown && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-40 bg-transparent"
+                        onClick={() => setShowProductDropdown(false)}
+                      />
+                      <div className="absolute left-0 right-0 bottom-full mb-1 z-50 max-h-60 overflow-y-auto bg-white border border-outline-variant/30 rounded-lg shadow-xl divide-y divide-outline-variant/10 scrollbar-thin">
+                        {(() => {
+                          const filtered = allProducts.filter(prod =>
+                            !searchSku ||
+                            (prod.sku || '').toLowerCase().includes(searchSku.toLowerCase()) ||
+                            (prod.name || '').toLowerCase().includes(searchSku.toLowerCase())
                           )
-                        }
 
-                        return filtered.map(item => {
-                          const imageUrl = getImageUrl(item.images?.[0]?.url)
-                          return (
-                            <div 
-                              key={item.id}
-                              onClick={() => {
-                                handleSearchAndAdd(item.sku)
-                                setShowProductDropdown(false)
-                              }}
-                              className="flex items-center gap-3 p-3 hover:bg-surface-container-low cursor-pointer transition-colors"
-                            >
-                              <div className="w-10 h-10 rounded bg-secondary-fixed overflow-hidden flex-shrink-0 border border-outline-variant/10">
-                                <img className="w-full h-full object-cover" src={imageUrl} alt={item.name} />
+                          if (filtered.length === 0) {
+                            return (
+                              <div className="p-4 text-center text-xs text-on-surface-variant opacity-60">
+                                Không tìm thấy sản phẩm nào
                               </div>
-                              <div className="flex-grow min-w-0">
-                                <p className="font-semibold text-primary text-xs truncate">{item.name}</p>
-                                <div className="flex items-center gap-2 mt-0.5 text-[10px] text-on-surface-variant">
-                                  <span className="font-mono bg-surface-container px-1.5 py-0.5 rounded font-bold">{item.sku}</span>
+                            )
+                          }
+
+                          return filtered.map(item => {
+                            const imageUrl = getImageUrl(item.images?.[0]?.url)
+                            return (
+                              <div
+                                key={item.id}
+                                onClick={() => {
+                                  handleSearchAndAdd(item.sku)
+                                  setShowProductDropdown(false)
+                                }}
+                                className="flex items-center gap-3 p-3 hover:bg-surface-container-low cursor-pointer transition-colors"
+                              >
+                                <div className="w-10 h-10 rounded bg-secondary-fixed overflow-hidden flex-shrink-0 border border-outline-variant/10">
+                                  <img className="w-full h-full object-cover" src={imageUrl} alt={item.name} />
+                                </div>
+                                <div className="flex-grow min-w-0">
+                                  <p className="font-semibold text-primary text-xs truncate">{item.name}</p>
+                                  <div className="flex items-center gap-2 mt-0.5 text-[10px] text-on-surface-variant">
+                                    <span className="font-mono bg-surface-container px-1.5 py-0.5 rounded font-bold">{item.sku}</span>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          )
-                        })
-                      })()}
-                    </div>
-                  </>
-                )}
+                            )
+                          })
+                        })()}
+                      </div>
+                    </>
+                  )}
+                </div>
 
                 {error && (
                   <div className="p-3 bg-red-50 text-red-700 text-[10px] rounded border border-red-200 leading-normal">
@@ -735,19 +752,19 @@ export default function AdminInventory() {
             </section>
           </aside>
 
-          {/* Right Panel (70% width) */}
-          <div className="w-full lg:w-[70%] flex flex-col gap-6">
+          {/* Right Panel (75% width) */}
+          <div className="w-full lg:w-[75%] 2xl:w-[80%] flex flex-col gap-6">
             {/* Main Data Grid */}
             <section className="zen-card rounded-lg border border-outline-variant/30 overflow-hidden flex-grow flex flex-col">
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse table-fixed min-w-[1000px]">
                   <thead>
                     <tr className="bg-surface-container-low border-b border-outline-variant/30">
                       <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant w-12 text-center uppercase tracking-wider">STT</th>
-                      <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider w-[20%]">Sản Phẩm</th>
-                      <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider w-[15%]">Giá Nhập (48% giá bán)</th>
-                      <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider w-[35%]">Phân Loại &amp; Số Lượng</th>
-                      <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider w-[15%]">Ghi Chú</th>
+                      <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider w-[18%]">Sản Phẩm</th>
+                      <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider w-[12%]">Giá Nhập</th>
+                      <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider w-[30%]">Phân Loại &amp; Số Lượng</th>
+                      <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider w-[25%]">Ghi Chú</th>
                       <th className="py-4 px-6 font-label-md text-label-md text-on-surface-variant text-right uppercase tracking-wider w-[10%]">Thành Tiền</th>
                       <th className="py-4 px-6 w-12"></th>
                     </tr>
@@ -770,7 +787,7 @@ export default function AdminInventory() {
                         <tr key={item.id} className="hover:bg-surface-container-lowest transition-colors group">
                           {/* STT */}
                           <td className="py-4 px-6 text-center text-on-surface-variant font-label-md align-middle">{String(index + 1).padStart(2, '0')}</td>
-                          
+
                           {/* Product Info */}
                           <td className="py-4 px-6 align-middle">
                             <div className="flex gap-3 items-center">
@@ -781,19 +798,18 @@ export default function AdminInventory() {
                                 <p className="font-semibold text-primary text-xs line-clamp-2 leading-snug">{item.name}</p>
                                 <div className="flex flex-col gap-0.5 mt-0.5">
                                   <span className="font-mono text-[9px] text-on-surface-variant/80 font-bold">Mã: {item.sku}</span>
-                                  <span className="text-[9px] text-on-surface-variant/70 font-semibold">Giá bán: {item.price.toLocaleString('vi-VN')} đ</span>
                                 </div>
                               </div>
                             </div>
                           </td>
-                          
+
                           {/* Cost Price Column */}
                           <td className="py-4 px-6 align-middle">
                             <div className="flex flex-col gap-1">
                               <div className="flex items-center gap-1">
-                                <input 
-                                  className="w-20 bg-transparent border-0 border-b border-outline-variant/30 focus:border-primary p-0.5 font-bold text-primary focus:ring-0 text-xs font-mono text-left" 
-                                  type="number" 
+                                <input
+                                  className="w-20 bg-transparent border-0 border-b border-outline-variant/30 focus:border-primary p-0.5 font-bold text-primary focus:ring-0 text-xs font-mono text-left"
+                                  type="number"
                                   value={item.cost_price}
                                   min="0"
                                   onChange={(e) => {
@@ -806,87 +822,156 @@ export default function AdminInventory() {
                               <span className="text-[9px] text-on-surface-variant/70 italic">(Gốc 48%: {Math.round(item.price * 0.48).toLocaleString('vi-VN')}₫)</span>
                             </div>
                           </td>
-                          
+
                           {/* Varieties & Quantities Grid */}
                           <td className="py-4 px-6 align-middle">
-                            <div className="flex flex-col gap-2.5 py-1">
-                              {Object.entries(colorGroups).map(([colorName, group]) => (
-                                <div key={colorName} className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                                  {/* Color Label */}
-                                  {colorName !== 'Mặc định' && (
-                                    <div className="flex items-center gap-1.5 min-w-[70px]">
-                                      {group.colorHex && (
-                                        <span 
-                                          className="w-3 h-3 rounded-full border border-outline-variant/30 flex-shrink-0"
-                                          style={{ backgroundColor: group.colorHex }}
-                                          title={colorName}
-                                        />
-                                      )}
-                                      <span className="font-semibold text-primary text-[11px] truncate max-w-[65px]" title={colorName}>
-                                        {colorName}
-                                      </span>
-                                    </div>
-                                  )}
-                                  
-                                  {/* Sizes Inputs */}
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    {group.list.map((v) => {
-                                      const vIdx = item.variants.findIndex(x => x.sku === v.sku && x.color === v.color)
-                                      return (
-                                        <div key={v.sku} className="flex items-center gap-1 bg-surface-container-lowest px-1.5 py-0.5 rounded border border-outline-variant/10">
-                                          <span className="text-[9px] text-on-surface-variant/80 font-bold min-w-[12px] text-center">
-                                            {v.size !== 'Standard' ? v.size : 'Std'}
-                                          </span>
-                                          <input 
-                                            className={`w-8 bg-transparent border-0 border-b py-0.5 px-0.5 font-bold text-center focus:ring-0 text-xs font-mono transition-all ${
-                                              v.quantity > 0 
-                                                ? 'border-primary text-primary bg-primary/5 font-extrabold' 
-                                                : 'border-outline-variant/20 text-on-surface-variant/30'
-                                            }`}
-                                            type="number" 
-                                            value={v.quantity}
-                                            min="0"
-                                            onChange={(e) => {
-                                              const val = parseInt(e.target.value) || 0
-                                              setVoucherItems(prev => prev.map(pItem => {
-                                                if (pItem.id !== item.id) return pItem
-                                                const updatedVariants = [...pItem.variants]
-                                                updatedVariants[vIdx] = { ...updatedVariants[vIdx], quantity: val }
-                                                return { ...pItem, variants: updatedVariants }
-                                              }))
-                                            }}
-                                          />
-                                        </div>
-                                      )
-                                    })}
+                            {(() => {
+                              const uniqueSizes = Array.from(new Set(item.variants.map(v => v.size)))
+                              const uniqueColors = Array.from(new Set(item.variants.map(v => v.color)))
+
+                              // Case 1: Simple product (No colors and no sizes)
+                              if (uniqueColors.length === 1 && uniqueColors[0] === 'Mặc định' && uniqueSizes.length === 1 && uniqueSizes[0] === 'Standard') {
+                                return (
+                                  <div className="flex items-center gap-1.5 justify-center py-1">
+                                    <span className="text-xs text-on-surface-variant font-medium">Số lượng:</span>
+                                    <input 
+                                      className="w-16 bg-transparent border-0 border-b border-outline-variant/30 py-0.5 px-1 font-bold text-center focus:ring-0 text-xs font-mono" 
+                                      type="number"
+                                      value={item.variants[0].quantity}
+                                      min="0"
+                                      onChange={(e) => {
+                                        const val = parseInt(e.target.value) || 0
+                                        setVoucherItems(prev => prev.map(pItem => {
+                                          if (pItem.id !== item.id) return pItem
+                                          const updatedVariants = [{ ...pItem.variants[0], quantity: val }]
+                                          return { ...pItem, variants: updatedVariants }
+                                        }))
+                                      }}
+                                    />
                                   </div>
+                                )
+                              }
+
+                              // Case 2: Sizes only (No colors)
+                              if (uniqueColors.length === 1 && uniqueColors[0] === 'Mặc định') {
+                                return (
+                                  <div className="flex flex-wrap gap-x-3 gap-y-2 py-1 justify-start">
+                                    {item.variants.map((v, vIdx) => (
+                                      <div key={v.sku} className="flex items-center gap-1 bg-surface-container-lowest px-1.5 py-0.5 rounded border border-outline-variant/10">
+                                        <span className="text-[10px] text-on-surface-variant/80 font-bold min-w-[12px] text-center">{v.size}</span>
+                                        <input 
+                                          className={`w-9 bg-transparent border-0 border-b py-0.5 px-0.5 font-bold text-center focus:ring-0 text-xs font-mono transition-all ${
+                                            v.quantity > 0 
+                                              ? 'border-primary text-primary bg-primary/5 font-extrabold' 
+                                              : 'border-outline-variant/20 text-on-surface-variant/30'
+                                          }`}
+                                          type="number"
+                                          value={v.quantity}
+                                          min="0"
+                                          onChange={(e) => {
+                                            const val = parseInt(e.target.value) || 0
+                                            setVoucherItems(prev => prev.map(pItem => {
+                                              if (pItem.id !== item.id) return pItem
+                                              const updatedVariants = [...pItem.variants]
+                                              updatedVariants[vIdx] = { ...updatedVariants[vIdx], quantity: val }
+                                              return { ...pItem, variants: updatedVariants }
+                                            }))
+                                          }}
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                )
+                              }
+
+                              // Case 3: Color variants present (with or without sizes) - render structured grid
+                              return (
+                                <div className="overflow-x-auto min-w-[240px] max-w-[400px] border border-outline-variant/15 rounded-lg p-2.5 bg-surface-container-lowest/30 shadow-[inset_0_1px_4px_rgba(0,0,0,0.01)] scrollbar-thin">
+                                  <table className="w-full text-left border-collapse text-xs">
+                                    <thead>
+                                      <tr className="border-b border-outline-variant/20">
+                                        <th className="pb-1.5 px-1 font-semibold text-on-surface-variant/70 text-[9px] uppercase tracking-wider">Màu</th>
+                                        {uniqueSizes.map(sz => (
+                                          <th key={sz} className="pb-1.5 px-1 text-center font-bold text-on-surface-variant/70 text-[9px] uppercase tracking-wider min-w-[36px]">
+                                            {sz !== 'Standard' ? sz : 'Std'}
+                                          </th>
+                                        ))}
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {uniqueColors.map(colorName => {
+                                        const colorHex = item.variants.find(v => v.color === colorName)?.colorHex
+                                        return (
+                                          <tr key={colorName} className="border-b border-outline-variant/10 last:border-0 hover:bg-surface-container-low/10 transition-colors">
+                                            <td className="py-1.5 px-1 font-semibold text-primary text-[10px] flex items-center gap-1.5 min-w-[70px]">
+                                              {colorHex && (
+                                                <span 
+                                                  className="w-2.5 h-2.5 rounded-full border border-outline-variant/30 flex-shrink-0"
+                                                  style={{ backgroundColor: colorHex }}
+                                                />
+                                              )}
+                                              <span className="truncate max-w-[60px]" title={colorName}>{colorName}</span>
+                                            </td>
+                                            {uniqueSizes.map(sz => {
+                                              const vIdx = item.variants.findIndex(x => x.color === colorName && x.size === sz)
+                                              if (vIdx === -1) return <td key={sz} className="py-1.5 px-1 text-center text-on-surface-variant/10">-</td>
+                                              const v = item.variants[vIdx]
+                                              return (
+                                                <td key={sz} className="py-1.5 px-0.5 text-center">
+                                                  <input 
+                                                    className={`w-9 bg-transparent border-0 border-b py-0.5 px-0.5 font-bold text-center focus:ring-0 text-xs font-mono transition-all ${
+                                                      v.quantity > 0 
+                                                        ? 'border-primary text-primary bg-primary/5 font-extrabold' 
+                                                        : 'border-outline-variant/20 text-on-surface-variant/30'
+                                                    }`}
+                                                    type="number"
+                                                    value={v.quantity}
+                                                    min="0"
+                                                    onChange={(e) => {
+                                                      const val = parseInt(e.target.value) || 0
+                                                      setVoucherItems(prev => prev.map(pItem => {
+                                                        if (pItem.id !== item.id) return pItem
+                                                        const updatedVariants = [...pItem.variants]
+                                                        updatedVariants[vIdx] = { ...updatedVariants[vIdx], quantity: val }
+                                                        return { ...pItem, variants: updatedVariants }
+                                                      }))
+                                                    }}
+                                                  />
+                                                </td>
+                                              )
+                                            })}
+                                          </tr>
+                                        )
+                                      })}
+                                    </tbody>
+                                  </table>
                                 </div>
-                              ))}
-                            </div>
+                              )
+                            })()}
                           </td>
-                          
+
                           {/* Note Input */}
                           <td className="py-4 px-6 align-middle">
-                            <input 
-                              className="w-full bg-transparent border-0 border-b border-outline-variant/30 focus:border-primary py-0.5 px-1 font-normal text-on-surface focus:ring-0 text-xs" 
-                              type="text" 
+                            <textarea
+                              className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded focus:border-primary p-2 font-normal text-on-surface focus:ring-1 focus:ring-primary/20 text-xs resize-y min-h-[60px]"
                               value={item.note || ''}
                               placeholder="Ghi chú dòng..."
+                              rows={2}
                               onChange={(e) => {
                                 const val = e.target.value
                                 setVoucherItems(prev => prev.map(p => p.id === item.id ? { ...p, note: val } : p))
                               }}
                             />
                           </td>
-                          
+
                           {/* Product Total Value */}
                           <td className="py-4 px-6 text-right font-semibold text-primary align-middle font-mono text-sm">
                             {productTotalValue.toLocaleString('vi-VN')} ₫
                           </td>
-                          
+
                           {/* Delete Action */}
                           <td className="py-4 px-6 text-center align-middle">
-                            <button 
+                            <button
                               onClick={() => {
                                 setVoucherItems(prev => prev.filter(x => x.id !== item.id))
                               }}
@@ -919,14 +1004,14 @@ export default function AdminInventory() {
                 {/* Left: Notes */}
                 <div className="flex flex-col gap-3">
                   <label className="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">Ghi chú nhập kho</label>
-                  <textarea 
+                  <textarea
                     value={voucherNotes}
                     onChange={(e) => setVoucherNotes(e.target.value)}
-                    className="w-full h-32 bg-surface-container-low border border-outline-variant/30 rounded p-4 text-body-md focus:ring-1 focus:ring-primary-container resize-none leading-relaxed text-primary" 
+                    className="w-full h-32 bg-surface-container-low border border-outline-variant/30 rounded p-4 text-body-md focus:ring-1 focus:ring-primary-container resize-none leading-relaxed text-primary"
                     placeholder="Nhập ghi chú hoặc hướng dẫn bảo quản đặc biệt cho lô hàng này..."
                   />
                 </div>
-                
+
                 {/* Right: Financials & Actions */}
                 <div className="flex flex-col justify-between">
                   <div className="space-y-4">
@@ -939,15 +1024,15 @@ export default function AdminInventory() {
                       <span className="font-bold text-primary font-headline-md">{totalValue.toLocaleString('vi-VN')} đ</span>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-4 mt-8">
-                    <button 
+                    <button
                       onClick={() => setVoucherItems([])}
                       className="flex-1 px-6 py-3 border border-outline-variant text-on-surface hover:bg-surface-container-high transition-colors duration-300 font-label-md text-label-md uppercase tracking-wider rounded cursor-pointer bg-transparent"
                     >
                       Hủy Bỏ
                     </button>
-                    <button 
+                    <button
                       onClick={handleConfirmVoucher}
                       disabled={loading}
                       className="flex-[2] px-6 py-3 bg-primary-container text-on-primary-container hover:opacity-90 transition-opacity duration-300 font-label-md text-label-md uppercase tracking-widest rounded flex items-center justify-center gap-2 border-none cursor-pointer disabled:opacity-50"
@@ -973,6 +1058,80 @@ export default function AdminInventory() {
             <Check size={14} className="text-white" />
           </div>
           <span className="text-xs font-semibold">{toastMsg}</span>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {successVoucher && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+            {/* Header */}
+            <div className="bg-emerald-50 p-6 flex flex-col items-center justify-center border-b border-emerald-100 relative">
+              <button 
+                onClick={() => setSuccessVoucher(null)}
+                className="absolute top-4 right-4 p-2 text-emerald-700 hover:bg-emerald-100 rounded-full transition-colors cursor-pointer border-none bg-transparent"
+              >
+                <X size={20} />
+              </button>
+              <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle2 size={32} className="text-emerald-600" />
+              </div>
+              <h2 className="text-2xl font-serif font-bold text-emerald-800 text-center">Nhập Kho Thành Công!</h2>
+              <p className="text-emerald-600 text-sm mt-1">Phiếu nhập kho đã được lưu vào hệ thống an toàn.</p>
+            </div>
+
+            {/* Body */}
+            <div className="p-8">
+              <div className="grid grid-cols-2 gap-y-4 gap-x-8 mb-8 text-sm">
+                <div>
+                  <p className="text-on-surface-variant mb-1 font-medium">Mã Phiếu</p>
+                  <p className="font-bold text-primary font-mono">{successVoucher.voucherCode}</p>
+                </div>
+                <div>
+                  <p className="text-on-surface-variant mb-1 font-medium">Thời Gian</p>
+                  <p className="font-bold text-primary">{successVoucher.date}</p>
+                </div>
+                <div>
+                  <p className="text-on-surface-variant mb-1 font-medium">Nhà Cung Cấp</p>
+                  <p className="font-bold text-primary">{successVoucher.supplierName}</p>
+                </div>
+                <div>
+                  <p className="text-on-surface-variant mb-1 font-medium">Người Nhập</p>
+                  <p className="font-bold text-primary">{successVoucher.recipient}</p>
+                </div>
+              </div>
+
+              <div className="bg-surface-container-low rounded-xl p-6 flex items-center justify-between border border-outline-variant/30">
+                <div className="flex flex-col items-center flex-1 border-r border-outline-variant/30">
+                  <span className="text-on-surface-variant text-xs uppercase tracking-wider mb-2 font-semibold">Tổng Số Lượng</span>
+                  <span className="text-2xl font-bold text-primary">{successVoucher.totalQuantity} <span className="text-sm font-normal text-on-surface-variant">sp</span></span>
+                </div>
+                <div className="flex flex-col items-center flex-1">
+                  <span className="text-on-surface-variant text-xs uppercase tracking-wider mb-2 font-semibold">Tổng Giá Trị</span>
+                  <span className="text-2xl font-bold text-emerald-600 font-mono">{successVoucher.totalValue.toLocaleString('vi-VN')} đ</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-surface-container-lowest p-6 border-t border-outline-variant/20 flex items-center gap-4 justify-end">
+              <button 
+                onClick={() => {
+                  window.print()
+                }}
+                className="px-6 py-2.5 border border-outline-variant text-on-surface hover:bg-surface-container-low rounded-lg font-semibold text-sm flex items-center gap-2 transition-colors cursor-pointer bg-white"
+              >
+                <Printer size={16} />
+                In Phiếu
+              </button>
+              <button 
+                onClick={() => setSuccessVoucher(null)}
+                className="px-8 py-2.5 bg-primary text-white hover:bg-primary/90 rounded-lg font-bold text-sm transition-colors cursor-pointer border-none shadow-md shadow-primary/20"
+              >
+                Hoàn Tất
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -12,6 +12,10 @@ class CharityCampaign(BaseModel):
     raised_amount = Column(Float, default=0.0, nullable=False)
     image_url = Column(String(500), nullable=True)
     status = Column(String(50), default="active", nullable=False)  # "active" (Đang thực hiện), "completed" (Đã hoàn thành), "closing" (Sắp hoàn thành)
+    gallery_images = Column(Text, nullable=True)
+    content = Column(Text, nullable=True)
+    quote = Column(String(500), nullable=True)
+    address = Column(String(255), nullable=True)
 
     # Relationships
     transactions = relationship("CharityTransaction", back_populates="campaign", cascade="all, delete-orphan")
@@ -24,6 +28,7 @@ class CharityTransaction(BaseModel):
     amount = Column(Float, nullable=False)                 # Positive for donations, negative for disbursements/expenses
     transaction_type = Column(String(50), nullable=False)  # "donation" (Đóng góp) or "expense" (Chi phí)
     description = Column(Text, nullable=True)
+    order_code = Column(String(50), nullable=True)
 
     # Relationships
     campaign = relationship("CharityCampaign", back_populates="transactions")

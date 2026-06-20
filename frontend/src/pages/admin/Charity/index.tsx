@@ -14,9 +14,22 @@ import {
 } from 'lucide-react'
 import { charityService, CharityCampaign, CharityTransaction, CharityOverview } from '../../../services/charityService'
 import apiClient from '../../../services/apiClient'
+import CharityDetailModal from '../../../components/CharityDetailModal'
+import AdminCharityDetail from './AdminCharityDetail'
 
 const formatPrice = (price: number) => {
   return price.toLocaleString('vi-VN') + ' ₫'
+}
+
+const getDisplayDescription = (tx: CharityTransaction) => {
+  if (tx.transaction_type !== 'donation') {
+    return tx.description || 'Chi phí hoạt động';
+  }
+  const desc = tx.description || '';
+  if (!desc.trim() || desc.startsWith('Trích 5%') || desc.includes('đơn hàng')) {
+    return 'Gửi vạn điều an lành';
+  }
+  return desc;
 }
 
 export default function AdminCharity() {
@@ -31,6 +44,8 @@ export default function AdminCharity() {
   const [loading, setLoading] = useState(true)
   const [loadingTx, setLoadingTx] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [selectedCampaign, setSelectedCampaign] = useState<CharityCampaign | null>(null)
 
   // Modals state
   const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false)
@@ -211,16 +226,7 @@ export default function AdminCharity() {
   }
 
   const openEditCampaign = (campaign: CharityCampaign) => {
-    setEditingCampaign(campaign)
-    setCampaignForm({
-      name: campaign.name,
-      slogan: campaign.slogan || '',
-      description: campaign.description || '',
-      target_amount: campaign.target_amount,
-      image_url: campaign.image_url || '',
-      status: campaign.status
-    })
-    setIsCampaignModalOpen(true)
+    setSelectedCampaign(campaign)
   }
 
   const openDisburseModal = (campaignId?: number) => {
@@ -255,6 +261,15 @@ export default function AdminCharity() {
     )
   }
 
+  if (selectedCampaign) {
+    return (
+      <AdminCharityDetail
+        campaign={selectedCampaign}
+        onBack={() => { setSelectedCampaign(null); loadData(); }}
+      />
+    )
+  }
+
   const totalFund = overview?.total_fund || 0
   const totalDonations = overview?.total_donations || 0
   const totalDonationAmount = campaigns[0]?.raised_amount || 0
@@ -265,7 +280,7 @@ export default function AdminCharity() {
       
       {/* Header Section */}
       <section className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 border-b border-[#e5e1de]/60 pb-6">
-        <div className="max-w-2xl">
+        <div className="max-w-4xl">
           <h1 className="text-3xl font-serif font-bold text-primary mb-2 flex items-center gap-2">
             Quản Lý Quỹ Thiện Nguyện
           </h1>
@@ -283,7 +298,7 @@ export default function AdminCharity() {
             <span className="p-3 bg-secondary-container/50 rounded-full text-primary">
               <Wallet size={20} />
             </span>
-            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+            <span className="text-[10px] font-bold text-[#5d4037] bg-[#faf6f0] px-2.5 py-0.5 rounded-full border border-[#d4c3be]">
               Minh bạch 100%
             </span>
           </div>
@@ -343,7 +358,10 @@ export default function AdminCharity() {
         <div className="w-full">
           {campaigns.length > 0 && (() => {
             const project = campaigns[0]
-            const percent = Math.min(100, Math.round((project.raised_amount / project.target_amount) * 100))
+            const rawPercent = project.target_amount > 0 ? (project.raised_amount / project.target_amount) * 100 : 0
+            const percent = rawPercent > 0 && rawPercent < 1 
+              ? parseFloat(rawPercent.toFixed(2)) 
+              : Math.min(100, Math.round(rawPercent))
             const statusLabel = project.status === 'completed' 
               ? 'Đã hoàn thành' 
               : project.status === 'closing' 
@@ -351,7 +369,11 @@ export default function AdminCharity() {
                 : 'Đang thực hiện'
             
             return (
-              <div key={project.id} className="group bg-surface rounded-xl border border-outline-variant/30 overflow-hidden flex flex-col md:flex-row min-h-[300px] transition-transform duration-300 hover:scale-[1.002] shadow-xs">
+              <div 
+                key={project.id} 
+                onClick={() => setSelectedCampaign(project)}
+                className="group bg-surface rounded-xl border border-outline-variant/30 overflow-hidden flex flex-col md:flex-row min-h-[300px] transition-all duration-300 hover:scale-[1.002] hover:shadow-md cursor-pointer"
+              >
                 {/* Image panel */}
                 <div className="md:w-2/5 h-64 md:h-auto overflow-hidden relative bg-[#ece0dc]/20 flex items-center justify-center">
                   {project.image_url ? (
@@ -377,7 +399,7 @@ export default function AdminCharity() {
                       </span>
                       <div className="flex gap-2">
                         <button
-                          onClick={() => openEditCampaign(project)}
+                          onClick={(e) => { e.stopPropagation(); openEditCampaign(project); }}
                           className="p-1 text-on-surface-variant hover:text-primary transition-colors cursor-pointer border-none bg-transparent"
                           title="Sửa cấu hình chiến dịch"
                         >
@@ -388,7 +410,7 @@ export default function AdminCharity() {
                     <h3 className="font-serif font-bold text-2xl text-[#442a22] leading-snug">{project.name}</h3>
                     {project.slogan && (
                       <p className="text-xs text-primary font-serif font-semibold italic">
-                        Slogan: {project.slogan}
+                        {project.slogan}
                       </p>
                     )}
                     <p className="text-xs text-on-surface-variant/80 leading-relaxed">{project.description || 'Chưa có mô tả chi tiết cho dự án này.'}</p>
@@ -402,12 +424,12 @@ export default function AdminCharity() {
                     </div>
                     {/* Bar */}
                     <div className="w-full h-2 bg-[#eeeeee] rounded-full overflow-hidden">
-                      <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: `${percent}%` }} />
+                      <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: `${project.raised_amount > 0 ? Math.max(percent, 1.5) : 0}%` }} />
                     </div>
                     {project.status !== 'completed' && (
                       <div className="pt-2 text-right">
                         <button
-                          onClick={() => openDisburseModal(project.id)}
+                          onClick={(e) => { e.stopPropagation(); openDisburseModal(project.id); }}
                           className="text-[10px] font-bold text-primary hover:text-primary-container bg-transparent border-none cursor-pointer uppercase tracking-wider"
                         >
                           Giải ngân cho chiến dịch
@@ -482,7 +504,7 @@ export default function AdminCharity() {
                           <Calendar size={12} className="opacity-60" /> {dateFormatted}
                         </td>
                         <td className="px-6 py-3.5 font-bold text-[#442a22]">{tx.donor_recipient}</td>
-                        <td className="px-6 py-3.5 text-on-surface-variant">{tx.description || 'Không có mô tả'}</td>
+                        <td className="px-6 py-3.5 text-on-surface-variant">{getDisplayDescription(tx)}</td>
                         <td className="px-6 py-3.5">
                           <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
                             isDonation 
@@ -802,7 +824,15 @@ export default function AdminCharity() {
           </div>
         )}
       </AnimatePresence>
-      
+
+      <CharityDetailModal 
+        isOpen={isDetailOpen}
+        onClose={() => {
+          setIsDetailOpen(false)
+          setSelectedCampaign(null)
+        }}
+        campaign={selectedCampaign}
+      />
     </div>
   )
 }

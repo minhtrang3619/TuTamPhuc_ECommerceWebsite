@@ -37,10 +37,21 @@ def get_charity_overview(db: Session = Depends(get_db)):
         "recent_transactions": recent_transactions
     }
 
+def populate_campaign_stats(db: Session, campaign: CharityCampaign) -> CharityCampaign:
+    unique_donors = db.query(func.count(func.distinct(CharityTransaction.donor_recipient))).filter(
+        CharityTransaction.campaign_id == campaign.id,
+        CharityTransaction.transaction_type == "donation"
+    ).scalar() or 0
+    campaign.unique_donors_count = unique_donors
+    return campaign
+
 @router.get("/campaigns", response_model=list[CharityCampaignResponse])
 def get_campaigns(db: Session = Depends(get_db)):
     """Lấy danh sách các chiến dịch thiện nguyện."""
-    return db.query(CharityCampaign).order_by(CharityCampaign.created_at.desc()).all()
+    campaigns = db.query(CharityCampaign).order_by(CharityCampaign.created_at.desc()).all()
+    for c in campaigns:
+        populate_campaign_stats(db, c)
+    return campaigns
 
 @router.post("/campaigns", response_model=CharityCampaignResponse, status_code=201)
 def create_campaign(
@@ -53,7 +64,7 @@ def create_campaign(
     db.add(db_campaign)
     db.commit()
     db.refresh(db_campaign)
-    return db_campaign
+    return populate_campaign_stats(db, db_campaign)
 
 @router.put("/campaigns/{campaign_id}", response_model=CharityCampaignResponse)
 def update_campaign(
@@ -78,7 +89,7 @@ def update_campaign(
         
     db.commit()
     db.refresh(db_campaign)
-    return db_campaign
+    return populate_campaign_stats(db, db_campaign)
 
 @router.delete("/campaigns/{campaign_id}")
 def delete_campaign(
@@ -100,12 +111,15 @@ def get_transactions(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     transaction_type: Optional[str] = Query(None, regex="^(donation|expense)$"),
+    campaign_id: Optional[int] = Query(None),
     db: Session = Depends(get_db)
 ):
     """Lấy danh sách các giao dịch quỹ."""
     query = db.query(CharityTransaction).order_by(CharityTransaction.created_at.desc())
     if transaction_type:
         query = query.filter(CharityTransaction.transaction_type == transaction_type)
+    if campaign_id is not None:
+        query = query.filter(CharityTransaction.campaign_id == campaign_id)
         
     total = query.count()
     items = query.offset((page - 1) * page_size).limit(page_size).all()

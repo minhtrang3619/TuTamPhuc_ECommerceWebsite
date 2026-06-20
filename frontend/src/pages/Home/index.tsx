@@ -145,7 +145,10 @@ export default function HomePage() {
           </h2>
           
           {campaign ? (
-            <div className="w-full bg-white border border-[#e5e1de] rounded-xl p-6 md:p-8 flex flex-col md:flex-row items-center gap-8 shadow-xs max-w-3xl mt-4">
+            <Link 
+              to="/blog?charity=true"
+              className="w-full bg-white border border-[#e5e1de] rounded-xl p-6 md:p-8 flex flex-col md:flex-row items-center gap-8 shadow-xs max-w-3xl mt-4 cursor-pointer hover:shadow-md hover:scale-[1.002] transition-all duration-300 group block no-underline text-inherit"
+            >
               <div className="w-full md:w-2/5 aspect-[4/3] rounded-lg overflow-hidden bg-surface-container flex-shrink-0">
                 {campaign.image_url ? (
                   <img src={campaign.image_url} alt={campaign.name} className="w-full h-full object-cover" />
@@ -160,7 +163,7 @@ export default function HomePage() {
                   <h3 className="font-serif text-xl font-bold text-primary">{campaign.name}</h3>
                   {campaign.slogan && (
                     <p className="text-xs text-primary font-serif font-semibold italic mt-1">
-                      Slogan: {campaign.slogan}
+                      {campaign.slogan}
                     </p>
                   )}
                 </div>
@@ -170,7 +173,10 @@ export default function HomePage() {
                 
                 {/* Progress bar */}
                 {(() => {
-                  const percent = Math.min(100, Math.round((campaign.raised_amount / campaign.target_amount) * 100))
+                  const rawPercent = campaign.target_amount > 0 ? (campaign.raised_amount / campaign.target_amount) * 100 : 0
+                  const percent = rawPercent > 0 && rawPercent < 1 
+                    ? parseFloat(rawPercent.toFixed(2)) 
+                    : Math.min(100, Math.round(rawPercent))
                   return (
                     <div className="space-y-2 pt-2 border-t border-[#e5e1de]/60">
                       <div className="flex justify-between items-end text-[10px] font-semibold text-on-surface-variant/80">
@@ -180,13 +186,13 @@ export default function HomePage() {
                         </span>
                       </div>
                       <div className="w-full h-2 bg-[#eeeeee] rounded-full overflow-hidden">
-                        <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: `${percent}%` }} />
+                        <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: `${campaign.raised_amount > 0 ? Math.max(percent, 1.5) : 0}%` }} />
                       </div>
                     </div>
                   )
                 })()}
               </div>
-            </div>
+            </Link>
           ) : (
             <div className="text-center">
               <p className="font-sans text-xs md:text-sm text-[#5d4037] leading-relaxed max-w-2xl opacity-90 mb-8 px-2 md:px-0">
@@ -219,6 +225,7 @@ export default function HomePage() {
           </Link>
         </div>
       </section>
+
     </div>
   )
 }
