@@ -40,6 +40,7 @@ export interface ReportData {
   chartData: ChartDataPoint[];
   topProducts: TopProduct[];
   charityProjects: CharityProject[];
+  trafficChannels?: { name: string; value: number }[];
 }
 
 export interface StockDepletionForecast {
@@ -93,6 +94,22 @@ export const analyticsService = {
   getForecastData: async (): Promise<ForecastData> => {
     const response = await apiClient.get<ForecastData>('/analytics/forecast')
     return response.data
+  },
+  exportReportsCsv: async (period: '7days' | '30days' | 'year'): Promise<void> => {
+    const response = await apiClient.get('/analytics/reports/export', {
+      params: { period },
+      responseType: 'blob'
+    })
+    
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `bao_cao_tu_tam_phuc_${period}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    
+    link.parentNode?.removeChild(link)
+    window.URL.revokeObjectURL(url)
   }
 }
 

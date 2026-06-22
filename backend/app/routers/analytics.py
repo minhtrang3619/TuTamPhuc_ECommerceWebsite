@@ -228,50 +228,134 @@ def get_reports_analytics(
         })
         
     # 4. Calculate Charity Projects progress values
-    total_charity = active_metrics["charity"]
-    if period == "year":
-        raised_1 = float(round(min(100000000.0, 0.65 * total_charity)))
-        raised_2 = float(round(min(50000000.0, 0.35 * total_charity)))
+    from app.models.charity import CharityCampaign
+    db_campaigns = db.query(CharityCampaign).order_by(CharityCampaign.created_at.desc()).all()
+    charity_projects = []
+    for c in db_campaigns:
+        status_label = "Đang triển khai"
+        if c.status == "completed":
+            status_label = "Đã hoàn thành"
+        elif c.status == "closing":
+            status_label = "Sắp hoàn thành"
+        charity_projects.append({
+            "name": c.name,
+            "raised": float(c.raised_amount),
+            "target": float(c.target_amount),
+            "status": status_label
+        })
         
-        charity_projects = [
-            {
-                "name": "Xây trường tiểu học cao sơn vùng cao Điện Biên",
-                "raised": raised_1,
-                "target": 100000000,
-                "status": "Đã hoàn thành" if raised_1 >= 100000000 else "Sắp hoàn thành" if raised_1 >= 80000000 else "Đang triển khai"
-            },
-            {
-                "name": "Mổ mắt nhân đạo cho người già neo đơn",
-                "raised": raised_2,
-                "target": 50000000,
-                "status": "Đã hoàn thành" if raised_2 >= 50000000 else "Sắp hoàn thành" if raised_2 >= 40000000 else "Đang triển khai"
-            }
-        ]
-    else:
-        raised_1 = float(round(min(10000000.0, 0.7 * total_charity)))
-        raised_2 = float(round(min(5000000.0, 0.3 * total_charity)))
+    if not charity_projects:
+        total_charity = active_metrics["charity"]
+        if period == "year":
+            raised_1 = float(round(min(100000000.0, 0.65 * total_charity)))
+            raised_2 = float(round(min(50000000.0, 0.35 * total_charity)))
+            charity_projects = [
+                {
+                    "name": "Xây trường tiểu học cao sơn vùng cao Điện Biên",
+                    "raised": raised_1,
+                    "target": 100000000,
+                    "status": "Đã hoàn thành" if raised_1 >= 100000000 else "Sắp hoàn thành" if raised_1 >= 80000000 else "Đang triển khai"
+                },
+                {
+                    "name": "Mổ mắt nhân đạo cho người già neo đơn",
+                    "raised": raised_2,
+                    "target": 50000000,
+                    "status": "Đã hoàn thành" if raised_2 >= 50000000 else "Sắp hoàn thành" if raised_2 >= 40000000 else "Đang triển khai"
+                }
+            ]
+        else:
+            raised_1 = float(round(min(10000000.0, 0.7 * total_charity)))
+            raised_2 = float(round(min(5000000.0, 0.3 * total_charity)))
+            charity_projects = [
+                {
+                    "name": "Áo ấm mùa đông cho trẻ em Hà Giang",
+                    "raised": raised_1,
+                    "target": 10000000,
+                    "status": "Đã hoàn thành" if raised_1 >= 10000000 else "Sắp hoàn thành" if raised_1 >= 8000000 else "Đang triển khai"
+                },
+                {
+                    "name": "Trồng rừng phòng hộ miền Trung",
+                    "raised": raised_2,
+                    "target": 5000000,
+                    "status": "Đã hoàn thành" if raised_2 >= 5000000 else "Sắp hoàn thành" if raised_2 >= 4000000 else "Đang triển khai"
+                }
+            ]
         
-        charity_projects = [
-            {
-                "name": "Áo ấm mùa đông cho trẻ em Hà Giang",
-                "raised": raised_1,
-                "target": 10000000,
-                "status": "Đã hoàn thành" if raised_1 >= 10000000 else "Sắp hoàn thành" if raised_1 >= 8000000 else "Đang triển khai"
-            },
-            {
-                "name": "Trồng rừng phòng hộ miền Trung",
-                "raised": raised_2,
-                "target": 5000000,
-                "status": "Đã hoàn thành" if raised_2 >= 5000000 else "Sắp hoàn thành" if raised_2 >= 4000000 else "Đang triển khai"
-            }
-        ]
+    # 5. Calculate Traffic Channels percentages
+    from app.models.traffic import TrafficChannel
+    
+    db_channels = db.query(TrafficChannel).all()
+    total_visits = sum(c.visit_count for c in db_channels)
+    
+    if len(db_channels) == 0:
+        default_channels = ["Facebook", "TikTok", "Zalo", "Google SEO", "Direct"]
+        db_channels = []
+        for name in default_channels:
+            tc = TrafficChannel(channel_name=name, visit_count=0)
+            db.add(tc)
+            db_channels.append(tc)
+        db.commit()
+        total_visits = 0
+
+    traffic_channels_data = []
+    for c in db_channels:
+        percentage = round((c.visit_count / total_visits) * 100) if total_visits > 0 else 0
+        
+        name_display = c.channel_name
+        if c.channel_name == "Facebook":
+            name_display = "Mạng xã hội (Facebook)"
+        elif c.channel_name == "TikTok":
+            name_display = "Mạng xã hội (TikTok)"
+        elif c.channel_name == "Zalo":
+            name_display = "Mạng xã hội (Zalo)"
+        elif c.channel_name == "Google SEO":
+            name_display = "Tìm kiếm tự nhiên (Google SEO)"
+        elif c.channel_name == "Direct":
+            name_display = "Truy cập trực tiếp"
+            
+        traffic_channels_data.append({
+            "name": name_display,
+            "value": percentage
+        })
+        
+    traffic_channels_data.sort(key=lambda x: x["value"], reverse=True)
         
     return {
         "summary": summary,
         "chartData": chart_data,
         "topProducts": top_products_data,
-        "charityProjects": charity_projects
+        "charityProjects": charity_projects,
+        "trafficChannels": traffic_channels_data
     }
+
+
+@router.post("/track-visit")
+def track_visit(
+    channel: str = Query(..., regex="^(facebook|tiktok|zalo|google|direct)$"),
+    db: Session = Depends(get_db)
+):
+    from app.models.traffic import TrafficChannel
+    
+    channel_map = {
+        "facebook": "Facebook",
+        "tiktok": "TikTok",
+        "zalo": "Zalo",
+        "google": "Google SEO",
+        "direct": "Direct"
+    }
+    db_channel_name = channel_map.get(channel, "Direct")
+    
+    # Find or create
+    tc = db.query(TrafficChannel).filter(TrafficChannel.channel_name == db_channel_name).first()
+    if not tc:
+        tc = TrafficChannel(channel_name=db_channel_name, visit_count=0)
+        db.add(tc)
+        db.flush()
+        
+    tc.visit_count += 1
+    db.commit()
+    return {"message": f"Successfully tracked visit for channel: {db_channel_name}", "visit_count": tc.visit_count}
+
 
 @router.get("/notifications")
 def get_user_notifications(
@@ -664,91 +748,164 @@ def get_inventory_analytics(
     db: Session = Depends(get_db),
     _: User = Depends(require_shop_staff_or_admin)
 ):
+    from app.models.product import StockVoucher, StockVoucherItem
+    now = datetime.now(timezone.utc)
+    thirty_days_ago = now - timedelta(days=30)
+
     # 1. Calculate Stats
     # Total stock value: sum(price * stock)
     total_stock_value = db.query(func.sum(Product.price * Product.stock)).scalar() or 0.0
-    
+
+    # --- Stock value change % (so sánh với 30 ngày trước) ---
+    # Tổng giá trị nhập kho trong 30 ngày gần nhất
+    stock_in_30d = db.query(
+        func.sum(StockVoucherItem.quantity * StockVoucherItem.cost_price)
+    ).join(StockVoucher, StockVoucherItem.voucher_id == StockVoucher.id).filter(
+        StockVoucher.created_at >= thirty_days_ago
+    ).scalar() or 0.0
+
+    # Tổng giá trị xuất kho (đơn hàng) trong 30 ngày gần nhất (dùng cost_price)
+    stock_out_30d = db.query(
+        func.sum(OrderItem.quantity * Product.cost_price)
+    ).join(Product, OrderItem.product_id == Product.id).join(
+        Order, OrderItem.order_id == Order.id
+    ).filter(
+        Order.created_at >= thirty_days_ago,
+        Order.status.notin_(["cancelled", "refunded"])
+    ).scalar() or 0.0
+
+    # Ước tính giá trị kho 30 ngày trước = hiện tại - nhập + xuất
+    estimated_prev_value = total_stock_value - stock_in_30d + stock_out_30d
+    if estimated_prev_value > 0:
+        stock_value_change = round(((total_stock_value - estimated_prev_value) / estimated_prev_value) * 100, 1)
+    elif total_stock_value > 0:
+        stock_value_change = 100.0
+    else:
+        stock_value_change = 0.0
+
     # Low stock alerts: count of products with stock <= 5
     low_stock_count = db.query(func.count(Product.id)).filter(Product.stock <= 5).scalar() or 0
-    
+
     # Pending shipments: count of orders in pending, confirmed, or processing state
     pending_shipments = db.query(func.count(Order.id)).filter(
         Order.status.in_([OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PROCESSING])
     ).scalar() or 0
-    
-    # Inventory Accuracy: stable performance metric
-    accuracy = 99.2
+
+    # Inventory Accuracy: dynamically calculated as percentage of active products not in low stock alert
+    total_products_count = db.query(func.count(Product.id)).filter(Product.status == "active").scalar() or 0
+    if total_products_count > 0:
+        accuracy = round(100.0 * (total_products_count - low_stock_count) / total_products_count, 1)
+    else:
+        accuracy = 100.0
     
     # 2. Recent Stock Movements
-    # We query the latest 5 shipped/delivered order items (represents "Xuất")
+    # We query the latest 8 shipped/delivered order items (represents "Xuất")
     recent_shipments = (
         db.query(OrderItem, Order)
         .join(Order, OrderItem.order_id == Order.id)
         .filter(Order.status.in_([OrderStatus.SHIPPED, OrderStatus.DELIVERED]))
         .order_by(Order.updated_at.desc())
-        .limit(5)
+        .limit(8)
         .all()
     )
     
-    movements = []
+    # We query the latest 8 stock voucher items (represents "Nhập")
+    from app.models.product import StockVoucherItem, StockVoucher
+    recent_voucher_items = (
+        db.query(StockVoucherItem, StockVoucher)
+        .join(StockVoucher, StockVoucherItem.voucher_id == StockVoucher.id)
+        .order_by(StockVoucher.created_at.desc())
+        .limit(8)
+        .all()
+    )
+    
+    all_movements = []
+    
     for item, order in recent_shipments:
-        movements.append({
+        all_movements.append({
             "product_name": item.product.name if item.product else (item.product_snapshot.get("name") if item.product_snapshot else "Sản phẩm"),
             "sku": item.product.sku if item.product else "N/A",
             "type": "Xuất",
             "quantity": f"-{item.quantity}",
-            "time": order.updated_at.strftime("%I:%M %p") if order.updated_at else "Gần đây"
+            "datetime": order.updated_at or order.created_at
         })
         
-    # We also query the latest 5 products recently updated in the system (represents "Nhập" if stock was added)
-    recent_products = (
-        db.query(Product)
-        .order_by(Product.updated_at.desc())
-        .limit(5)
-        .all()
-    )
+    for item, voucher in recent_voucher_items:
+        all_movements.append({
+            "product_name": item.product.name if item.product else "Sản phẩm",
+            "sku": item.sku or "N/A",
+            "type": "Nhập",
+            "quantity": f"+{item.quantity}",
+            "datetime": voucher.created_at
+        })
+        
+    # Sort all movements descending by datetime
+    all_movements.sort(key=lambda x: x["datetime"] if x["datetime"] else datetime.min, reverse=True)
     
-    for p in recent_products:
-        if p.stock > 10:
-            movements.append({
-                "product_name": p.name,
-                "sku": p.sku or "N/A",
-                "type": "Nhập",
-                "quantity": f"+{p.stock}",
-                "time": p.updated_at.strftime("%I:%M %p") if p.updated_at else "Gần đây"
-            })
-            
-    # Limit movements count
-    movements = movements[:8]
+    movements = []
+    for m in all_movements[:8]:
+        time_str = m["datetime"].strftime("%d/%m %H:%M") if m["datetime"] else "Gần đây"
+        movements.append({
+            "product_name": m["product_name"],
+            "sku": m["sku"],
+            "type": m["type"],
+            "quantity": m["quantity"],
+            "time": time_str
+        })
     
-    # 3. Lô hàng đang về (Incoming shipments) - dynamically project dates relative to now
+    # 3. Lô hàng đang về (Incoming shipments) - loaded from database and projected
+    from app.models.product import StockVoucher
+    vouchers = db.query(StockVoucher).order_by(StockVoucher.created_at.desc()).all()
+    
+    incoming = []
     now = datetime.now()
-    incoming = [
-        {
-            "id": 1,
-            "name": "Vải Lụa Bảo Lộc",
-            "source": "Lâm Đồng, VN",
-            "status": "Đang vận chuyển",
-            "month": f"Th{now.month}",
-            "day": (now + timedelta(days=2)).day
-        },
-        {
-            "id": 2,
-            "name": "Nhuộm thảo mộc tự nhiên",
-            "source": "Sa Pa, VN",
-            "status": "Chờ lấy hàng",
-            "month": f"Th{now.month}",
-            "day": (now + timedelta(days=6)).day
-        },
-        {
-            "id": 3,
-            "name": "Phụ kiện cúc gỗ thủ công",
-            "source": "Hội An, VN",
-            "status": "Dự kiến",
-            "month": f"Th{now.month}",
-            "day": (now + timedelta(days=12)).day
-        }
-    ]
+    
+    def get_source(supplier_name: str) -> str:
+        s_lower = supplier_name.lower()
+        if "liên hoa" in s_lower:
+            return "Hà Nội, VN"
+        elif "bảo lộc" in s_lower:
+            return "Lâm Đồng, VN"
+        elif "sapa" in s_lower or "sa pa" in s_lower:
+            return "Sa Pa, VN"
+        elif "khai thanh" in s_lower:
+            return "TP. Hồ Chí Minh, VN"
+        return "Việt Nam"
+
+    changed = False
+    for v in vouchers:
+        expected_date = v.expected_delivery_date.replace(tzinfo=None) if v.expected_delivery_date else None
+        created_at_naive = v.created_at.replace(tzinfo=None) if v.created_at else now
+        
+        target_status = v.delivery_status
+        if expected_date and now >= expected_date:
+            target_status = "Đã nhận"
+        elif v.delivery_status != "Đã nhận":
+            time_elapsed = now - created_at_naive
+            if time_elapsed >= timedelta(days=1):
+                target_status = "Đang vận chuyển"
+            else:
+                target_status = "Chờ lấy hàng"
+                
+        if v.delivery_status != target_status:
+            v.delivery_status = target_status
+            changed = True
+            
+    if changed:
+        db.commit()
+
+    for v in vouchers:
+        # We only show incoming shipments that are not yet "Đã nhận"
+        if v.delivery_status != "Đã nhận":
+            delivery_date = v.expected_delivery_date or (v.created_at + timedelta(days=v.delivery_duration_days or 5))
+            incoming.append({
+                "id": v.id,
+                "name": v.supplier,
+                "source": get_source(v.supplier),
+                "status": v.delivery_status or "Chờ lấy hàng",
+                "month": f"Th{delivery_date.month}",
+                "day": delivery_date.day
+            })
     
     # 4. Low stock items (Sản phẩm sắp hết hàng)
     # Real query of products with low stock <= 15
@@ -777,40 +934,12 @@ def get_inventory_analytics(
             "image": primary_image
         })
         
-    # If we have less than 3, pad with mock/default values so the design looks great
-    if len(low_stock_list) < 3:
-        mocks = [
-            {
-                "name": "Khăn Choàng Đũi",
-                "sku": "KC-D-102",
-                "stock": 5,
-                "total_capacity": 50,
-                "percentage": 10,
-                "image": "https://lh3.googleusercontent.com/aida-public/AB6AXuBbXvRTh7tZnaebK9cslbfbMm98wuOpSzXuoDVwy-n1CKLiOC7HPU__nDXEjBwkymS7vZqUNUa44dELErg5rNQ0ncYQ9AEBA0Y5GzNrigex1-tuh8ng8UK4eP5XCYfrRz7HPG7ASeQzJm9F98DXfr7M7X4uvPlbWqx7SMupuAa-68G2ulPDB0tCyfyCaRwJOma5AYyRDYcViwy89E1UqTz9G6AUlDu77SVWUisXU9r605FUxQdQEdaENbUI2mYVkXyHLxqEAFXDjvM9"
-            },
-            {
-                "name": "Áo Tràng Xám Nhạt",
-                "sku": "AT-XN-301",
-                "stock": 8,
-                "total_capacity": 60,
-                "percentage": 13,
-                "image": "https://lh3.googleusercontent.com/aida-public/AB6AXuDWgMEBlrcCgQCBOYNYqM6p2vMBSjL_ebVrNdWy4Ugh4ciegXge_wlNrC2BnJw9RpfVCZ_Kn7ltE8Dc0qS5Ceuo0JsIcxKzuGPz9Xcsd2Sv14xdcijhVexep7Pf0mfKXoJ68tFN6g91zi6bOdB26HmkFq5kkBj6w6LS38ByNoUXHhnrcgmuU2NwI7ED0G1_m_ez6c5Q6L_ggziIvfZ97HGs4z1Bab4Y9l5TghbetwpTQspEkxeGpcxw0ougAt7RI75dGfPudSjq-gdy"
-            },
-            {
-                "name": "Cúc Gỗ Khảm",
-                "sku": "CG-K-88",
-                "stock": 12,
-                "total_capacity": 150,
-                "percentage": 8,
-                "image": "https://lh3.googleusercontent.com/aida-public/AB6AXuCVp8FaJrLUjnvyXETUOrZvHOg4lfSVss5quK0oJRzZ4bRk4l750UeuZFPg76M1SR5tmJkfBVMZRrlWNghR39N8b-nJoJ5128RG3IXg_66CVZ2BfWrzXJoevUnk9atNOyFqPuetUjlMytVTOnuXEj7Ny01KeAeFEtirTRTvIa8w5tfu92dSpo8zKT4uW8IT1pYR_7a4ht0GId1rHMT2mMdF9VoXAmQOQVkg7cdl-qIoTwNkzfcboRg17SwLtmFG6IAKioE8O8Bqf3ON"
-            }
-        ]
-        while len(low_stock_list) < 3:
-            low_stock_list.append(mocks[len(low_stock_list)])
+    # No padding with mock values, only return real low stock products from database
             
     return {
         "stats": {
             "total_stock_value": float(total_stock_value),
+            "stock_value_change": float(stock_value_change),
             "low_stock_count": int(low_stock_count),
             "pending_shipments": int(pending_shipments),
             "accuracy": float(accuracy)
@@ -819,4 +948,78 @@ def get_inventory_analytics(
         "incoming_shipments": incoming,
         "low_stock_items": low_stock_list
     }
+
+
+@router.get("/reports/export")
+def export_reports_csv(
+    period: str = Query("30days", regex="^(7days|30days|year)$"),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_shop_staff_or_admin)
+):
+    from fastapi.responses import StreamingResponse
+    import io
+    import csv
+    
+    data = get_reports_analytics(period=period, db=db, _=_)
+    
+    period_labels = {
+        "7days": "7 ngày qua",
+        "30days": "30 ngày qua",
+        "year": "Năm nay"
+    }
+    period_label = period_labels.get(period, "Báo cáo")
+    current_date = datetime.now().strftime("%d/%m/%Y %H:%M")
+    
+    output = io.StringIO()
+    output.write('\ufeff')
+    writer = csv.writer(output)
+    
+    writer.writerow(["BÁO CÁO KINH DOANH VÀ THIỆN NGUYỆN TỪ TÂM PHỤC"])
+    writer.writerow([f"Khoảng thời gian: {period_label}"])
+    writer.writerow([f"Ngày xuất báo cáo: {current_date}"])
+    writer.writerow([])
+    
+    writer.writerow(["CHỈ SỐ KPI CHỦ CHỐT"])
+    writer.writerow(["Chỉ số", "Giá trị thực", "Thay đổi so với kỳ trước"])
+    
+    s = data["summary"]
+    writer.writerow(["Doanh thu thuần", f"{int(s['revenue'])} VNĐ", f"+{s['revenueChange']}%" if s['revenueChange'] >= 0 else f"{s['revenueChange']}%"])
+    writer.writerow(["Lợi nhuận gộp", f"{int(s['gross_profit'])} VNĐ", f"+{s['gross_profitChange']}%" if s['gross_profitChange'] >= 0 else f"{s['gross_profitChange']}%"])
+    writer.writerow(["Đơn hàng hoàn tất", f"{s['orders']} đơn", f"+{s['ordersChange']}%" if s['ordersChange'] >= 0 else f"{s['ordersChange']}%"])
+    writer.writerow(["Giá trị đơn trung bình (AOV)", f"{int(s['aov'])} VNĐ", f"+{s['aovChange']}%" if s['aovChange'] >= 0 else f"{s['aovChange']}%"])
+    writer.writerow(["Tỷ lệ chuyển đổi", f"{s['conversion']}%", f"+{s['conversionChange']}%" if s['conversionChange'] >= 0 else f"{s['conversionChange']}%"])
+    writer.writerow(["Quỹ Từ Tâm tích lũy", f"{int(s['charity'])} VNĐ", f"+{s['charityChange']}%" if s['charityChange'] >= 0 else f"{s['charityChange']}%"])
+    writer.writerow([])
+    
+    writer.writerow(["XU HƯỚNG DOANH THU"])
+    writer.writerow(["Thời gian", "Doanh thu (VNĐ)"])
+    for point in data["chartData"]:
+        writer.writerow([point["label"], int(point["value"])])
+    writer.writerow([])
+    
+    writer.writerow(["TOP SẢN PHẨM BÁN CHẠY NHẤT"])
+    writer.writerow(["Hạng", "Tên sản phẩm", "Danh mục", "Đã bán (sp)", "Doanh thu (VNĐ)", "Tỷ trọng (%)"])
+    for idx, prod in enumerate(data["topProducts"]):
+        writer.writerow([idx + 1, prod["name"], prod["category"], prod["sales"], int(prod["revenue"]), f"{prod['percentage']}%"])
+    writer.writerow([])
+    
+    writer.writerow(["KÊNH TRUY CẬP PHỔ BIẾN"])
+    writer.writerow(["Kênh truy cập", "Tỷ trọng (%)"])
+    for chan in data.get("trafficChannels", []):
+        writer.writerow([chan["name"], f"{chan['value']}%"])
+    writer.writerow([])
+    
+    writer.writerow(["CHIẾN DỊCH THIỆN NGUYỆN"])
+    writer.writerow(["Tên chiến dịch", "Đã trích (VNĐ)", "Mục tiêu (VNĐ)", "Trạng thái"])
+    for proj in data["charityProjects"]:
+        writer.writerow([proj["name"], int(proj["raised"]), int(proj["target"]), proj["status"]])
+        
+    output.seek(0)
+    
+    safe_filename = f"bao_cao_tu_tam_phuc_{period}.csv"
+    headers = {
+        'Content-Disposition': f'attachment; filename="{safe_filename}"'
+    }
+    return StreamingResponse(io.BytesIO(output.getvalue().encode('utf-8')), media_type="text/csv", headers=headers)
+
 

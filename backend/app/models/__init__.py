@@ -2,7 +2,7 @@
 from app.models.base import BaseModel
 from app.models.user import User, UserRole
 from app.models.category import Category
-from app.models.product import Product, ProductImage, ProductVariant, ProductStatus, StockVoucher, StockVoucherItem
+from app.models.product import Product, ProductImage, ProductVariant, ProductStatus, StockVoucher, StockVoucherItem, AuditVoucher, AuditVoucherItem
 from app.models.order import Order, OrderItem, OrderStatus, PaymentStatus, PaymentMethod
 from app.models.return_request import ReturnRequest, ReturnRequestStatus
 from app.models.cart import Cart, CartItem
@@ -14,12 +14,13 @@ from app.models.address import Address
 from app.models.chat_message import ChatMessage
 from app.models.support_ticket import SupportTicket
 from app.models.charity import CharityCampaign, CharityTransaction
+from app.models.traffic import TrafficChannel
 
 __all__ = [
     "BaseModel",
     "User", "UserRole",
     "Category",
-    "Product", "ProductImage", "ProductVariant", "ProductStatus", "StockVoucher", "StockVoucherItem",
+    "Product", "ProductImage", "ProductVariant", "ProductStatus", "StockVoucher", "StockVoucherItem", "AuditVoucher", "AuditVoucherItem",
     "Order", "OrderItem", "OrderStatus", "PaymentStatus", "PaymentMethod",
     "Cart", "CartItem",
     "WishlistItem",
@@ -32,5 +33,6 @@ __all__ = [
     "SupportTicket",
     "CharityCampaign",
     "CharityTransaction",
+    "TrafficChannel",
 ]
 

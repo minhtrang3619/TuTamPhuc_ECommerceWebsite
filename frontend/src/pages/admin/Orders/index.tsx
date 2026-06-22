@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { 
   Search, 
-  Download,
   MoreVertical,
   ChevronLeft,
   ChevronRight,
@@ -199,12 +198,7 @@ export default function AdminOrders() {
   }
 
 
-  const handleExport = () => {
-    setToastMessage('Đang tạo báo cáo đơn hàng... Báo cáo dạng Excel đã được tải xuống bộ nhớ tạm thành công!')
-    setTimeout(() => {
-      setToastMessage(null)
-    }, 4000)
-  }
+
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
@@ -221,13 +215,6 @@ export default function AdminOrders() {
           <p className="font-caption text-caption text-primary tracking-widest uppercase mb-1 text-xs">Trung tâm xử lý đơn hàng</p>
           <h2 className="font-headline-md text-headline-md text-primary mb-2">Quản lý đơn hàng</h2>
         </div>
-        <button 
-          onClick={handleExport}
-          className="flex items-center justify-center gap-2 px-6 py-3 border border-primary text-primary rounded-sm hover:bg-primary/5 transition-all font-label-md text-label-md text-xs uppercase shrink-0"
-        >
-          <Download size={16} />
-          <span>Xuất báo cáo</span>
-        </button>
       </div>
 
       {/* Tabs and Search Bar */}

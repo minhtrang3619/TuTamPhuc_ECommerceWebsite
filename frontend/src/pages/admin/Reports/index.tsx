@@ -98,10 +98,13 @@ export default function AdminReports() {
   // Calculate max chart value for scaling SVGs
   const maxChartValue = Math.max(...currentData.chartData.map(d => d.value), 1)
 
-  const handleExport = () => {
-    alert(`Đang chuẩn bị dữ liệu xuất báo cáo định dạng Excel cho khoảng thời gian: ${
-      period === '7days' ? '7 ngày qua' : period === '30days' ? '30 ngày qua' : 'Năm nay'
-    }...`)
+  const handleExport = async () => {
+    try {
+      await analyticsService.exportReportsCsv(period)
+    } catch (err) {
+      console.error('Lỗi khi xuất báo cáo:', err)
+      alert('Lỗi khi tải xuống tệp báo cáo. Vui lòng thử lại sau.')
+    }
   }
 
   return (
@@ -389,7 +392,10 @@ export default function AdminReports() {
 
             <div className="space-y-6">
               {currentData.charityProjects.map((project, idx) => {
-                const percent = Math.min(100, Math.round((project.raised / project.target) * 100))
+                const rawPercent = project.target > 0 ? (project.raised / project.target) * 100 : 0
+                const percent = rawPercent > 0 && rawPercent < 1
+                  ? parseFloat(rawPercent.toFixed(2))
+                  : Math.min(100, Math.round(rawPercent))
                 return (
                   <div key={idx} className="space-y-2">
                     <div className="flex justify-between items-start gap-2 text-xs">
@@ -406,7 +412,7 @@ export default function AdminReports() {
                     <div className="h-1.5 bg-[#eeeeee] w-full rounded-full overflow-hidden">
                       <div
                         className="h-full bg-primary transition-all duration-700 rounded-full"
-                        style={{ width: `${percent}%` }}
+                        style={{ width: `${project.raised > 0 ? Math.max(Number(percent), 1.5) : 0}%` }}
                       />
                     </div>
 
@@ -527,11 +533,7 @@ export default function AdminReports() {
               <div className="space-y-3 pt-2">
                 <span className="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant">Kênh truy cập phổ biến</span>
                 <div className="space-y-2">
-                  {[
-                    { name: 'Mạng xã hội (Facebook/Tiktok)', value: 48 },
-                    { name: 'Truy cập trực tiếp (Direct)', value: 28 },
-                    { name: 'Tìm kiếm tự nhiên (Google SEO)', value: 24 }
-                  ].map((chan, idx) => (
+                  {(currentData.trafficChannels || []).map((chan: any, idx: number) => (
                     <div key={idx} className="flex justify-between items-center text-xs">
                       <span className="text-on-surface-variant font-medium">{chan.name}</span>
                       <span className="font-bold text-[#442a22]">{chan.value}%</span>

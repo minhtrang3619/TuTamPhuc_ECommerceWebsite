@@ -83,5 +83,31 @@ export const charityService = {
   createTransaction: async (data: Partial<CharityTransaction>): Promise<CharityTransaction> => {
     const response = await apiClient.post<CharityTransaction>('/charity/transactions', data)
     return response.data
+  },
+  
+  exportTransactionsCsv: async (campaignId: number, campaignName: string): Promise<void> => {
+    const response = await apiClient.get(`/charity/campaigns/${campaignId}/export`, {
+      responseType: 'blob'
+    })
+    
+    const cleanName = campaignName
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/đ/g, 'd')
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/(^_+|_+$)/g, '')
+      
+    const filename = `bao_cao_doi_soat_${cleanName || campaignId}.csv`
+    
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', filename)
+    document.body.appendChild(link)
+    link.click()
+    
+    link.parentNode?.removeChild(link)
+    window.URL.revokeObjectURL(url)
   }
 }

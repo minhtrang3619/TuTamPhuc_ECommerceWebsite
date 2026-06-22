@@ -156,8 +156,15 @@ export default function AdminCharityDetail({ campaign, onBack }: AdminCharityDet
     }
   }
 
-  const handleExport = () => {
-    showToast('Đang kết xuất bảng đối soát giao dịch của dự án thành định dạng Excel/PDF...', 'info')
+  const handleExport = async () => {
+    showToast('Đang kết xuất bảng đối soát giao dịch của dự án thành định dạng CSV/Excel...', 'info')
+    try {
+      await charityService.exportTransactionsCsv(campaign.id, campaign.name)
+      showToast('Xuất báo cáo đối soát thành công!', 'success')
+    } catch (err: any) {
+      console.error(err)
+      showToast('Đã xảy ra lỗi khi xuất báo cáo đối soát.', 'info')
+    }
   }
 
   const handleDisburse = () => {

@@ -1,7 +1,7 @@
 import enum
 from sqlalchemy import (
     Column, String, Text, Integer, Float,
-    Boolean, ForeignKey, Enum, JSON
+    Boolean, ForeignKey, Enum, JSON, DateTime
 )
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
@@ -83,6 +83,10 @@ class StockVoucher(BaseModel):
     total_quantity = Column(Integer, default=0, nullable=False)
     total_value = Column(Float, default=0.0, nullable=False)
 
+    delivery_status = Column(String(100), default="Chờ lấy hàng", nullable=True)
+    expected_delivery_date = Column(DateTime, nullable=True)
+    delivery_duration_days = Column(Integer, nullable=True)
+
     items = relationship("StockVoucherItem", back_populates="voucher", cascade="all, delete-orphan")
 
 
@@ -97,5 +101,32 @@ class StockVoucherItem(BaseModel):
     color = Column(String(100), nullable=True)  # New optional color field
 
     voucher = relationship("StockVoucher", back_populates="items")
+    product = relationship("Product")
+
+
+class AuditVoucher(BaseModel):
+    __tablename__ = "audit_vouchers"
+
+    voucher_code = Column(String(100), unique=True, nullable=False)
+    auditor = Column(String(255), nullable=False)
+    notes = Column(Text, nullable=True)
+    total_discrepancy = Column(Integer, default=0, nullable=False)
+
+    items = relationship("AuditVoucherItem", back_populates="voucher", cascade="all, delete-orphan")
+
+
+class AuditVoucherItem(BaseModel):
+    __tablename__ = "audit_voucher_items"
+
+    voucher_id = Column(Integer, ForeignKey("audit_vouchers.id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    sku = Column(String(100), nullable=False)
+    system_stock = Column(Integer, nullable=False)
+    actual_stock = Column(Integer, nullable=False)
+    discrepancy = Column(Integer, nullable=False)
+    reason = Column(String(255), nullable=True)
+    color = Column(String(100), nullable=True)
+
+    voucher = relationship("AuditVoucher", back_populates="items")
     product = relationship("Product")
 

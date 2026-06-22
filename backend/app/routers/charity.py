@@ -166,3 +166,92 @@ def create_transaction(
     db.commit()
     db.refresh(db_tx)
     return db_tx
+
+
+@router.get("/campaigns/{campaign_id}/export")
+def export_campaign_transactions_csv(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_super_admin)
+):
+    from fastapi.responses import StreamingResponse
+    import io
+    import csv
+    from datetime import datetime
+
+    # Get campaign details
+    campaign = db.query(CharityCampaign).filter(CharityCampaign.id == campaign_id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Không tìm thấy chiến dịch")
+
+    # Get all transactions for the campaign, sorted by created_at desc
+    transactions = db.query(CharityTransaction).filter(
+        CharityTransaction.campaign_id == campaign_id
+    ).order_by(CharityTransaction.created_at.desc()).all()
+
+    current_date = datetime.now().strftime("%d/%m/%Y %H:%M")
+    status_mapping = {
+        "active": "Đang thực hiện",
+        "closing": "Sắp hoàn thành",
+        "completed": "Đã hoàn thành"
+    }
+    status_label = status_mapping.get(campaign.status, campaign.status)
+
+    output = io.StringIO()
+    output.write('\ufeff')  # Write UTF-8 BOM for Vietnamese character encoding in Excel
+    writer = csv.writer(output)
+
+    writer.writerow([f"BÁO CÁO CHI TIẾT CHIẾN DỊCH THIỆN NGUYỆN: {campaign.name.upper()}"])
+    writer.writerow([f"Slogan: {campaign.slogan or 'N/A'}"])
+    writer.writerow([f"Mục tiêu: {int(campaign.target_amount):,} VNĐ".replace(",", ".")])
+    writer.writerow([f"Đã trích quỹ: {int(campaign.raised_amount):,} VNĐ".replace(",", ".")])
+    writer.writerow([f"Trạng thái: {status_label}"])
+    writer.writerow([f"Địa chỉ mái ấm: {campaign.address or 'N/A'}"])
+    writer.writerow([f"Ngày xuất báo cáo: {current_date}"])
+    writer.writerow([])
+
+    writer.writerow([
+        "Mã giao dịch",
+        "Đối tượng / Mã",
+        "Ngày thực hiện",
+        "Loại giao dịch",
+        "Mã đơn hàng",
+        "Giá trị đơn hàng (VNĐ)",
+        "Số tiền trích/chi quỹ (VNĐ)",
+        "Mô tả"
+    ])
+
+    for tx in transactions:
+        is_donation = tx.transaction_type == "donation"
+        date_formatted = tx.created_at.strftime("%d/%m/%Y %H:%M:%S") if tx.created_at else "N/A"
+        
+        # Calculate estimated order value for donation (amount / 0.05)
+        estimated_order_value = int(round(tx.amount / 0.05)) if is_donation else 0
+        order_value_str = f"{estimated_order_value:,}".replace(",", ".") if is_donation else "N/A"
+        
+        type_label = "Đóng góp (Trích 5% đơn hàng)" if is_donation else "Chi phí / Giải ngân quỹ"
+        
+        # format amount with + or - prefix
+        prefix = "+" if is_donation else "-"
+        amount_abs = abs(tx.amount)
+        amount_str = f"{prefix} {int(round(amount_abs)):,}".replace(",", ".")
+        
+        writer.writerow([
+            tx.id,
+            tx.donor_recipient,
+            date_formatted,
+            type_label,
+            tx.order_code or "N/A",
+            order_value_str,
+            amount_str,
+            tx.description or "N/A"
+        ])
+
+    output.seek(0)
+    
+    safe_filename = f"bao_cao_doi_soat_chien_dich_{campaign_id}.csv"
+    headers = {
+        'Content-Disposition': f'attachment; filename="{safe_filename}"'
+    }
+    return StreamingResponse(io.BytesIO(output.getvalue().encode('utf-8')), media_type="text/csv", headers=headers)
+
