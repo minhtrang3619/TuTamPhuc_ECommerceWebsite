@@ -186,6 +186,7 @@ export default function AdminInventory() {
   const [selectedAuditId, setSelectedAuditId] = useState<number | null>(null)
   const [selectedAuditDetail, setSelectedAuditDetail] = useState<any | null>(null)
   const [auditDetailLoading, setAuditDetailLoading] = useState(false)
+  const [selectedStockVoucherId, setSelectedStockVoucherId] = useState<number | null>(null)
 
   const generateAuditCode = (vouchersList: any[]) => {
     const today = getLocalDateString()
@@ -402,11 +403,13 @@ export default function AdminInventory() {
 
   const handleImportFromStockVoucher = async (voucherId: number) => {
     if (!voucherId) return
+    setSelectedStockVoucherId(voucherId)
     setLoading(true)
     setError(null)
     try {
       const res = await apiClient.get(`/products/stock-vouchers/${voucherId}`)
       const voucherDetail = res.data
+      setAuditCode(voucherDetail.voucher_code)
       
       const newAuditItems: any[] = []
       
@@ -550,9 +553,10 @@ export default function AdminInventory() {
     try {
       const payload = {
         voucher_code: auditCode,
-        auditor: "Minh Tâm",
+        auditor: "Nhân viên cửa hàng",
         notes: auditNotes,
-        items: itemsToProcess
+        items: itemsToProcess,
+        stock_voucher_id: selectedStockVoucherId
       }
 
       await apiClient.post('/products/audit-stock', payload)
@@ -561,6 +565,7 @@ export default function AdminInventory() {
       
       setAuditItems([])
       setAuditNotes('')
+      setSelectedStockVoucherId(null)
       fetchAuditVouchers()
       fetchAnalytics()
       fetchAllProductsForDropdown()
@@ -840,7 +845,7 @@ export default function AdminInventory() {
       const payload = {
         voucher_code: voucherCode,
         supplier: supplierName,
-        recipient: "Minh Tâm",
+        recipient: "Nhân viên cửa hàng",
         notes: compiledNotes,
         items: itemsToProcess,
         delivery_status: "Chờ lấy hàng",
@@ -852,7 +857,7 @@ export default function AdminInventory() {
       const completedVoucher = {
         voucherCode,
         supplierName,
-        recipient: "Minh Tâm",
+        recipient: "Nhân viên cửa hàng",
         totalQuantity,
         totalValue,
         items: itemsToProcess,
@@ -1681,6 +1686,7 @@ export default function AdminInventory() {
                       <th className="px-6 py-4">Số Lượng</th>
                       <th className="px-6 py-4">Tổng Giá Trị</th>
                       <th className="px-6 py-4">Trạng Thái Nhận Hàng</th>
+                      <th className="px-6 py-4">Kiểm kê</th>
                       <th className="px-6 py-4 text-right">Thao Tác</th>
                     </tr>
                   </thead>
@@ -1722,6 +1728,22 @@ export default function AdminInventory() {
                               </span>
                             )}
                           </td>
+                          <td className="px-6 py-4">
+                            {v.audit_voucher_code ? (
+                              <button
+                                onClick={() => {
+                                  setActiveTab('audit')
+                                  handleOpenAuditDetail(v.audit_voucher_id)
+                                }}
+                                className="px-2 py-1 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[10px] font-bold border border-emerald-100 cursor-pointer flex items-center gap-1 inline-flex"
+                              >
+                                <Check size={10} />
+                                {v.audit_voucher_code}
+                              </button>
+                            ) : (
+                              <span className="text-[10px] text-on-surface-variant italic opacity-60">Chưa kiểm</span>
+                            )}
+                          </td>
                           <td className="px-6 py-4 text-right">
                             <button
                               onClick={() => handleOpenVoucherDetail(v.id)}
@@ -1751,18 +1773,35 @@ export default function AdminInventory() {
                 <h1 className="font-serif font-bold text-2xl text-primary tracking-tight">Tạo Phiếu Kiểm Kê Kho Hàng</h1>
                 <div className="flex flex-wrap gap-6 items-center text-xs">
                   <div className="flex flex-col">
-                    <span className="font-caption text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Mã phiếu</span>
+                    <span className="font-caption text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Chọn phiếu nhập kho</span>
+                    <select
+                      value={selectedStockVoucherId || ""}
+                      onChange={(e) => handleImportFromStockVoucher(Number(e.target.value))}
+                      className="px-3 py-1.5 bg-white border border-outline-variant/30 rounded-lg text-xs font-bold text-primary focus:border-primary focus:ring-0 cursor-pointer w-56"
+                    >
+                      <option value="" disabled>-- Chọn phiếu nhập đã nhận --</option>
+                      {stockVouchers.filter(v => v.delivery_status === 'Đã nhận').map(v => (
+                        <option key={v.id} value={v.id}>
+                          {v.voucher_code} ({v.supplier})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="w-px h-8 bg-outline-variant/30"></div>
+                  <div className="flex flex-col">
+                    <span className="font-caption text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Mã phiếu kiểm kê</span>
                     <input 
                       type="text" 
                       value={auditCode} 
                       onChange={(e) => setAuditCode(e.target.value)} 
-                      className="font-mono text-xs text-primary font-bold bg-transparent border-0 border-b border-outline-variant/30 focus:border-primary p-0.5 focus:ring-0 w-44" 
+                      disabled={!!selectedStockVoucherId}
+                      className="font-mono text-xs text-primary font-bold bg-transparent border-0 border-b border-outline-variant/30 focus:border-primary p-0.5 focus:ring-0 w-44 disabled:opacity-70" 
                     />
                   </div>
                   <div className="w-px h-8 bg-outline-variant/30"></div>
                   <div className="flex flex-col">
                     <span className="font-caption text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Người kiểm kê</span>
-                    <span className="font-bold text-on-surface">Minh Tâm</span>
+                    <span className="font-bold text-on-surface">Nhân viên cửa hàng</span>
                   </div>
                   <div className="w-px h-8 bg-outline-variant/30"></div>
                   <div className="flex items-center gap-2 bg-[#442a22]/5 px-3 py-1 rounded-full border border-[#442a22]/15">
@@ -2044,6 +2083,7 @@ export default function AdminInventory() {
                       onClick={() => {
                         setAuditItems([])
                         setShowCreateAudit(false)
+                        setSelectedStockVoucherId(null)
                       }}
                       className="px-8 py-3 border border-primary text-primary font-bold hover:bg-secondary-container/20 transition-all duration-300 rounded-lg cursor-pointer bg-transparent text-xs uppercase tracking-wider"
                     >
@@ -2063,16 +2103,6 @@ export default function AdminInventory() {
                         )}
                         {loading ? 'Đang lưu...' : 'Lưu & Chốt sổ kiểm kê'}
                       </button>
-                      <select
-                        onChange={(e) => handleImportFromStockVoucher(Number(e.target.value))}
-                        className="px-3 py-3 bg-white border border-outline-variant rounded-lg text-xs cursor-pointer"
-                        defaultValue=""
-                      >
-                        <option value="" disabled>Nhập từ phiếu kho</option>
-                        {stockVouchers.map(v => (
-                          <option key={v.id} value={v.id}>{v.voucher_code}</option>
-                        ))}
-                      </select>
                     </div>
                   </div>
                 </div>
@@ -2281,7 +2311,7 @@ export default function AdminInventory() {
                   </div>
                   <div className="space-y-1">
                     <p className="text-on-surface-variant font-medium">Nhân Viên Tiếp Nhận</p>
-                    <p className="font-bold text-primary text-sm">{selectedVoucherDetail.recipient || 'Minh Tâm'}</p>
+                    <p className="font-bold text-primary text-sm">{selectedVoucherDetail.recipient || 'Nhân viên cửa hàng'}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-on-surface-variant font-medium">Trạng Thái Nhận Hàng</p>
@@ -2323,6 +2353,29 @@ export default function AdminInventory() {
                     <div className="col-span-full space-y-1 pt-2 border-t border-outline-variant/20">
                       <p className="text-on-surface-variant font-medium">Ghi Chú</p>
                       <p className="font-normal text-primary italic">{selectedVoucherDetail.notes}</p>
+                    </div>
+                  )}
+                  {selectedVoucherDetail.audit && (
+                    <div className="col-span-full bg-emerald-50/50 border border-emerald-100 p-4 rounded-xl flex items-center justify-between gap-4 mt-2">
+                      <div className="space-y-1 text-left">
+                        <p className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+                          <CheckCircle2 size={14} />
+                          Lô hàng đã được kiểm kê
+                        </p>
+                        <p className="text-[11px] text-emerald-700">
+                          Thực hiện bởi <strong>{selectedVoucherDetail.audit.auditor}</strong> vào ngày {new Date(selectedVoucherDetail.audit.created_at).toLocaleDateString('vi-VN')}. Tổng chênh lệch: <strong className={selectedVoucherDetail.audit.total_discrepancy !== 0 ? 'text-red-600' : 'text-emerald-700'}>{selectedVoucherDetail.audit.total_discrepancy > 0 ? `+${selectedVoucherDetail.audit.total_discrepancy}` : selectedVoucherDetail.audit.total_discrepancy} chiếc</strong>.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setSelectedVoucherDetail(null)
+                          setActiveTab('audit')
+                          handleOpenAuditDetail(selectedVoucherDetail.audit.id)
+                        }}
+                        className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold transition-all border-none cursor-pointer flex items-center gap-1"
+                      >
+                        Xem phiếu kiểm kê
+                      </button>
                     </div>
                   )}
                 </div>
@@ -2438,7 +2491,7 @@ export default function AdminInventory() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-surface-container-low p-5 rounded-xl border border-outline-variant/30 text-xs">
                   <div className="space-y-1">
                     <p className="text-on-surface-variant font-medium">Nhân Viên Kiểm Kê</p>
-                    <p className="font-bold text-primary text-sm">{selectedAuditDetail.auditor || 'Minh Tâm'}</p>
+                    <p className="font-bold text-primary text-sm">{selectedAuditDetail.auditor || 'Nhân viên cửa hàng'}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-on-surface-variant font-medium">Ngày Kiểm Kê</p>
@@ -2454,6 +2507,12 @@ export default function AdminInventory() {
                       {selectedAuditDetail.total_discrepancy > 0 ? `+${selectedAuditDetail.total_discrepancy}` : selectedAuditDetail.total_discrepancy} chiếc
                     </p>
                   </div>
+                  {selectedAuditDetail.stock_voucher_code && (
+                    <div className="space-y-1">
+                      <p className="text-on-surface-variant font-medium">Phiếu nhập liên kết</p>
+                      <p className="font-bold text-primary font-mono">{selectedAuditDetail.stock_voucher_code}</p>
+                    </div>
+                  )}
                   {selectedAuditDetail.notes && (
                     <div className="col-span-full space-y-1 pt-2 border-t border-outline-variant/20">
                       <p className="text-on-surface-variant font-medium">Ghi Chú</p>

@@ -44,9 +44,13 @@ def list_stock_vouchers(
     db: Session = Depends(get_db),
     _: User = Depends(require_shop_staff_or_admin)
 ):
-    from app.models.product import StockVoucher
+    from app.models.product import StockVoucher, AuditVoucher
     from datetime import datetime, timedelta
     vouchers = db.query(StockVoucher).order_by(StockVoucher.created_at.desc()).all()
+    
+    # Query audits to map them
+    audits = db.query(AuditVoucher).filter(AuditVoucher.stock_voucher_id.isnot(None)).all()
+    audit_map = {a.stock_voucher_id: a for a in audits}
     
     results = []
     now = datetime.now()
@@ -73,6 +77,7 @@ def list_stock_vouchers(
         db.commit()
             
     for v in vouchers:
+        audit = audit_map.get(v.id)
         results.append({
             "id": v.id,
             "voucher_code": v.voucher_code,
@@ -83,7 +88,9 @@ def list_stock_vouchers(
             "created_at": v.created_at,
             "delivery_duration_days": v.delivery_duration_days,
             "expected_delivery_date": v.expected_delivery_date,
-            "delivery_status": v.delivery_status
+            "delivery_status": v.delivery_status,
+            "audit_voucher_id": audit.id if audit else None,
+            "audit_voucher_code": audit.voucher_code if audit else None
         })
     return results
 
@@ -94,12 +101,24 @@ def get_stock_voucher_detail(
     db: Session = Depends(get_db),
     _: User = Depends(require_shop_staff_or_admin)
 ):
-    from app.models.product import StockVoucher, Product
+    from app.models.product import StockVoucher, Product, AuditVoucher
     from datetime import datetime, timedelta
     
     voucher = db.query(StockVoucher).filter(StockVoucher.id == voucher_id).first()
     if not voucher:
         raise HTTPException(status_code=404, detail="Không tìm thấy phiếu nhập kho")
+        
+    audit = db.query(AuditVoucher).filter(AuditVoucher.stock_voucher_id == voucher_id).first()
+    audit_data = None
+    if audit:
+        audit_data = {
+            "id": audit.id,
+            "voucher_code": audit.voucher_code,
+            "auditor": audit.auditor,
+            "notes": audit.notes,
+            "total_discrepancy": audit.total_discrepancy,
+            "created_at": audit.created_at
+        }
         
     now = datetime.now()
     expected_date = voucher.expected_delivery_date.replace(tzinfo=None) if voucher.expected_delivery_date else None
@@ -150,7 +169,8 @@ def get_stock_voucher_detail(
         "delivery_duration_days": voucher.delivery_duration_days,
         "expected_delivery_date": voucher.expected_delivery_date,
         "delivery_status": voucher.delivery_status,
-        "items": items_list
+        "items": items_list,
+        "audit": audit_data
     }
 
 
@@ -177,6 +197,174 @@ def update_voucher_status(
         
     db.commit()
     return {"message": "Cập nhật trạng thái thành công", "status": voucher.delivery_status}
+
+
+class AuditReceiptItem(PydanticBaseModel):
+    sku: str
+    system_stock: int
+    actual_stock: int
+    discrepancy: int
+    reason: Optional[str] = None
+    color: Optional[str] = None
+
+class StockAuditCreate(PydanticBaseModel):
+    voucher_code: str
+    auditor: str
+    notes: Optional[str] = None
+    items: List[AuditReceiptItem]
+    stock_voucher_id: Optional[int] = None
+
+@router.get("/audit-vouchers")
+def list_audit_vouchers(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_shop_staff_or_admin)
+):
+    from app.models.product import AuditVoucher
+    vouchers = db.query(AuditVoucher).order_by(AuditVoucher.created_at.desc()).all()
+    results = []
+    for v in vouchers:
+        results.append({
+            "id": v.id,
+            "voucher_code": v.voucher_code,
+            "auditor": v.auditor,
+            "notes": v.notes,
+            "total_discrepancy": v.total_discrepancy,
+            "created_at": v.created_at,
+            "stock_voucher_id": v.stock_voucher_id,
+            "stock_voucher_code": v.stock_voucher.voucher_code if v.stock_voucher else None
+        })
+    return results
+
+@router.get("/audit-vouchers/{voucher_id}")
+def get_audit_voucher_detail(
+    voucher_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_shop_staff_or_admin)
+):
+    from app.models.product import AuditVoucher, Product
+    voucher = db.query(AuditVoucher).filter(AuditVoucher.id == voucher_id).first()
+    if not voucher:
+        raise HTTPException(status_code=404, detail="Không tìm thấy phiếu kiểm kê")
+        
+    items_list = []
+    for item in voucher.items:
+        product = db.query(Product).filter(Product.id == item.product_id).first()
+        image_url = ""
+        if product and product.images:
+            primary = next((img.url for img in product.images if img.is_primary), product.images[0].url)
+            image_url = primary
+            
+        items_list.append({
+            "id": item.id,
+            "product_id": item.product_id,
+            "product_name": product.name if product else "Sản phẩm đã bị xóa",
+            "product_image": image_url,
+            "sku": item.sku,
+            "system_stock": item.system_stock,
+            "actual_stock": item.actual_stock,
+            "discrepancy": item.discrepancy,
+            "reason": item.reason,
+            "color": item.color,
+        })
+        
+    return {
+        "id": voucher.id,
+        "voucher_code": voucher.voucher_code,
+        "auditor": voucher.auditor,
+        "notes": voucher.notes,
+        "total_discrepancy": voucher.total_discrepancy,
+        "created_at": voucher.created_at,
+        "stock_voucher_id": voucher.stock_voucher_id,
+        "stock_voucher_code": voucher.stock_voucher.voucher_code if voucher.stock_voucher else None,
+        "items": items_list
+    }
+
+@router.post("/audit-stock")
+def audit_stock(
+    data: StockAuditCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_shop_staff_or_admin_write),
+):
+    from app.models.product import Product, ProductVariant, AuditVoucher, AuditVoucherItem
+    import logging
+
+    existing = db.query(AuditVoucher).filter(AuditVoucher.voucher_code == data.voucher_code.strip()).first()
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Mã phiếu kiểm kê '{data.voucher_code}' đã tồn tại trong hệ thống."
+        )
+
+    voucher = AuditVoucher(
+        voucher_code=data.voucher_code.strip(),
+        auditor=data.auditor.strip(),
+        notes=data.notes.strip() if data.notes else None,
+        total_discrepancy=0,
+        stock_voucher_id=data.stock_voucher_id
+    )
+    db.add(voucher)
+    db.flush()
+
+    total_disc = 0
+
+    for item in data.items:
+        product = db.query(Product).filter(Product.sku == item.sku.strip()).first()
+        if not product:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Sản phẩm có SKU '{item.sku}' không tồn tại trong hệ thống"
+            )
+
+        discrepancy = item.actual_stock - item.system_stock
+        product.stock = max(0, product.stock + discrepancy)
+
+        if item.color:
+            color_val = None
+            size_val = None
+            if " - Size " in item.color:
+                parts = item.color.split(" - Size ")
+                color_val = parts[0].strip()
+                size_val = parts[1].strip()
+            elif item.color.startswith("Size "):
+                size_val = item.color.replace("Size ", "").strip()
+            else:
+                color_val = item.color.strip()
+
+            if color_val:
+                cv = db.query(ProductVariant).filter(
+                    ProductVariant.product_id == product.id,
+                    ProductVariant.name.in_(["Màu", "Color"]),
+                    ProductVariant.value == color_val
+                ).first()
+                if cv:
+                    cv.stock = max(0, (cv.stock or 0) + discrepancy)
+
+            if size_val:
+                sv = db.query(ProductVariant).filter(
+                    ProductVariant.product_id == product.id,
+                    ProductVariant.name.in_(["Kích cỡ", "Size"]),
+                    ProductVariant.value == size_val
+                ).first()
+                if sv:
+                    sv.stock = max(0, (sv.stock or 0) + discrepancy)
+
+        audit_item = AuditVoucherItem(
+            voucher_id=voucher.id,
+            product_id=product.id,
+            sku=item.sku.strip(),
+            system_stock=item.system_stock,
+            actual_stock=item.actual_stock,
+            discrepancy=discrepancy,
+            reason=item.reason.strip() if item.reason else None,
+            color=item.color if item.color else None
+        )
+        db.add(audit_item)
+        total_disc += abs(discrepancy)
+
+    voucher.total_discrepancy = total_disc
+    db.commit()
+
+    return {"message": "Kiểm kê kho hàng thành công", "voucher_id": voucher.id}
 
 
 @router.get("/{slug}", response_model=ProductResponse)
@@ -434,166 +622,7 @@ def receive_stock(
     return {"message": "Nhập kho và cập nhật giá vốn trung bình thành công", "voucher_id": voucher.id}
 
 
-class AuditReceiptItem(PydanticBaseModel):
-    sku: str
-    system_stock: int
-    actual_stock: int
-    discrepancy: int
-    reason: Optional[str] = None
-    color: Optional[str] = None
 
-class StockAuditCreate(PydanticBaseModel):
-    voucher_code: str
-    auditor: str
-    notes: Optional[str] = None
-    items: List[AuditReceiptItem]
-
-@router.get("/audit-vouchers")
-def list_audit_vouchers(
-    db: Session = Depends(get_db),
-    _: User = Depends(require_shop_staff_or_admin)
-):
-    from app.models.product import AuditVoucher
-    vouchers = db.query(AuditVoucher).order_by(AuditVoucher.created_at.desc()).all()
-    results = []
-    for v in vouchers:
-        results.append({
-            "id": v.id,
-            "voucher_code": v.voucher_code,
-            "auditor": v.auditor,
-            "notes": v.notes,
-            "total_discrepancy": v.total_discrepancy,
-            "created_at": v.created_at,
-        })
-    return results
-
-@router.get("/audit-vouchers/{voucher_id}")
-def get_audit_voucher_detail(
-    voucher_id: int,
-    db: Session = Depends(get_db),
-    _: User = Depends(require_shop_staff_or_admin)
-):
-    from app.models.product import AuditVoucher, Product
-    voucher = db.query(AuditVoucher).filter(AuditVoucher.id == voucher_id).first()
-    if not voucher:
-        raise HTTPException(status_code=404, detail="Không tìm thấy phiếu kiểm kê")
-        
-    items_list = []
-    for item in voucher.items:
-        product = db.query(Product).filter(Product.id == item.product_id).first()
-        image_url = ""
-        if product and product.images:
-            primary = next((img.url for img in product.images if img.is_primary), product.images[0].url)
-            image_url = primary
-            
-        items_list.append({
-            "id": item.id,
-            "product_id": item.product_id,
-            "product_name": product.name if product else "Sản phẩm đã bị xóa",
-            "product_image": image_url,
-            "sku": item.sku,
-            "system_stock": item.system_stock,
-            "actual_stock": item.actual_stock,
-            "discrepancy": item.discrepancy,
-            "reason": item.reason,
-            "color": item.color,
-        })
-        
-    return {
-        "id": voucher.id,
-        "voucher_code": voucher.voucher_code,
-        "auditor": voucher.auditor,
-        "notes": voucher.notes,
-        "total_discrepancy": voucher.total_discrepancy,
-        "created_at": voucher.created_at,
-        "items": items_list
-    }
-
-@router.post("/audit-stock")
-def audit_stock(
-    data: StockAuditCreate,
-    db: Session = Depends(get_db),
-    _: User = Depends(require_shop_staff_or_admin_write),
-):
-    from app.models.product import Product, ProductVariant, AuditVoucher, AuditVoucherItem
-    import logging
-
-    existing = db.query(AuditVoucher).filter(AuditVoucher.voucher_code == data.voucher_code.strip()).first()
-    if existing:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Mã phiếu kiểm kê '{data.voucher_code}' đã tồn tại trong hệ thống."
-        )
-
-    voucher = AuditVoucher(
-        voucher_code=data.voucher_code.strip(),
-        auditor=data.auditor.strip(),
-        notes=data.notes.strip() if data.notes else None,
-        total_discrepancy=0
-    )
-    db.add(voucher)
-    db.flush()
-
-    total_disc = 0
-
-    for item in data.items:
-        product = db.query(Product).filter(Product.sku == item.sku.strip()).first()
-        if not product:
-            raise HTTPException(
-                status_code=404, 
-                detail=f"Sản phẩm có SKU '{item.sku}' không tồn tại trong hệ thống"
-            )
-
-        discrepancy = item.actual_stock - item.system_stock
-        product.stock = max(0, product.stock + discrepancy)
-
-        if item.color:
-            color_val = None
-            size_val = None
-            if " - Size " in item.color:
-                parts = item.color.split(" - Size ")
-                color_val = parts[0].strip()
-                size_val = parts[1].strip()
-            elif item.color.startswith("Size "):
-                size_val = item.color.replace("Size ", "").strip()
-            else:
-                color_val = item.color.strip()
-
-            if color_val:
-                cv = db.query(ProductVariant).filter(
-                    ProductVariant.product_id == product.id,
-                    ProductVariant.name.in_(["Màu", "Color"]),
-                    ProductVariant.value == color_val
-                ).first()
-                if cv:
-                    cv.stock = max(0, (cv.stock or 0) + discrepancy)
-
-            if size_val:
-                sv = db.query(ProductVariant).filter(
-                    ProductVariant.product_id == product.id,
-                    ProductVariant.name.in_(["Kích cỡ", "Size"]),
-                    ProductVariant.value == size_val
-                ).first()
-                if sv:
-                    sv.stock = max(0, (sv.stock or 0) + discrepancy)
-
-        audit_item = AuditVoucherItem(
-            voucher_id=voucher.id,
-            product_id=product.id,
-            sku=item.sku.strip(),
-            system_stock=item.system_stock,
-            actual_stock=item.actual_stock,
-            discrepancy=discrepancy,
-            reason=item.reason.strip() if item.reason else None,
-            color=item.color if item.color else None
-        )
-        db.add(audit_item)
-        total_disc += abs(discrepancy)
-
-    voucher.total_discrepancy = total_disc
-    db.commit()
-
-    return {"message": "Kiểm kê kho hàng thành công", "voucher_id": voucher.id}
 
 
 # Moved stock vouchers endpoints to be above wildcard slug endpoint

@@ -111,8 +111,10 @@ class AuditVoucher(BaseModel):
     auditor = Column(String(255), nullable=False)
     notes = Column(Text, nullable=True)
     total_discrepancy = Column(Integer, default=0, nullable=False)
+    stock_voucher_id = Column(Integer, ForeignKey("stock_vouchers.id"), nullable=True)
 
     items = relationship("AuditVoucherItem", back_populates="voucher", cascade="all, delete-orphan")
+    stock_voucher = relationship("StockVoucher")
 
 
 class AuditVoucherItem(BaseModel):
