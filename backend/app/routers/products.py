@@ -199,6 +199,9 @@ def update_voucher_status(
     return {"message": "Cập nhật trạng thái thành công", "status": voucher.delivery_status}
 
 
+from pydantic import BaseModel as PydanticBaseModel
+from typing import List
+
 class AuditReceiptItem(PydanticBaseModel):
     sku: str
     system_stock: int
