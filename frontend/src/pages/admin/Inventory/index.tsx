@@ -18,6 +18,7 @@ import {
 import apiClient from '@/services/apiClient'
 import { getImageUrl } from '@/utils/productMapper'
 import Toast from '@/components/ui/Toast'
+import { useAuthStore } from '@/store'
 
 interface SelectedVariant {
   sku: string
@@ -39,6 +40,7 @@ interface ReceiptVoucherItem {
 }
 
 export default function AdminInventory() {
+  const { user } = useAuthStore()
   const [activeTab, setActiveTab] = useState<'overview' | 'update' | 'audit'>('overview')
   const [showCreateVoucher, setShowCreateVoucher] = useState(false)
 
@@ -187,6 +189,7 @@ export default function AdminInventory() {
   const [selectedAuditDetail, setSelectedAuditDetail] = useState<any | null>(null)
   const [auditDetailLoading, setAuditDetailLoading] = useState(false)
   const [selectedStockVoucherId, setSelectedStockVoucherId] = useState<number | null>(null)
+  const [successAudit, setSuccessAudit] = useState<any>(null)
 
   const generateAuditCode = (vouchersList: any[]) => {
     const today = getLocalDateString()
@@ -551,9 +554,11 @@ export default function AdminInventory() {
     setLoading(true)
     setError(null)
     try {
+      const auditorName = user?.role === 'admin' ? 'Chủ cửa hàng' : (user?.full_name || 'Nhân viên cửa hàng')
+      
       const payload = {
         voucher_code: auditCode,
-        auditor: "Nhân viên cửa hàng",
+        auditor: auditorName,
         notes: auditNotes,
         items: itemsToProcess,
         stock_voucher_id: selectedStockVoucherId
@@ -561,7 +566,25 @@ export default function AdminInventory() {
 
       await apiClient.post('/products/audit-stock', payload)
 
-      alert('Đã chốt sổ phiếu kiểm kê và điều chỉnh số lượng tồn kho thành công!')
+      const flatVariants = auditItems.flatMap((item) => {
+        return item.variants.map((v: any) => ({
+          ...v,
+          productPrice: item.price || 0
+        }))
+      })
+      const totalMatching = flatVariants.filter(v => v.actualStock === v.systemStock).length
+      const totalDiscrepant = flatVariants.filter(v => v.actualStock !== v.systemStock).length
+      const totalValueDiff = flatVariants.reduce((sum, v) => sum + (v.actualStock - v.systemStock) * v.productPrice, 0)
+
+      setSuccessAudit({
+        auditCode,
+        auditor: auditorName,
+        date: new Date().toLocaleDateString('vi-VN') + ' ' + new Date().toLocaleTimeString('vi-VN'),
+        totalMatching,
+        totalDiscrepant,
+        totalValueDiff,
+        totalItems: itemsToProcess.length
+      })
       
       setAuditItems([])
       setAuditNotes('')
@@ -572,7 +595,7 @@ export default function AdminInventory() {
       setShowCreateAudit(false)
     } catch (err: any) {
       console.error(err)
-      alert(err?.response?.data?.detail || 'Lỗi khi xác nhận chốt sổ phiếu kiểm kê.')
+      showToast(err?.response?.data?.detail || 'Lỗi khi xác nhận chốt sổ phiếu kiểm kê.', 'info')
     } finally {
       setLoading(false)
     }
@@ -1801,7 +1824,7 @@ export default function AdminInventory() {
                   <div className="w-px h-8 bg-outline-variant/30"></div>
                   <div className="flex flex-col">
                     <span className="font-caption text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Người kiểm kê</span>
-                    <span className="font-bold text-on-surface">Nhân viên cửa hàng</span>
+                    <span className="font-bold text-on-surface">{user?.role === 'admin' ? 'Chủ cửa hàng' : (user?.full_name || 'Nhân viên cửa hàng')}</span>
                   </div>
                   <div className="w-px h-8 bg-outline-variant/30"></div>
                   <div className="flex items-center gap-2 bg-[#442a22]/5 px-3 py-1 rounded-full border border-[#442a22]/15">
@@ -2251,6 +2274,67 @@ export default function AdminInventory() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Audit Modal */}
+      {successAudit && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+            {/* Header */}
+            <div className="bg-emerald-50 p-6 flex flex-col items-center justify-center border-b border-emerald-100 relative">
+              <button
+                onClick={() => setSuccessAudit(null)}
+                className="absolute top-4 right-4 p-2 text-emerald-700 hover:bg-emerald-100 rounded-full transition-colors cursor-pointer border-none bg-transparent"
+              >
+                <X size={20} />
+              </button>
+              <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle2 size={32} className="text-emerald-600" />
+              </div>
+              <h2 className="text-2xl font-serif font-bold text-emerald-800 text-center">Kiểm Kê Thành Công!</h2>
+              <p className="text-emerald-600 text-sm mt-1">Phiếu kiểm kê đã được chốt sổ và lưu vào hệ thống an toàn.</p>
+            </div>
+
+            {/* Body */}
+            <div className="p-8">
+              <div className="grid grid-cols-2 gap-y-4 gap-x-8 mb-8 text-sm">
+                <div>
+                  <p className="text-on-surface-variant mb-1 font-medium">Mã Phiếu Kiểm Kê</p>
+                  <p className="font-bold text-primary font-mono">{successAudit.auditCode}</p>
+                </div>
+                <div>
+                  <p className="text-on-surface-variant mb-1 font-medium">Thời Gian</p>
+                  <p className="font-bold text-primary">{successAudit.date}</p>
+                </div>
+                <div>
+                  <p className="text-on-surface-variant mb-1 font-medium">Người Kiểm Kê</p>
+                  <p className="font-bold text-primary">{successAudit.auditor}</p>
+                </div>
+                <div>
+                  <p className="text-on-surface-variant mb-1 font-medium">Tổng Dòng Sản Phẩm</p>
+                  <p className="font-bold text-primary">{successAudit.totalItems}</p>
+                </div>
+              </div>
+
+              <div className="bg-surface-container-low rounded-xl p-6 flex flex-col md:flex-row items-center justify-between border border-outline-variant/30 gap-6">
+                <div className="flex flex-col items-center flex-1 md:border-r border-outline-variant/30">
+                  <span className="text-on-surface-variant text-xs uppercase tracking-wider mb-2 font-semibold">Khớp Số Lượng</span>
+                  <span className="text-2xl font-bold text-primary">{successAudit.totalMatching} <span className="text-sm font-normal text-on-surface-variant">dòng</span></span>
+                </div>
+                <div className="flex flex-col items-center flex-1 md:border-r border-outline-variant/30">
+                  <span className="text-on-surface-variant text-xs uppercase tracking-wider mb-2 font-semibold">Sai Lệch</span>
+                  <span className={`text-2xl font-bold ${successAudit.totalDiscrepant > 0 ? 'text-error' : 'text-primary'}`}>{successAudit.totalDiscrepant} <span className="text-sm font-normal text-on-surface-variant">dòng</span></span>
+                </div>
+                <div className="flex flex-col items-center flex-1">
+                  <span className="text-on-surface-variant text-xs uppercase tracking-wider mb-2 font-semibold text-center">Giá Trị Chênh Lệch</span>
+                  <span className={`text-xl font-bold font-mono ${successAudit.totalValueDiff < 0 ? 'text-error' : successAudit.totalValueDiff > 0 ? 'text-emerald-600' : 'text-primary'}`}>
+                    {successAudit.totalValueDiff > 0 ? '+' : ''}{successAudit.totalValueDiff.toLocaleString('vi-VN')} đ
+                  </span>
+                </div>
+              </div>
+            </div>
 
             {/* Footer */}
             <div className="bg-surface-container-lowest p-6 border-t border-outline-variant/20 flex items-center gap-4 justify-end">
@@ -2264,7 +2348,7 @@ export default function AdminInventory() {
                 In Phiếu
               </button>
               <button
-                onClick={() => setSuccessVoucher(null)}
+                onClick={() => setSuccessAudit(null)}
                 className="px-8 py-2.5 bg-primary text-white hover:bg-primary/90 rounded-lg font-bold text-sm transition-colors cursor-pointer border-none shadow-md shadow-primary/20"
               >
                 Hoàn Tất

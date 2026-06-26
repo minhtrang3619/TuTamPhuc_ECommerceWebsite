@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     ADMIN_EMAIL: str = "admin@tutamphuc.vn"
     ADMIN_PASSWORD: str = "Admin@123456"
 
+    # GHN Shipping Config
+    GHN_TOKEN: str = "dca1e03c-8302-11eb-82c3-eb6c9d2c1604"
+    GHN_SHOP_ID: int = 80000
+
     class Config:
         env_file = ".env"
         case_sensitive = True

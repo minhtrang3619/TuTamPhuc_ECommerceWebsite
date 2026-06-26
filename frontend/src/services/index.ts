@@ -8,5 +8,4 @@ export { addressService } from './addressService'
 export { supportService } from './supportService'
 export { reviewService } from './reviewService'
 export { default as apiClient } from './apiClient'
-
-
+export { settingService } from './settingService'

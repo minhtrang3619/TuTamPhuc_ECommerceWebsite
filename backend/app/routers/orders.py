@@ -7,6 +7,7 @@ from app.services.order_service import OrderService
 from app.schemas.order import OrderCreate, OrderResponse, OrderStatusUpdate, PaginatedOrders
 from app.schemas.return_request import ReturnRequestCreate, ReturnRequestResponse, ReturnRequestUpdateStatus
 from app.models.user import User, UserRole
+from app.models.order import PaymentStatus
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
@@ -126,3 +127,16 @@ def update_return_request_status(
         return_id=return_id,
         new_status=data.status
     )
+
+
+@router.post("/code/{code}/pay", response_model=OrderResponse)
+def pay_order(
+    code: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Giả lập cập nhật trạng thái thanh toán thành công cho đơn hàng của khách hàng."""
+    order_service = OrderService(db)
+    order = order_service.get_by_code(code, current_user.id)
+    return order_service.update_status(order_id=order.id, new_payment_status=PaymentStatus.PAID)
+

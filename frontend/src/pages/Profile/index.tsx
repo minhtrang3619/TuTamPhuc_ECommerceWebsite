@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   User as UserIcon,
   ShoppingBag,
@@ -44,84 +44,139 @@ interface Voucher {
   discountValue: number;
   discountType: 'percentage' | 'fixed';
   expiryDate: string;
-  type: 'exclusive' | 'loyalty';
-  status: 'active' | 'used' | 'expired';
+  type: 'exclusive' | 'loyalty' | 'holiday';
+  status: 'active' | 'used' | 'expired' | 'upcoming';
 }
-
-const MOCK_VOUCHERS: Voucher[] = [
-  {
-    id: 'v1',
-    code: 'TUTAMVIP15',
-    title: 'Voucher Độc Quyền Tri Ân Khách Hàng',
-    description: 'Giảm 15% tổng hóa đơn cho mọi đơn hàng từ 500.000đ.',
-    minOrder: 500000,
-    discountValue: 15,
-    discountType: 'percentage',
-    expiryDate: '30/06/2026',
-    type: 'exclusive',
-    status: 'active'
-  },
-  {
-    id: 'v2',
-    code: 'TUTAM50K',
-    title: 'Ưu Đãi Khách Hàng Thân Thiết',
-    description: 'Giảm 50.000đ cho khách hàng có tài khoản thân thiết hạng Vàng trở lên.',
-    minOrder: 300000,
-    discountValue: 50000,
-    discountType: 'fixed',
-    expiryDate: '15/07/2026',
-    type: 'loyalty',
-    status: 'active'
-  },
-  {
-    id: 'v3',
-    code: 'FREESHIPMAX',
-    title: 'Miễn Phí Vận Chuyển Toàn Quốc',
-    description: 'Freeship tối đa 30.000đ cho đơn hàng từ 200.000đ.',
-    minOrder: 200000,
-    discountValue: 30000,
-    discountType: 'fixed',
-    expiryDate: '25/06/2026',
-    type: 'exclusive',
-    status: 'active'
-  },
-  {
-    id: 'v4',
-    code: 'TUTAMDADUNG',
-    title: 'Khuyến Mãi Độc Quyền 10%',
-    description: 'Giảm 10% khi mua các sản phẩm Pháp Phục mới.',
-    minOrder: 400000,
-    discountValue: 10,
-    discountType: 'percentage',
-    expiryDate: '20/05/2026',
-    type: 'exclusive',
-    status: 'used'
-  },
-  {
-    id: 'v5',
-    code: 'TUTAMEXPIRED',
-    title: 'Quà Tặng Tri Ân Thành Viên Thân Thiết',
-    description: 'Giảm giá 100.000đ nhân dịp sinh nhật khách hàng thân thiết.',
-    minOrder: 0,
-    discountValue: 100000,
-    discountType: 'fixed',
-    expiryDate: '10/05/2026',
-    type: 'loyalty',
-    status: 'expired'
-  }
-];
 
 export default function ProfilePage() {
 
   const { user, isAuthenticated, updateUser, logout } = useAuthStore();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { items: wishlistItems, fetchWishlist, removeFromWishlist } = useWishlistStore();
+
+  // DB Orders state
+  const [dbOrders, setDbOrders] = useState<any[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchMyOrders = async () => {
+      if (isAuthenticated) {
+        setLoadingOrders(true);
+        setOrdersError(null);
+        try {
+          const res = await orderService.getMyOrders();
+          setDbOrders(res.items || []);
+        } catch (err: any) {
+          console.error("Lỗi khi tải đơn hàng:", err);
+          setOrdersError(err?.message || "Không thể tải danh sách đơn hàng.");
+        } finally {
+          setLoadingOrders(false);
+        }
+      }
+    };
+    fetchMyOrders();
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (isAuthenticated) {
       fetchWishlist();
     }
   }, [isAuthenticated, fetchWishlist]);
+
+  // Dynamically compute default vouchers based on date and order history
+  const vouchers = useMemo(() => {
+    const Y = new Date().getFullYear();
+    const now = new Date();
+
+    const getHolidayStatus = (startMonth: number, startDay: number, endMonth: number, endDay: number) => {
+      const start = new Date(Y, startMonth - 1, startDay, 0, 0, 0);
+      const end = new Date(Y, endMonth - 1, endDay, 23, 59, 59);
+      if (now < start) return { status: 'upcoming' as const, start, end };
+      if (now > end) return { status: 'expired' as const, start, end };
+      return { status: 'active' as const, start, end };
+    };
+
+    const formatD = (d: Date) => {
+      return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+    };
+
+    const list: Voucher[] = [];
+
+    // 1. First-purchase discount (10%)
+    const hasPurchasedBefore = dbOrders.some(order => order.status !== 'cancelled');
+    const firstPurchaseStatus = hasPurchasedBefore ? 'used' : 'active';
+    list.push({
+      id: 'v_first_buy',
+      code: 'CHAOMUNG10',
+      title: 'Voucher Chào Mừng Thành Viên Mới',
+      description: 'Giảm 10% tổng hóa đơn cho đơn đặt hàng đầu tiên tại Từ Tâm Phục.',
+      discountValue: 10,
+      discountType: 'percentage',
+      expiryDate: 'Không thời hạn',
+      type: 'exclusive',
+      status: firstPurchaseStatus
+    });
+
+    // 2. Tết
+    const tet = getHolidayStatus(1, 1, 2, 15);
+    list.push({
+      id: 'v_tet',
+      code: 'TETANNHIEN10',
+      title: 'Khuyến Mãi Tết Nguyên Đán',
+      description: 'Giảm 10% tổng hóa đơn mừng Xuân Di Lặc đong đầy an nhiên.',
+      discountValue: 10,
+      discountType: 'percentage',
+      expiryDate: formatD(tet.end),
+      type: 'holiday',
+      status: tet.status
+    });
+
+    // 3. Quốc tế Phụ nữ (8/3)
+    const women = getHolidayStatus(3, 1, 3, 15);
+    list.push({
+      id: 'v_women',
+      code: 'WOMEN10',
+      title: 'Khuyến Mãi Quốc Tế Phụ Nữ 8/3',
+      description: 'Giảm 10% tri ân phái đẹp, tôn vinh nét duyên dáng thanh lịch.',
+      discountValue: 10,
+      discountType: 'percentage',
+      expiryDate: formatD(women.end),
+      type: 'holiday',
+      status: women.status
+    });
+
+    // 4. Ngày của Mẹ
+    const mother = getHolidayStatus(5, 1, 5, 15);
+    list.push({
+      id: 'v_mother',
+      code: 'MOTHER10',
+      title: 'Khuyến Mãi Ngày Của Mẹ',
+      description: 'Giảm 10% thay lời tri ân ngọt ngào hướng về đấng sinh thành.',
+      discountValue: 10,
+      discountType: 'percentage',
+      expiryDate: formatD(mother.end),
+      type: 'holiday',
+      status: mother.status
+    });
+
+    // 5. Vu Lan
+    const vulan = getHolidayStatus(8, 1, 8, 31);
+    list.push({
+      id: 'v_vulan',
+      code: 'VULAN10',
+      title: 'Ưu Đãi Đại Lễ Vu Lan Báo Hiếu',
+      description: 'Giảm 10% cùng bạn gieo hạt giống hiếu thảo mùa Vu Lan ấm áp.',
+      discountValue: 10,
+      discountType: 'percentage',
+      expiryDate: formatD(vulan.end),
+      type: 'holiday',
+      status: vulan.status
+    });
+
+    return list;
+  }, [dbOrders]);
 
   const mappedFavorites = useMemo(() => {
     return wishlistItems.map(p => mapApiProductToMockProduct(p));
@@ -138,8 +193,23 @@ export default function ProfilePage() {
     }
   };
 
-  // Selected sub-tab
-  const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'favorites' | 'addresses' | 'offers'>('profile');
+  // Selected sub-tab initialized from URL search param
+  const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'favorites' | 'addresses' | 'offers'>(() => {
+    const tab = searchParams.get('tab');
+    if (tab && ['profile', 'orders', 'favorites', 'addresses', 'offers'].includes(tab)) {
+      return tab as any;
+    }
+    return 'profile';
+  });
+
+  // Sync activeTab when searchParams changes
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && ['profile', 'orders', 'favorites', 'addresses', 'offers'].includes(tab)) {
+      setActiveTab(tab as any);
+    }
+  }, [searchParams]);
+
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   // Product Review states
@@ -256,29 +326,7 @@ export default function ProfilePage() {
     }
   };
 
-  // DB Orders state
-  const [dbOrders, setDbOrders] = useState<any[]>([]);
-  const [loadingOrders, setLoadingOrders] = useState(false);
-  const [ordersError, setOrdersError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchMyOrders = async () => {
-      if (activeTab === 'orders' && isAuthenticated) {
-        setLoadingOrders(true);
-        setOrdersError(null);
-        try {
-          const res = await orderService.getMyOrders();
-          setDbOrders(res.items || []);
-        } catch (err: any) {
-          console.error("Lỗi khi tải đơn hàng:", err);
-          setOrdersError(err?.message || "Không thể tải danh sách đơn hàng.");
-        } finally {
-          setLoadingOrders(false);
-        }
-      }
-    };
-    fetchMyOrders();
-  }, [activeTab, isAuthenticated]);
 
   // Helper mapping for DB statuses
 
@@ -320,7 +368,7 @@ export default function ProfilePage() {
 
   // Voucher / Offer filters
   const [voucherFilter, setVoucherFilter] = useState<'all' | 'used' | 'expired'>('all');
-  const [voucherTypeFilter, setVoucherTypeFilter] = useState<'all_types' | 'exclusive' | 'loyalty'>('all_types');
+  const [voucherTypeFilter, setVoucherTypeFilter] = useState<'all_types' | 'exclusive' | 'holiday'>('all_types');
 
   // Default neutral user avatar SVG data URI (styled in theme's warm brown)
   const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%238a726b'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.03 0-4.43-.82-6.14-2.88C7.55 15.8 9.68 15 12 15s4.45.8 6.14 2.12C16.43 19.18 14.03 20 12 20z'/%3E%3C/svg%3E";
@@ -332,7 +380,7 @@ export default function ProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar || DEFAULT_AVATAR);
 
   // Shipping Address & Google Map states
-  const [shippingAddress, setShippingAddress] = useState(user?.customer?.address || '70 Lê Lợi, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh');
+  const [shippingAddress, setShippingAddress] = useState(user?.customer?.address || '');
   const [mapSearch, setMapSearch] = useState('');
   const [mapZoom, setMapZoom] = useState(15);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
@@ -350,7 +398,7 @@ export default function ProfilePage() {
       setEmail(user.email || 'khachhang@example.com');
       setPhone(user.phone || '0987654321');
       setAvatarUrl(user.avatar || DEFAULT_AVATAR);
-      setShippingAddress(user.customer?.address || '70 Lê Lợi, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh');
+      setShippingAddress(user.customer?.address || '');
     }
   }, [user, isEditingProfile]);
 
@@ -366,14 +414,14 @@ export default function ProfilePage() {
         },
         () => {
           setTimeout(() => {
-            setShippingAddress(user?.customer?.address || '70 Lê Lợi, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh');
+            setShippingAddress(user?.customer?.address || '');
             setIsLoadingLocation(false);
             showToast('Không thể truy cập GPS. Đang sử dụng địa chỉ mặc định.', 'info');
           }, 1000);
         }
       );
     } else {
-      setShippingAddress(user?.customer?.address || '70 Lê Lợi, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh');
+      setShippingAddress(user?.customer?.address || '');
       setIsLoadingLocation(false);
       showToast('Trình duyệt của bạn không hỗ trợ định vị.', 'info');
     }
@@ -396,7 +444,54 @@ export default function ProfilePage() {
       if (isAuthenticated) {
         try {
           const data = await addressService.getAddresses();
-          setAddresses(data);
+          let currentAddresses = [...data];
+          
+          // Auto-sync shipping address from user profile to address book
+          const currentShippingAddr = user?.customer?.address;
+          if (currentShippingAddr) {
+            const addressExists = currentAddresses.some(addr => {
+              const fullAddrStr = [addr.street, addr.ward, addr.district, addr.province]
+                .filter(Boolean)
+                .join(', ');
+              return fullAddrStr.includes(currentShippingAddr) || currentShippingAddr.includes(addr.street);
+            });
+
+            if (!addressExists) {
+              const parts = currentShippingAddr.split(',').map(p => p.trim());
+              let street = currentShippingAddr;
+              let ward = 'Khác';
+              let district = 'Khác';
+              let province = 'Khác';
+              if (parts.length >= 4) {
+                street = parts.slice(0, parts.length - 3).join(', ');
+                ward = parts[parts.length - 3];
+                district = parts[parts.length - 2];
+                province = parts[parts.length - 1];
+              } else if (parts.length === 3) {
+                street = parts[0];
+                district = parts[1];
+                province = parts[2];
+              }
+
+              try {
+                const isDefault = currentAddresses.length === 0;
+                const newAddr = await addressService.createAddress({
+                  name: user?.full_name || 'Khách Hàng',
+                  phone: user?.phone || '0987654321',
+                  province,
+                  district,
+                  ward,
+                  street,
+                  isDefault: isDefault
+                });
+                currentAddresses.push(newAddr);
+              } catch (err) {
+                console.error("Lỗi khi auto-sync địa chỉ vào sổ:", err);
+              }
+            }
+          }
+          
+          setAddresses(currentAddresses);
         } catch (err) {
           console.error("Lỗi khi tải sổ địa chỉ:", err);
           showToast("Không thể tải sổ địa chỉ giao hàng.", "info");
@@ -404,7 +499,7 @@ export default function ProfilePage() {
       }
     };
     fetchAddresses();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user]);
 
   // Toast notification state
   const [toast, setToast] = useState({
@@ -438,6 +533,50 @@ export default function ProfilePage() {
 
       // 2. Update local state
       updateUser(updatedUser);
+
+      // 3. Sync shippingAddress to address book if not empty
+      if (shippingAddress) {
+        const addressExists = addresses.some(addr => {
+          const fullAddrStr = [addr.street, addr.ward, addr.district, addr.province]
+            .filter(Boolean)
+            .join(', ');
+          return fullAddrStr.includes(shippingAddress) || shippingAddress.includes(addr.street);
+        });
+
+        if (!addressExists) {
+          const parts = shippingAddress.split(',').map(p => p.trim());
+          let street = shippingAddress;
+          let ward = 'Khác';
+          let district = 'Khác';
+          let province = 'Khác';
+          if (parts.length >= 4) {
+            street = parts.slice(0, parts.length - 3).join(', ');
+            ward = parts[parts.length - 3];
+            district = parts[parts.length - 2];
+            province = parts[parts.length - 1];
+          } else if (parts.length === 3) {
+            street = parts[0];
+            district = parts[1];
+            province = parts[2];
+          }
+
+          try {
+            const isDefault = addresses.length === 0;
+            const newAddr = await addressService.createAddress({
+              name: fullName,
+              phone: phone,
+              province,
+              district,
+              ward,
+              street,
+              isDefault: isDefault
+            });
+            setAddresses(prev => [...prev, newAddr]);
+          } catch (err) {
+            console.error("Lỗi khi đồng bộ địa chỉ vào sổ:", err);
+          }
+        }
+      }
 
       // Check password fields
       if (newPassword || confirmPassword) {
@@ -553,10 +692,10 @@ export default function ProfilePage() {
   };
 
   // Dynamic filtering of vouchers
-  const filteredVouchers = MOCK_VOUCHERS.filter(voucher => {
+  const filteredVouchers = vouchers.filter(voucher => {
     // 1. Filter by status sub-tab
     if (voucherFilter === 'all') {
-      if (voucher.status !== 'active') return false;
+      if (voucher.status !== 'active' && voucher.status !== 'upcoming') return false;
     } else {
       if (voucher.status !== voucherFilter) return false;
     }
@@ -786,19 +925,34 @@ export default function ProfilePage() {
                             <h3 className="font-serif font-bold text-sm uppercase tracking-wider">Địa chỉ giao hàng hiện tại</h3>
                           </div>
 
-                          <p className="text-sm text-on-surface font-semibold leading-relaxed py-1">
-                            {shippingAddress}
-                          </p>
+                          {shippingAddress ? (
+                            <>
+                              <p className="text-sm text-on-surface font-semibold leading-relaxed py-1">
+                                {shippingAddress}
+                              </p>
 
-                          {/* Map Widget (Read-Only Preview) */}
-                          <div className="border border-[#eeeeee] rounded-xs overflow-hidden h-[180px] bg-[#e5e3df] max-w-2xl">
-                            <iframe
-                              title="Google Map ReadOnly Preview"
-                              src={`https://maps.google.com/maps?q=${encodeURIComponent(shippingAddress)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
-                              className="w-full h-full border-none pointer-events-none"
-                              loading="lazy"
-                            />
-                          </div>
+                              {/* Map Widget (Read-Only Preview) */}
+                              <div className="border border-[#eeeeee] rounded-xs overflow-hidden h-[180px] bg-[#e5e3df] max-w-2xl">
+                                <iframe
+                                  title="Google Map ReadOnly Preview"
+                                  src={`https://maps.google.com/maps?q=${encodeURIComponent(shippingAddress)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                                  className="w-full h-full border-none pointer-events-none"
+                                  loading="lazy"
+                                />
+                              </div>
+                            </>
+                          ) : (
+                            <div className="flex flex-col items-start gap-3 py-4">
+                              <p className="text-sm text-on-surface-variant font-medium">Bạn chưa thiết lập địa chỉ giao hàng.</p>
+                              <button
+                                type="button"
+                                onClick={() => setIsEditingProfile(true)}
+                                className="px-4 py-2 bg-primary text-white text-xs font-semibold uppercase tracking-wider rounded-xs flex items-center gap-1.5 hover:bg-[#2c160e] transition-colors cursor-pointer border-none"
+                              >
+                                <Plus size={14} /> Thêm địa chỉ
+                              </button>
+                            </div>
+                          )}
                         </div>
 
                         {/* Security Details Card */}
@@ -1139,8 +1293,8 @@ export default function ProfilePage() {
                       { key: 'expired', label: 'Hết hạn' }
                     ].map((subTab) => {
                       const count = subTab.key === 'all'
-                        ? MOCK_VOUCHERS.filter(v => v.status === 'active').length
-                        : MOCK_VOUCHERS.filter(v => v.status === subTab.key).length;
+                        ? vouchers.filter(v => v.status === 'active' || v.status === 'upcoming').length
+                        : vouchers.filter(v => v.status === subTab.key).length;
                       const isActive = voucherFilter === subTab.key;
                       return (
                         <button
@@ -1166,8 +1320,8 @@ export default function ProfilePage() {
                   <div className="flex gap-2 mb-6 overflow-x-auto scrollbar-none pb-1">
                     {[
                       { key: 'all_types', label: 'Tất cả loại thẻ' },
-                      { key: 'exclusive', label: 'Khuyến mãi độc quyền' },
-                      { key: 'loyalty', label: 'Khách hàng thân thiết' }
+                      { key: 'exclusive', label: 'Chào mừng thành viên' },
+                      { key: 'holiday', label: 'Dịp Lễ Hội' }
                     ].map((typeFilter) => {
                       const isActive = voucherTypeFilter === typeFilter.key;
                       return (
@@ -1192,15 +1346,19 @@ export default function ProfilePage() {
                       filteredVouchers.map((voucher) => (
                         <div
                           key={voucher.id}
-                          className={`flex border rounded-sm overflow-hidden bg-white relative transition-all ${voucher.status === 'active'
-                              ? 'border-[#d4c3be]/60 shadow-xs hover:shadow-md'
-                              : 'border-[#eeeeee] opacity-65'
+                          className={`flex border rounded-sm overflow-hidden bg-white relative transition-all ${
+                              voucher.status === 'active'
+                                ? 'border-[#d4c3be]/60 shadow-xs hover:shadow-md'
+                                : voucher.status === 'upcoming'
+                                  ? 'border-[#d4c3be]/30 opacity-55 hover:opacity-75 transition-opacity'
+                                  : 'border-[#eeeeee] opacity-45'
                             }`}
                         >
                           {/* Left Ticket Stub */}
-                          <div className={`w-28 flex flex-col items-center justify-center text-white px-3 relative ${voucher.status === 'active'
-                              ? 'bg-gradient-to-br from-primary to-[#503126]'
-                              : 'bg-neutral-400'
+                          <div className={`w-28 flex flex-col items-center justify-center text-white px-3 relative ${
+                              voucher.status === 'active'
+                                ? 'bg-gradient-to-br from-primary to-[#503126]'
+                                : 'bg-neutral-400'
                             }`}>
                             <div className="absolute top-0 bottom-0 left-0 w-1 flex flex-col justify-around py-1">
                               {[...Array(6)].map((_, i) => (
@@ -1225,11 +1383,14 @@ export default function ProfilePage() {
                           <div className="flex-1 p-4 flex flex-col justify-between space-y-2 bg-[#fcfaf7]">
                             <div className="space-y-1">
                               <div className="flex items-center gap-1.5">
-                                <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-xs ${voucher.type === 'exclusive'
-                                    ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-xs ${
+                                    voucher.type === 'exclusive'
+                                      ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                      : voucher.type === 'holiday'
+                                        ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                   }`}>
-                                  {voucher.type === 'exclusive' ? 'Độc quyền' : 'Thân thiết'}
+                                  {voucher.type === 'exclusive' ? 'Chào mừng' : voucher.type === 'holiday' ? 'Lễ hội' : 'Thân thiết'}
                                 </span>
 
                                 {voucher.status === 'used' && (
@@ -1240,6 +1401,11 @@ export default function ProfilePage() {
                                 {voucher.status === 'expired' && (
                                   <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-xs bg-red-100 text-red-500 border border-red-200">
                                     Hết hạn
+                                  </span>
+                                )}
+                                {voucher.status === 'upcoming' && (
+                                  <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-xs bg-blue-50 text-blue-700 border border-blue-200">
+                                    Chưa tới ngày dùng
                                   </span>
                                 )}
                               </div>
@@ -1270,7 +1436,7 @@ export default function ProfilePage() {
                                 </button>
                               ) : (
                                 <span className="text-on-surface-variant/50 font-bold uppercase tracking-wider">
-                                  {voucher.status === 'used' ? 'Đã dùng' : 'Hết hạn'}
+                                  {voucher.status === 'used' ? 'Đã dùng' : voucher.status === 'expired' ? 'Hết hạn' : 'Chưa tới ngày'}
                                 </span>
                               )}
                             </div>
@@ -1677,7 +1843,7 @@ export default function ProfilePage() {
                               Số điện thoại: <span className="font-bold text-on-surface">{addr.phone}</span>
                             </div>
                             <div className="text-xs leading-relaxed text-on-surface-variant">
-                              Địa chỉ: <span className="text-on-surface font-semibold">{addr.street}, {addr.ward}, {addr.district}, {addr.province}</span>
+                              Địa chỉ: <span className="text-on-surface font-semibold">{[addr.street, addr.ward, addr.district, addr.province].filter(p => p && p !== 'Khác').join(', ')}</span>
                             </div>
                           </div>
 
@@ -1715,7 +1881,7 @@ export default function ProfilePage() {
                           <div className="mt-2 border border-[#d4c3be]/40 rounded-xs overflow-hidden h-[180px] bg-[#e5e3df] w-full">
                             <iframe
                               title={`Google Map Address ${addr.id}`}
-                              src={`https://maps.google.com/maps?q=${encodeURIComponent(`${addr.street}, ${addr.ward}, ${addr.district}, ${addr.province}`)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                              src={`https://maps.google.com/maps?q=${encodeURIComponent([addr.street, addr.ward, addr.district, addr.province].filter(p => p && p !== 'Khác').join(', '))}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
                               className="w-full h-full border-none"
                               loading="lazy"
                             />

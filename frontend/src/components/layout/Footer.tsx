@@ -37,14 +37,14 @@ export function Footer({ onOpenAssistant }: FooterProps) {
             Khám Phá Từ Tâm
           </h4>
           <div className="flex flex-col gap-2">
-            <button onClick={() => alert("Chương trình ‘The Art of Wear’ tôn vinh chất liệu tự nhiên thô mộc, hướng tới thiết kế tối giản, trang nhã và an bình.")} className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-300 text-left bg-transparent border-none p-0 cursor-pointer">
-              The Art of Wear
+            <button onClick={() => alert("Chương trình ‘Nghệ thuật Phục trang’ tôn vinh chất liệu tự nhiên thô mộc, hướng tới thiết kế tối giản, trang nhã và an bình.")} className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-300 text-left bg-transparent border-none p-0 cursor-pointer">
+              Nghệ thuật Phục trang
             </button>
             <button onClick={() => alert("Bảo dưỡng vải linen dệt tơ: Giặt bằng tay với nước lạnh xà phòng dịu mát, không vặn xoắn cơ học, treo râm mát.")} className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-300 text-left bg-transparent border-none p-0 cursor-pointer">
-              Fabric Care (Hướng dẫn giặt là)
+              Hướng dẫn giặt là
             </button>
             <button onClick={() => alert("Quy tắc trang phục: Khuyên dùng trang phục lịch sự, che vai và đầu gối khi đến những nơi trang nghiêm như đền, chùa.")} className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-300 text-left bg-transparent border-none p-0 cursor-pointer">
-              Dress Code (Quy tắc trang phục)
+              Quy tắc trang phục
             </button>
           </div>
         </div>
@@ -56,13 +56,13 @@ export function Footer({ onOpenAssistant }: FooterProps) {
           </h4>
           <div className="flex flex-col gap-2">
             <button onClick={onOpenAssistant} className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-300 text-left flex items-start gap-1 bg-transparent border-none p-0 cursor-pointer">
-              <Sparkles size={14} className="text-amber-800 self-center" /> Sizing Guide (AI đo size tự động)
+              <Sparkles size={14} className="text-amber-800 self-center" /> AI đo size tự động
             </button>
             <button onClick={() => alert("Từ Tâm Phục cam kết phát triển bền vững, sử dụng chất liệu thiên nhiên và quy trình sản xuất thân thiện với môi trường.")} className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-300 text-left bg-transparent border-none p-0 cursor-pointer">
-              Sustainability (Phát triển bền vững)
+              Phát triển bền vững
             </button>
             <button onClick={() => alert("Thông tin cá nhân của quý khách được bảo mật an toàn tuyệt đối.")} className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-300 text-left bg-transparent border-none p-0 cursor-pointer">
-              Privacy Policy (Chính sách bảo mật)
+              Chính sách bảo mật
             </button>
           </div>
         </div>

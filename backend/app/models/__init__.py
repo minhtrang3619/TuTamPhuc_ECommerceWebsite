@@ -15,6 +15,7 @@ from app.models.chat_message import ChatMessage
 from app.models.support_ticket import SupportTicket
 from app.models.charity import CharityCampaign, CharityTransaction
 from app.models.traffic import TrafficChannel
+from app.models.setting import Setting
 
 __all__ = [
     "BaseModel",
@@ -34,5 +35,6 @@ __all__ = [
     "CharityCampaign",
     "CharityTransaction",
     "TrafficChannel",
+    "Setting",
 ]
 

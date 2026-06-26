@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Navigation, Map as MapIcon, Truck, Clock } from 'lucide-react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 interface Location {
   lat: number;
@@ -16,7 +18,7 @@ interface Store {
 
 const STORES: Store[] = [
   { name: 'Từ Tâm Phục - Hà Nội', lat: 21.0285, lng: 105.8542, address: 'Số 10 Tràng Tiền, Hoàn Kiếm, Hà Nội' },
-  { name: 'Từ Tâm Phục - TP. Hồ Chí Minh', lat: 10.7769, lng: 106.7009, address: 'Số 88 Đồng Khởi, Quận 1, TP. Hồ Chí Minh' },
+  { name: 'Từ Tâm Phục - TP. Hồ Chí Minh', lat: 10.8485, lng: 106.8068, address: 'Số 1 Lê Văn Việt, Tăng Nhơn Phú, TP. Hồ Chí Minh' },
 ];
 
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -31,30 +33,79 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return parseFloat((R * c).toFixed(1));
 }
 
+// Nominatim Geocoding API helper
+async function fetchCoordinates(address: string): Promise<Location | null> {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'TuTamPhuc_ECommerceWebsite_Agent/1.0'
+      }
+    });
+    if (!res.ok) throw new Error('Nominatim error');
+    const data = await res.json();
+    if (data && data.length > 0) {
+      return {
+        lat: parseFloat(data[0].lat),
+        lng: parseFloat(data[0].lon),
+        address: data[0].display_name
+      };
+    }
+  } catch (e) {
+    console.error('Nominatim Geocoding error:', e);
+  }
+  return null;
+}
+
+// OSRM Routing API helper
+async function fetchOSRMRoute(start: { lat: number, lng: number }, end: { lat: number, lng: number }) {
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('OSRM error');
+    const data = await res.json();
+    if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+      const route = data.routes[0];
+      const distanceKm = parseFloat((route.distance / 1000).toFixed(1)); // route.distance is in meters
+      const coordinates = route.geometry.coordinates.map((coord: [number, number]) => [coord[1], coord[0]] as [number, number]); // Leaflet uses [lat, lng]
+      return {
+        distance: distanceKm,
+        coordinates: coordinates
+      };
+    }
+  } catch (e) {
+    console.error('OSRM Routing error:', e);
+  }
+  return null;
+}
+
 export default function MapDistance({ 
   customerAddress = '', 
-  onAddressResolved 
+  onAddressResolved,
+  overrideShippingFee,
+  visible = true
 }: { 
   customerAddress?: string;
   onAddressResolved?: (distance: number, nearestStore: Store) => void;
+  overrideShippingFee?: number;
+  visible?: boolean;
 }) {
-  const [apiKey] = useState(() => (import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''));
   const [customerLoc, setCustomerLoc] = useState<Location | null>(null);
   const [nearestStore, setNearestStore] = useState<Store>(STORES[0]);
   const [distance, setDistance] = useState<number | null>(null);
+  const [routeCoordinates, setRouteCoordinates] = useState<[number, number][] | null>(null);
   const [isLocating, setIsLocating] = useState(false);
-  const [mapLoaded, setMapLoaded] = useState(false);
-  const [mapError, setMapError] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
   
   const mapRef = useRef<HTMLDivElement>(null);
-  const googleMapInstance = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const routeLayerRef = useRef<L.LayerGroup | null>(null);
 
   // Default coordinate: Ba Dinh, Hanoi
   const defaultLoc: Location = { lat: 21.0360, lng: 105.8340, address: 'Quận Ba Đình, Hà Nội' };
 
-  // Calculate nearest store
-  const updateNearestStore = (lat: number, lng: number) => {
+  // Calculate nearest store fallback
+  const updateNearestStoreFallback = (lat: number, lng: number) => {
     let minD = Infinity;
     let closest = STORES[0];
     STORES.forEach(s => {
@@ -66,6 +117,7 @@ export default function MapDistance({
     });
     setNearestStore(closest);
     setDistance(minD);
+    setRouteCoordinates([[closest.lat, closest.lng], [lat, lng]]);
     if (onAddressResolved) {
       onAddressResolved(minD, closest);
     }
@@ -79,7 +131,7 @@ export default function MapDistance({
     }
     setIsLocating(true);
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const { latitude, longitude } = position.coords;
         const newLoc = { 
           lat: latitude, 
@@ -87,220 +139,266 @@ export default function MapDistance({
           address: 'Vị trí hiện tại của bạn' 
         };
         setCustomerLoc(newLoc);
-        updateNearestStore(latitude, longitude);
+        
+        let minD = Infinity;
+        let closestStore = STORES[0];
+        STORES.forEach(s => {
+          const d = haversineDistance(latitude, longitude, s.lat, s.lng);
+          if (d < minD) {
+            minD = d;
+            closestStore = s;
+          }
+        });
+        setNearestStore(closestStore);
+
+        const routeInfo = await fetchOSRMRoute(closestStore, newLoc);
+        if (routeInfo) {
+          setDistance(routeInfo.distance);
+          setRouteCoordinates(routeInfo.coordinates);
+          if (onAddressResolved) {
+            onAddressResolved(routeInfo.distance, closestStore);
+          }
+        } else {
+          setDistance(minD);
+          setRouteCoordinates([
+            [closestStore.lat, closestStore.lng],
+            [newLoc.lat, newLoc.lng]
+          ]);
+          if (onAddressResolved) {
+            onAddressResolved(minD, closestStore);
+          }
+        }
         setIsLocating(false);
       },
       (error) => {
         console.error('Lỗi định vị:', error);
         setIsLocating(false);
-        // Set fallback
         if (!customerLoc) {
           setCustomerLoc(defaultLoc);
-          updateNearestStore(defaultLoc.lat, defaultLoc.lng);
+          updateNearestStoreFallback(defaultLoc.lat, defaultLoc.lng);
         }
       },
       { enableHighAccuracy: true, timeout: 5000 }
     );
   };
 
-  // Load Google Maps script
+  // Initialize Leaflet map
   useEffect(() => {
-    if (!apiKey) {
-      setMapLoaded(false);
-      // Automatically load local location
-      if (!customerLoc) {
-        setCustomerLoc(defaultLoc);
-        updateNearestStore(defaultLoc.lat, defaultLoc.lng);
-      }
-      return;
-    }
+    if (!mapRef.current) return;
+    
+    const map = L.map(mapRef.current, {
+      zoomControl: true,
+      attributionControl: false
+    }).setView([defaultLoc.lat, defaultLoc.lng], 12);
 
-    const scriptId = 'google-maps-api-script';
-    let script = document.getElementById(scriptId) as HTMLScriptElement;
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+    }).addTo(map);
 
-    const initMap = () => {
-      setMapLoaded(true);
-      if (!customerLoc) {
-        setCustomerLoc(defaultLoc);
-        updateNearestStore(defaultLoc.lat, defaultLoc.lng);
+    mapInstanceRef.current = map;
+    routeLayerRef.current = L.layerGroup().addTo(map);
+    setMapReady(true);
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+        routeLayerRef.current = null;
+        setMapReady(false);
       }
     };
+  }, []);
 
-    if (!script) {
-      script = document.createElement('script');
-      script.id = scriptId;
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-      script.async = true;
-      script.defer = true;
-      script.onload = initMap;
-      script.onerror = () => {
-        setMapError(true);
-        setMapLoaded(false);
-      };
-      document.head.appendChild(script);
-    } else {
-      const win = window as any;
-      if (win.google && win.google.maps) {
-        initMap();
-      }
-    }
-  }, [apiKey]);
-
-  // Render Google Map
+  // Force map to invalidate size and fit bounds when visible changes to true
   useEffect(() => {
-    const win = window as any;
-    if (!mapLoaded || !mapRef.current || !win.google || !customerLoc) return;
-
-    try {
-      const { maps } = win.google;
-      
-      // Clean previous markers
-      markersRef.current.forEach(m => m.setMap(null));
-      markersRef.current = [];
-
-      const mapOptions = {
-        center: { lat: (customerLoc.lat + nearestStore.lat) / 2, lng: (customerLoc.lng + nearestStore.lng) / 2 },
-        zoom: distance && distance < 20 ? 12 : 6,
-        styles: [
-          {
-            "featureType": "all",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#f5f5f5" }]
-          },
-          {
-            "featureType": "all",
-            "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#616161" }]
-          },
-          {
-            "featureType": "poi",
-            "elementType": "labels",
-            "stylers": [{ "visibility": "off" }]
-          },
-          {
-            "featureType": "road",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#ffffff" }]
-          },
-          {
-            "featureType": "water",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#e9e9e9" }]
+    if (visible && mapInstanceRef.current && mapReady) {
+      const timer = setTimeout(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize();
+          if (customerLoc && nearestStore) {
+            const bounds = L.latLngBounds([
+              [nearestStore.lat, nearestStore.lng],
+              [customerLoc.lat, customerLoc.lng]
+            ]);
+            mapInstanceRef.current.fitBounds(bounds, { padding: [40, 40] });
           }
-        ],
-        disableDefaultUI: true,
-        zoomControl: true,
-      };
-
-      const map = new maps.Map(mapRef.current, mapOptions);
-      googleMapInstance.current = map;
-
-      // Customer Marker
-      const customerMarker = new maps.Marker({
-        position: { lat: customerLoc.lat, lng: customerLoc.lng },
-        map,
-        title: 'Vị trí của bạn',
-        icon: {
-          path: maps.SymbolPath.CIRCLE,
-          scale: 8,
-          fillColor: '#5D4037',
-          fillOpacity: 1,
-          strokeColor: '#FFFFFF',
-          strokeWeight: 2,
         }
-      });
-      markersRef.current.push(customerMarker);
-
-      // Store Marker
-      const storeMarker = new maps.Marker({
-        position: { lat: nearestStore.lat, lng: nearestStore.lng },
-        map,
-        title: nearestStore.name,
-        icon: {
-          path: maps.SymbolPath.BACKWARD_CLOSED_ARROW,
-          scale: 6,
-          fillColor: '#A78BFA',
-          fillOpacity: 1,
-          strokeColor: '#FFFFFF',
-          strokeWeight: 2,
-        }
-      });
-      markersRef.current.push(storeMarker);
-
-      // Draw path line
-      new maps.Polyline({
-        path: [
-          { lat: customerLoc.lat, lng: customerLoc.lng },
-          { lat: nearestStore.lat, lng: nearestStore.lng }
-        ],
-        geodesic: true,
-        strokeColor: '#8B5CF6',
-        strokeOpacity: 0.6,
-        strokeWeight: 3,
-        map
-      });
-
-      // Fit bounds to show both
-      const bounds = new maps.LatLngBounds();
-      bounds.extend(customerMarker.getPosition());
-      bounds.extend(storeMarker.getPosition());
-      map.fitBounds(bounds);
-
-    } catch (e) {
-      console.error('Lỗi dựng bản đồ Google:', e);
-      setMapError(true);
+      }, 200);
+      return () => clearTimeout(timer);
     }
-  }, [mapLoaded, customerLoc, nearestStore, distance]);
+  }, [visible, mapReady, customerLoc, nearestStore]);
 
-  // Geocode address when customer enters it
+  // Update map markers and route coordinates
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const routeLayer = routeLayerRef.current;
+    if (!map || !routeLayer || !customerLoc || !mapReady) return;
+
+    // Clear previous content
+    routeLayer.clearLayers();
+
+    // Store custom icon
+    const storeIcon = L.divIcon({
+      className: 'custom-store-pin',
+      html: `
+        <div style="display: flex; flex-direction: column; align-items: center; transform: translate(-50%, -100%);">
+          <div style="background-color: #442a22; color: #ffffff; font-size: 8px; font-weight: bold; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; border: 1.5px solid #ffffff; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.25);">
+            Cửa Hàng
+          </div>
+          <div style="width: 10px; height: 10px; border-radius: 50%; background-color: #442a22; border: 2px solid #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.3); margin-top: 2px;"></div>
+        </div>
+      `,
+      iconSize: [0, 0],
+      iconAnchor: [0, 0]
+    });
+
+    // Customer custom icon
+    const customerIcon = L.divIcon({
+      className: 'custom-customer-pin',
+      html: `
+        <div style="display: flex; flex-direction: column; align-items: center; transform: translate(-50%, -100%);">
+          <div style="background-color: #8b726b; color: #ffffff; font-size: 8px; font-weight: bold; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; border: 1.5px solid #ffffff; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.25);">
+            Bạn
+          </div>
+          <div style="width: 10px; height: 10px; border-radius: 50%; background-color: #8b726b; border: 2px solid #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.3); margin-top: 2px;"></div>
+        </div>
+      `,
+      iconSize: [0, 0],
+      iconAnchor: [0, 0]
+    });
+
+    // Add markers
+    L.marker([nearestStore.lat, nearestStore.lng], { icon: storeIcon }).addTo(routeLayer);
+    L.marker([customerLoc.lat, customerLoc.lng], { icon: customerIcon }).addTo(routeLayer);
+
+    // Draw route line
+    const coords: [number, number][] = routeCoordinates && routeCoordinates.length > 0
+      ? routeCoordinates
+      : [
+          [nearestStore.lat, nearestStore.lng],
+          [customerLoc.lat, customerLoc.lng]
+        ];
+
+    L.polyline(coords, {
+      color: '#8b726b',
+      weight: 3,
+      opacity: 0.8,
+      dashArray: '5, 5'
+    }).addTo(routeLayer);
+
+    // Fit map bounds to show both markers
+    const bounds = L.latLngBounds([
+      [nearestStore.lat, nearestStore.lng],
+      [customerLoc.lat, customerLoc.lng]
+    ]);
+    map.fitBounds(bounds, { padding: [40, 40] });
+  }, [mapReady, customerLoc, nearestStore, routeCoordinates]);
+
+  // Handle address geocoding & routing on address change
   useEffect(() => {
     if (!customerAddress || !customerAddress.trim()) return;
 
-    const delayDebounceFn = setTimeout(() => {
-      // If Google Maps Geocoding is available
-      const win = window as any;
-      if (win.google && win.google.maps) {
-        const geocoder = new win.google.maps.Geocoder();
-        geocoder.geocode({ address: customerAddress }, (results: any, status: any) => {
-          if (status === 'OK' && results && results[0]) {
-            const loc = results[0].geometry.location;
-            const newLoc = {
-              lat: loc.lat(),
-              lng: loc.lng(),
-              address: results[0].formatted_address
-            };
-            setCustomerLoc(newLoc);
-            updateNearestStore(newLoc.lat, newLoc.lng);
-          }
-        });
-      } else {
-        // Fallback geocoding simulator: randomize location offset slightly from Hanoi
-        // to represent distance dynamically on the custom vector map.
+    const delayDebounceFn = setTimeout(async () => {
+      setIsLocating(true);
+      
+      let resolvedLoc = await fetchCoordinates(customerAddress);
+      
+      if (!resolvedLoc) {
+        // Fallback geocoding simulator: randomize location offset based on text hash
         const hash = customerAddress.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        // HCMC check
         const isSouth = /hồ chí minh|sài gòn|hcm|bình dương|đồng nai|vũng tàu|long an|cần thơ/i.test(customerAddress);
         const baseLat = isSouth ? 10.7769 : 21.0285;
         const baseLng = isSouth ? 106.7009 : 105.8542;
         
-        // Add random but stable offset based on text hash
         const offsetLat = ((hash % 100) / 500) * (hash % 2 === 0 ? 1 : -1);
         const offsetLng = (((hash * 13) % 100) / 500) * (hash % 3 === 0 ? 1 : -1);
         
-        const newLoc = {
+        resolvedLoc = {
           lat: baseLat + offsetLat,
           lng: baseLng + offsetLng,
           address: customerAddress
         };
-        setCustomerLoc(newLoc);
-        updateNearestStore(newLoc.lat, newLoc.lng);
       }
+
+      setCustomerLoc(resolvedLoc);
+      
+      // Find nearest store (initial guess)
+      let minD = Infinity;
+      let closestStore = STORES[0];
+      STORES.forEach(s => {
+        const d = haversineDistance(resolvedLoc!.lat, resolvedLoc!.lng, s.lat, s.lng);
+        if (d < minD) {
+          minD = d;
+          closestStore = s;
+        }
+      });
+      setNearestStore(closestStore);
+
+      // Fetch driving route and distance
+      const routeInfo = await fetchOSRMRoute(closestStore, resolvedLoc);
+      if (routeInfo) {
+        setDistance(routeInfo.distance);
+        setRouteCoordinates(routeInfo.coordinates);
+        if (onAddressResolved) {
+          onAddressResolved(routeInfo.distance, closestStore);
+        }
+      } else {
+        setDistance(minD);
+        setRouteCoordinates([
+          [closestStore.lat, closestStore.lng],
+          [resolvedLoc.lat, resolvedLoc.lng]
+        ]);
+        if (onAddressResolved) {
+          onAddressResolved(minD, closestStore);
+        }
+      }
+      setIsLocating(false);
     }, 1200);
 
     return () => clearTimeout(delayDebounceFn);
   }, [customerAddress]);
 
-  // Calculate pricing & delivery info
-  const shippingFee = distance ? Math.min(30000 + Math.floor(distance) * 2000, 150000) : 30000;
+  // Load default on mount
+  useEffect(() => {
+    if (!customerLoc) {
+      setCustomerLoc(defaultLoc);
+      
+      const initDefault = async () => {
+        let closestStore = STORES[0];
+        let minD = Infinity;
+        STORES.forEach(s => {
+          const d = haversineDistance(defaultLoc.lat, defaultLoc.lng, s.lat, s.lng);
+          if (d < minD) {
+            minD = d;
+            closestStore = s;
+          }
+        });
+        setNearestStore(closestStore);
+        
+        const routeInfo = await fetchOSRMRoute(closestStore, defaultLoc);
+        if (routeInfo) {
+          setDistance(routeInfo.distance);
+          setRouteCoordinates(routeInfo.coordinates);
+          if (onAddressResolved) {
+            onAddressResolved(routeInfo.distance, closestStore);
+          }
+        } else {
+          setDistance(minD);
+          setRouteCoordinates([
+            [closestStore.lat, closestStore.lng],
+            [defaultLoc.lat, defaultLoc.lng]
+          ]);
+          if (onAddressResolved) {
+            onAddressResolved(minD, closestStore);
+          }
+        }
+      };
+      initDefault();
+    }
+  }, []);
+
+  const shippingFee = distance ? Math.min(20000 + Math.floor(distance) * 2000, 120000) : 30000;
+  const displayShippingFee = overrideShippingFee !== undefined ? overrideShippingFee : shippingFee;
   const deliveryTime = distance 
     ? distance < 10 
       ? 'Trong ngày (2h-4h)' 
@@ -333,68 +431,13 @@ export default function MapDistance({
       </div>
 
       {/* Map Container */}
-      <div className="relative w-full h-[200px] bg-[#eeeeee]/60 border border-[#d4c3be]/40 rounded-sm overflow-hidden flex items-center justify-center">
-        {apiKey && !mapError ? (
-          <div ref={mapRef} className="w-full h-full" />
-        ) : (
-          /* Custom interactive Zen Mock Map (Vector Graphics) */
-          <div className="absolute inset-0 bg-[#fbfaf8] flex flex-col justify-between p-4 overflow-hidden select-none">
-            {/* Grid overlay */}
-            <div className="absolute inset-0 bg-[radial-gradient(#e6ded9_1px,transparent_1px)] [background-size:16px_16px] opacity-70" />
-            
-            {/* Map Art SVG */}
-            <svg className="absolute inset-0 w-full h-full z-0 opacity-80" viewBox="0 0 400 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-              {/* Decorative mountains/islands outline for Zen style */}
-              <path d="M-20,180 C50,150 90,210 160,170 C220,130 290,190 420,150" stroke="#ece0dc" strokeWidth="1.5" strokeDasharray="3 3" />
-              <path d="M-50,195 C60,170 120,230 200,190 C280,150 320,210 450,180" stroke="#f0e9e4" strokeWidth="1" />
-              
-              {/* Animating connection line */}
-              {customerLoc && (
-                <>
-                  <line 
-                    x1="120" y1="120" 
-                    x2="280" y2="80" 
-                    stroke="#8b726b" 
-                    strokeWidth="1.5" 
-                    strokeDasharray="4 4" 
-                    className="animate-[dash_10s_linear_infinite]" 
-                  />
-                  <style>{`
-                    @keyframes dash {
-                      to {
-                        stroke-dashoffset: -40;
-                      }
-                    }
-                  `}</style>
-                </>
-              )}
-            </svg>
-
-            {/* Pins placement */}
-            {customerLoc && (
-              <>
-                {/* Store Pin */}
-                <div className="absolute z-10 flex flex-col items-center" style={{ left: '280px', top: '65px', transform: 'translate(-50%, -100%)' }}>
-                  <div className="px-2 py-0.5 bg-primary text-white text-[8px] font-bold uppercase rounded-sm shadow-xs border border-white">
-                    Cửa Hàng
-                  </div>
-                  <div className="w-2.5 h-2.5 rounded-full bg-primary border-2 border-white shadow-md animate-pulse mt-0.5" />
-                </div>
-
-                {/* Customer Pin */}
-                <div className="absolute z-10 flex flex-col items-center" style={{ left: '120px', top: '105px', transform: 'translate(-50%, -100%)' }}>
-                  <div className="px-2 py-0.5 bg-[#8b726b] text-white text-[8px] font-bold uppercase rounded-sm shadow-xs border border-white">
-                    Bạn
-                  </div>
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#8b726b] border-2 border-white shadow-md mt-0.5" />
-                </div>
-              </>
-            )}
-
-            {/* Zoom indicator info */}
-            <div className="relative z-10 self-end bg-white/80 backdrop-blur-xs px-2 py-1 rounded-sm border border-[#d4c3be]/40 text-[9px] font-bold font-mono text-[#8b726b] flex items-center gap-1 shadow-xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-700 animate-ping" />
-              Zen Map Offline Mode
+      <div className="relative w-full h-[200px] bg-[#eeeeee]/60 border border-[#d4c3be]/40 rounded-sm overflow-hidden">
+        <div ref={mapRef} className="w-full h-full z-0" />
+        {isLocating && (
+          <div className="absolute inset-0 bg-white/50 backdrop-blur-xs flex items-center justify-center z-10">
+            <div className="text-xs font-bold text-primary flex items-center gap-1.5 bg-white/90 px-3 py-1.5 rounded-sm shadow-sm border border-[#d4c3be]/40">
+              <span className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              Đang xác định vị trí & lộ trình...
             </div>
           </div>
         )}
@@ -422,7 +465,7 @@ export default function MapDistance({
             <div className="flex items-baseline gap-1">
               <Truck size={12} className="text-[#8b726b] self-center" />
               <span className="font-serif font-bold text-base text-primary">
-                {distance !== null ? `${shippingFee.toLocaleString('vi-VN')}đ` : '--'}
+                {distance !== null ? `${displayShippingFee.toLocaleString('vi-VN')}đ` : '--'}
               </span>
             </div>
             <span className="block text-[9px] text-[#8b726b]">Dựa trên vị trí thực tế</span>

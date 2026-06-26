@@ -1,15 +1,51 @@
 import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Sprout, ShoppingBag, ClipboardList, ShieldCheck, MapPin, Phone, User as UserIcon } from 'lucide-react'
-import { orderService } from '@/services'
+import { orderService, settingService } from '@/services'
 import { formatPrice } from '@/components/ui/ProductCard'
 import { getImageUrl } from '@/utils/productMapper'
+
+// Map tên ngân hàng phổ biến -> mã VietQR bankId
+const BANK_NAME_TO_ID: Record<string, string> = {
+  'Vietcombank': 'VCB',
+  'Techcombank': 'TCB',
+  'BIDV': 'BIDV',
+  'VietinBank': 'CTG',
+  'MB Bank': 'MB',
+  'MBBank': 'MB',
+  'Agribank': 'AGR',
+  'VPBank': 'VPB',
+  'Sacombank': 'STB',
+  'ACB': 'ACB',
+  'TPBank': 'TPB',
+  'HDBank': 'HDB',
+  'VIB': 'VIB',
+  'SHB': 'SHB',
+  'LPBank': 'LPB',
+  'MSB': 'MSB',
+  'OCB': 'OCB',
+  'SeABank': 'SEAB',
+  'Eximbank': 'EIB',
+  'SCB': 'SCB',
+  'BAC A BANK': 'BAB',
+  'BaoViet Bank': 'BVB',
+  'DongA Bank': 'DAB',
+  'Kienlongbank': 'KLB',
+  'Nam A Bank': 'NAB',
+  'NCB': 'NCB',
+  'PG Bank': 'PGB',
+  'PVcomBank': 'PVCOM',
+  'Saigonbank': 'SGB',
+  'VietABank': 'VAB',
+  'Vietbank': 'VBB',
+}
 
 
 export default function OrderSuccessPage() {
   const [searchParams] = useSearchParams()
+  const queryClient = useQueryClient()
   const orderCode = searchParams.get('code') || ''
   const paymentParam = searchParams.get('payment') || 'bank_transfer'
   const nameParam = searchParams.get('name') || 'Nguyễn An Nhiên'
@@ -35,6 +71,13 @@ export default function OrderSuccessPage() {
       }
       return false;
     }
+  })
+
+  // Fetch admin bank settings (must be before any early returns - React Rules of Hooks)
+  const { data: sysSettings } = useQuery({
+    queryKey: ['settings-public'],
+    queryFn: () => settingService.getMap(),
+    staleTime: 5 * 60 * 1000,
   })
 
   // Format Payment Method Name
@@ -99,13 +142,19 @@ export default function OrderSuccessPage() {
     if (baseOrder.payment_method === 'bank_transfer' && baseOrder.payment_status === 'pending') {
       setSimulatedPaymentStatus('pending')
       setShowSimulatedBanner(false)
-      const timer = setTimeout(() => {
+      const timer = setTimeout(async () => {
+        try {
+          await orderService.payOrder(baseOrder.order_code)
+          queryClient.invalidateQueries({ queryKey: ['order-success', baseOrder.order_code] })
+        } catch (err) {
+          console.error("Lỗi khi cập nhật thanh toán trên server:", err)
+        }
         setSimulatedPaymentStatus('paid')
         setShowSimulatedBanner(true)
-      }, 7000) // Tự động giả lập thanh toán thành công sau 7 giây
+      }, 30000) // Tự động thanh toán thành công sau 30 giây
       return () => clearTimeout(timer)
     }
-  }, [baseOrder.order_code])
+  }, [baseOrder.order_code, queryClient])
 
   if (isLoading) {
     return (
@@ -122,10 +171,11 @@ export default function OrderSuccessPage() {
   }
 
   const isPendingQR = currentOrder.payment_method === 'bank_transfer' && currentOrder.payment_status === 'pending';
-  // Use a demo bank info (MBBank)
-  const bankId = 'MB';
-  const accountNo = '000000000000'; // Replace with real account
-  const accountName = 'TU TAM PHUC';
+
+  const adminBankName = sysSettings?.['bank_name'] || 'MB Bank'
+  const accountNo = sysSettings?.['bank_account_number'] || '000000000000'
+  const accountName = sysSettings?.['bank_account_holder'] || 'TU TAM PHUC'
+  const bankId = BANK_NAME_TO_ID[adminBankName] || 'MB'
   const qrUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-compact2.png?amount=${currentOrder.total}&addInfo=${currentOrder.order_code}&accountName=${encodeURIComponent(accountName)}`;
 
   return (
@@ -139,7 +189,7 @@ export default function OrderSuccessPage() {
           >
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-              <span><strong>[Giả lập]</strong> Ngân hàng đã xác nhận giao dịch chuyển khoản thành công cho đơn hàng <strong>{currentOrder.order_code}</strong>.</span>
+              <span>Ngân hàng đã xác nhận giao dịch chuyển khoản thành công cho đơn hàng <strong>{currentOrder.order_code}</strong>.</span>
             </div>
             <button 
               onClick={() => setShowSimulatedBanner(false)}
@@ -219,12 +269,34 @@ export default function OrderSuccessPage() {
                 </div>
               </div>
 
+              {/* Bank Account Info */}
+              <div className="mx-auto max-w-xs bg-[#faf6f0] border border-[#ece0dc] rounded-md px-5 py-4 mb-5 text-left space-y-2 text-xs">
+                <p className="text-[10px] uppercase tracking-widest font-bold text-primary/60 mb-1">Thông tin chuyển khoản</p>
+                <div className="flex justify-between">
+                  <span className="text-on-surface-variant">Ngân hàng:</span>
+                  <span className="font-bold text-on-surface">{adminBankName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-on-surface-variant">Số tài khoản:</span>
+                  <span className="font-mono font-bold text-primary tracking-wider">{accountNo}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-on-surface-variant">Chủ tài khoản:</span>
+                  <span className="font-bold text-on-surface">{accountName}</span>
+                </div>
+                <div className="flex justify-between pt-1 border-t border-[#ece0dc]">
+                  <span className="text-on-surface-variant">Nội dung CK:</span>
+                  <span className="font-mono font-bold text-primary">{currentOrder.order_code}</span>
+                </div>
+              </div>
+
               <div className="flex items-center justify-center gap-2 text-xs text-primary font-medium">
                 <div className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
                 Đang chờ thanh toán...
               </div>
             </motion.section>
           )}
+
 
           {/* 1. Charity Donation Callout (Zen Style) */}
           <motion.section
@@ -385,7 +457,7 @@ export default function OrderSuccessPage() {
               <ShoppingBag size={14} /> Tiếp tục mua sắm
             </Link>
             <Link
-              to="/don-hang"
+              to="/tai-khoan?tab=orders"
               className="flex-1 py-3.5 bg-white border border-[#d4c3be] text-[#5d4037] text-xs tracking-widest uppercase font-bold text-center hover:bg-[#faf6f0] transition-colors rounded-xs shadow-sm flex items-center justify-center gap-2"
             >
               <ClipboardList size={14} /> Theo dõi đơn hàng

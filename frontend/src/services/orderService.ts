@@ -42,6 +42,11 @@ export const orderService = {
     return response.data
   },
 
+  payOrder: async (code: string): Promise<Order> => {
+    const response = await apiClient.post<Order>(`/orders/code/${code}/pay`)
+    return response.data
+  },
+
   cancelOrder: async (id: number, reason?: string): Promise<Order> => {
     const response = await apiClient.post<Order>(`/orders/${id}/cancel`, { reason })
     return response.data

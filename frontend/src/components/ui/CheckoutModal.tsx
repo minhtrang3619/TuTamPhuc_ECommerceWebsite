@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, CheckCircle2, ShieldCheck, Truck, ClipboardList, Leaf, ChevronDown, ChevronUp, MapPin, Edit3, Check } from 'lucide-react';
@@ -7,7 +7,7 @@ import { useMockCartStore } from '@/store/mockCartStore';
 import { formatPrice } from './ProductCard';
 import MapDistance from './MapDistance';
 import { useAuthStore } from '../../store/authStore';
-import { addressService, orderService } from '../../services';
+import { addressService, orderService, apiClient } from '../../services';
 import type { UserAddress } from '../../types';
 
 const parseAddressString = (addressStr: string) => {
@@ -51,6 +51,19 @@ export default function CheckoutModal() {
   const [defaultAddress, setDefaultAddress] = useState('12 Chùa Bộc, Quang Trung, Đống Đa, Hà Nội');
   const [isEditingAddress, setIsEditingAddress] = useState(false);
 
+  const [provinces, setProvinces] = useState<any[]>([]);
+  const [districts, setDistricts] = useState<any[]>([]);
+  const [wards, setWards] = useState<any[]>([]);
+
+  const [selectedProvinceId, setSelectedProvinceId] = useState<number | ''>('');
+  const [selectedDistrictId, setSelectedDistrictId] = useState<number | ''>('');
+  const [selectedWardCode, setSelectedWardCode] = useState<string>('');
+  const [streetAddress, setStreetAddress] = useState<string>('');
+
+  const [isLoadingShipping, setIsLoadingShipping] = useState<boolean>(false);
+  const [calculatedShippingFee, setCalculatedShippingFee] = useState<number>(30000);
+  const [mapDistance, setMapDistance] = useState<number | null>(null);
+
   const [form, setForm] = useState<OrderInfo>({
     name: '',
     phone: '',
@@ -69,7 +82,12 @@ export default function CheckoutModal() {
           const data: UserAddress[] = await addressService.getAddresses();
           const defaultAddrObj = data.find(addr => addr.isDefault);
           if (defaultAddrObj) {
-            const formatted = `${defaultAddrObj.street}, ${defaultAddrObj.ward}, ${defaultAddrObj.district}, ${defaultAddrObj.province}`;
+            const formatted = [
+              defaultAddrObj.street,
+              defaultAddrObj.ward,
+              defaultAddrObj.district,
+              defaultAddrObj.province
+            ].filter(p => p && p !== 'Khác' && p !== 'Mặc định').join(', ');
             setDefaultAddress(formatted);
             setForm(prev => ({
               ...prev,
@@ -80,7 +98,12 @@ export default function CheckoutModal() {
             }));
           } else if (data.length > 0) {
             const firstAddrObj = data[0];
-            const formatted = `${firstAddrObj.street}, ${firstAddrObj.ward}, ${firstAddrObj.district}, ${firstAddrObj.province}`;
+            const formatted = [
+              firstAddrObj.street,
+              firstAddrObj.ward,
+              firstAddrObj.district,
+              firstAddrObj.province
+            ].filter(p => p && p !== 'Khác' && p !== 'Mặc định').join(', ');
             setDefaultAddress(formatted);
             setForm(prev => ({
               ...prev,
@@ -124,6 +147,95 @@ export default function CheckoutModal() {
     fetchDefaultAddress();
   }, [isCheckoutOpen, isAuthenticated, user]);
 
+  // Fetch provinces from API on mount/open
+  useEffect(() => {
+    const fetchProvinces = async () => {
+      try {
+        const res = await apiClient.get('/shipping/provinces');
+        setProvinces(res.data || []);
+      } catch (err) {
+        console.error("Lỗi khi tải tỉnh/thành phố:", err);
+      }
+    };
+    if (isCheckoutOpen) {
+      fetchProvinces();
+    }
+  }, [isCheckoutOpen]);
+
+  // Fetch districts when province changes
+  useEffect(() => {
+    const fetchDistricts = async () => {
+      if (selectedProvinceId) {
+        try {
+          const res = await apiClient.get(`/shipping/districts?province_id=${selectedProvinceId}`);
+          setDistricts(res.data || []);
+          setWards([]);
+          setSelectedDistrictId('');
+          setSelectedWardCode('');
+        } catch (err) {
+          console.error("Lỗi khi tải quận/huyện:", err);
+        }
+      } else {
+        setDistricts([]);
+        setWards([]);
+      }
+    };
+    fetchDistricts();
+  }, [selectedProvinceId]);
+
+  // Fetch wards when district changes
+  useEffect(() => {
+    const fetchWards = async () => {
+      if (selectedDistrictId) {
+        try {
+          const res = await apiClient.get(`/shipping/wards?district_id=${selectedDistrictId}`);
+          setWards(res.data || []);
+          setSelectedWardCode('');
+        } catch (err) {
+          console.error("Lỗi khi tải phường/xã:", err);
+        }
+      } else {
+        setWards([]);
+      }
+    };
+    fetchWards();
+  }, [selectedDistrictId]);
+
+  // Calculate fee when ward changes
+  useEffect(() => {
+    const fetchShippingFee = async () => {
+      if (selectedDistrictId && selectedWardCode) {
+        setIsLoadingShipping(true);
+        try {
+          const res = await apiClient.post('/shipping/fee', {
+            to_district_id: Number(selectedDistrictId),
+            to_ward_code: selectedWardCode,
+            weight: 500
+          });
+          const fee = res.data?.total ?? 30000;
+          setCalculatedShippingFee(fee);
+        } catch (err) {
+          console.error("Lỗi khi tính phí vận chuyển:", err);
+          setCalculatedShippingFee(30000);
+        } finally {
+          setIsLoadingShipping(false);
+        }
+      }
+    };
+    fetchShippingFee();
+  }, [selectedDistrictId, selectedWardCode]);
+
+  // Keep form.address in sync with selections
+  useEffect(() => {
+    if (selectedProvinceId && selectedDistrictId && selectedWardCode && streetAddress) {
+      const provinceName = provinces.find(p => p.ProvinceID === Number(selectedProvinceId))?.ProvinceName || '';
+      const districtName = districts.find(d => d.DistrictID === Number(selectedDistrictId))?.DistrictName || '';
+      const wardName = wards.find(w => w.WardCode === selectedWardCode)?.WardName || '';
+      const fullAddr = `${streetAddress}, ${wardName}, ${districtName}, ${provinceName}`;
+      setForm(prev => ({ ...prev, address: fullAddr }));
+    }
+  }, [selectedProvinceId, selectedDistrictId, selectedWardCode, streetAddress, provinces, districts, wards]);
+
   const [errors, setErrors] = useState<Partial<Record<keyof OrderInfo, string>>>({});
   const [isSuccess, setIsSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -131,33 +243,103 @@ export default function CheckoutModal() {
 
   const subTotal = checkoutItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
 
+  const dynamicStandardPrice = mapDistance !== null 
+    ? Math.min(20000 + Math.floor(mapDistance) * 2000, 120000) 
+    : calculatedShippingFee;
   const shippingCosts = {
-    standard: { name: 'Giao hàng nhanh (2-3 ngày)', price: 30000 },
-    express: { name: 'Hỏa tốc (2h-4h)', price: 50000 },
-    economy: { name: 'Giao hàng tiết kiệm (4-6 ngày)', price: 15000 },
+    standard: { name: 'Giao hàng nhanh (2-3 ngày)', price: dynamicStandardPrice },
+    express: { name: 'Hỏa tốc (2h-4h)', price: dynamicStandardPrice + 20000 },
+    economy: { name: 'Giao hàng tiết kiệm (4-6 ngày)', price: Math.max(15000, dynamicStandardPrice - 10000) },
   };
 
   const [shippingMethod, setShippingMethod] = useState<'standard' | 'express' | 'economy'>('standard');
-  const [promoVoucher, setPromoVoucher] = useState<string>('');
-  const [shipVoucher, setShipVoucher] = useState<string>('');
+  const [voucherCode, setVoucherCode] = useState<string>('');
   const [showCharityMsg, setShowCharityMsg] = useState(false);
   const [showPromoSection, setShowPromoSection] = useState(false);
 
   const selectedShippingCost = shippingCosts[shippingMethod].price;
 
-  const promoDiscount = promoVoucher === 'TUTAMVIP15'
-    ? Math.round(subTotal * 0.15)
-    : promoVoucher === 'ANNHIEN100'
-      ? 100000
-      : promoVoucher === 'GIEOVUI50'
-        ? 50000
-        : 0;
+  const [hasCompletedOrder, setHasCompletedOrder] = useState<boolean>(false);
 
-  const shipDiscount = shipVoucher === 'FREESHIP'
-    ? Math.min(selectedShippingCost, 30000)
-    : shipVoucher === 'SHIPANNHIEN'
-      ? Math.min(selectedShippingCost, 15000)
-      : 0;
+  useEffect(() => {
+    const checkOrderHistory = async () => {
+      if (isAuthenticated) {
+        try {
+          const res = await orderService.getMyOrders();
+          const orders = res.items || [];
+          const hasOrder = orders.some((o: any) => o.status !== 'cancelled');
+          setHasCompletedOrder(hasOrder);
+        } catch (err) {
+          console.error("Lỗi khi kiểm tra lịch sử đơn hàng:", err);
+        }
+      }
+    };
+    if (isCheckoutOpen) {
+      checkOrderHistory();
+    }
+  }, [isAuthenticated, isCheckoutOpen]);
+
+  const activeVouchers = useMemo(() => {
+    const Y = new Date().getFullYear();
+    const now = new Date();
+
+    const isHolidayActive = (startMonth: number, startDay: number, endMonth: number, endDay: number) => {
+      const start = new Date(Y, startMonth - 1, startDay, 0, 0, 0);
+      const end = new Date(Y, endMonth - 1, endDay, 23, 59, 59);
+      return now >= start && now <= end;
+    };
+
+    const list = [];
+
+    // First buy
+    if (isAuthenticated && !hasCompletedOrder) {
+      list.push({
+        code: 'CHAOMUNG10',
+        label: 'CHAOMUNG10 (Giảm 10% - Đơn đầu tiên)'
+      });
+    }
+
+    // Tết
+    if (isHolidayActive(1, 1, 2, 15)) {
+      list.push({
+        code: 'TETANNHIEN10',
+        label: 'TETANNHIEN10 (Giảm 10% - Dịp Tết Nguyên Đán)'
+      });
+    }
+
+    // Quốc tế Phụ nữ
+    if (isHolidayActive(3, 1, 3, 15)) {
+      list.push({
+        code: 'WOMEN10',
+        label: 'WOMEN10 (Giảm 10% - Quốc Tế Phụ Nữ 8/3)'
+      });
+    }
+
+    // Ngày của Mẹ
+    if (isHolidayActive(5, 1, 5, 15)) {
+      list.push({
+        code: 'MOTHER10',
+        label: 'MOTHER10 (Giảm 10% - Ngày Của Mẹ)'
+      });
+    }
+
+    // Vu Lan
+    if (isHolidayActive(8, 1, 8, 31)) {
+      list.push({
+        code: 'VULAN10',
+        label: 'VULAN10 (Giảm 10% - Đại Lễ Vu Lan)'
+      });
+    }
+
+    return list;
+  }, [isAuthenticated, hasCompletedOrder]);
+
+  const isVoucherValid = useMemo(() => {
+    return activeVouchers.some(v => v.code === voucherCode);
+  }, [voucherCode, activeVouchers]);
+
+  const promoDiscount = isVoucherValid ? Math.round(subTotal * 0.10) : 0;
+  const shipDiscount = 0;
 
   const actualShippingFee = Math.max(0, selectedShippingCost - shipDiscount);
   const finalTotal = Math.max(0, subTotal - promoDiscount + actualShippingFee);
@@ -219,7 +401,7 @@ export default function CheckoutModal() {
         },
         payment_method: form.paymentMethod,
         notes: form.notes || undefined,
-        coupon_code: promoVoucher || undefined,
+        coupon_code: voucherCode || undefined,
         items: items,
         discount: promoDiscount + shipDiscount,
         shipping_fee: actualShippingFee,
@@ -412,24 +594,84 @@ export default function CheckoutModal() {
                           </div>
                         </div>
 
-                        {/* Address */}
+                        {/* Address Selectors */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-[10px] uppercase tracking-wider text-[#5d4037] font-bold mb-1.5">
+                              Tỉnh / Thành phố <span className="text-red-700">*</span>
+                            </label>
+                            <select
+                              value={selectedProvinceId}
+                              onChange={(e) => setSelectedProvinceId(e.target.value ? Number(e.target.value) : '')}
+                              className="w-full bg-white border border-[#d4c3be] rounded-sm py-2 px-3 text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none cursor-pointer"
+                            >
+                              <option value="">-- Chọn Tỉnh / Thành --</option>
+                              {provinces.map((p) => (
+                                <option key={p.ProvinceID} value={p.ProvinceID}>
+                                  {p.ProvinceName}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] uppercase tracking-wider text-[#5d4037] font-bold mb-1.5">
+                              Quận / Huyện <span className="text-red-700">*</span>
+                            </label>
+                            <select
+                              value={selectedDistrictId}
+                              disabled={!selectedProvinceId}
+                              onChange={(e) => setSelectedDistrictId(e.target.value ? Number(e.target.value) : '')}
+                              className="w-full bg-white border border-[#d4c3be] rounded-sm py-2 px-3 text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none cursor-pointer disabled:bg-gray-50 disabled:text-gray-400"
+                            >
+                              <option value="">-- Chọn Quận / Huyện --</option>
+                              {districts.map((d) => (
+                                <option key={d.DistrictID} value={d.DistrictID}>
+                                  {d.DistrictName}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] uppercase tracking-wider text-[#5d4037] font-bold mb-1.5">
+                              Phường / Xã <span className="text-red-700">*</span>
+                            </label>
+                            <select
+                              value={selectedWardCode}
+                              disabled={!selectedDistrictId}
+                              onChange={(e) => setSelectedWardCode(e.target.value)}
+                              className="w-full bg-white border border-[#d4c3be] rounded-sm py-2 px-3 text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none cursor-pointer disabled:bg-gray-50 disabled:text-gray-400"
+                            >
+                              <option value="">-- Chọn Phường / Xã --</option>
+                              {wards.map((w) => (
+                                <option key={w.WardCode} value={w.WardCode}>
+                                  {w.WardName}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
                         <div>
                           <label className="block text-[10px] uppercase tracking-wider text-[#5d4037] font-bold mb-1.5">
-                            Địa chỉ nhận hàng <span className="text-red-700">*</span>
+                            Số nhà, tên đường <span className="text-red-700">*</span>
                           </label>
                           <input
                             type="text"
-                            name="address"
-                            placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố..."
-                            value={form.address}
-                            onChange={handleInputChange}
+                            value={streetAddress}
+                            onChange={(e) => setStreetAddress(e.target.value)}
+                            placeholder="Ví dụ: Số 12 Đường Ba Tháng Hai"
                             className="w-full bg-white border border-[#d4c3be] rounded-sm py-2 px-3 text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none"
                           />
-                          {errors.address && <p className="text-[10px] text-red-700 mt-1">{errors.address}</p>}
                         </div>
 
-                        {/* Map Location Selector */}
-                        <MapDistance customerAddress={form.address} />
+                        {isLoadingShipping && (
+                          <div className="text-[10px] text-primary font-bold flex items-center gap-1">
+                            <span className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                            Đang tính phí vận chuyển từ Giao Hàng Nhanh...
+                          </div>
+                        )}
 
                         <div className="flex justify-end gap-2 pt-2 border-t border-[#eeeeee]">
                           <button
@@ -441,6 +683,10 @@ export default function CheckoutModal() {
                                 phone: user?.phone || '0912345678',
                                 address: defaultAddress
                               }));
+                              setSelectedProvinceId('');
+                              setSelectedDistrictId('');
+                              setSelectedWardCode('');
+                              setStreetAddress('');
                               setIsEditingAddress(false);
                             }}
                             className="px-4 py-2 border border-[#d4c3be] text-[#5d4037] text-[10px] uppercase font-bold tracking-wider rounded-xs hover:bg-[#eeeeee]/50 cursor-pointer"
@@ -450,8 +696,11 @@ export default function CheckoutModal() {
                           <button
                             type="button"
                             onClick={() => {
-                              if (!form.name.trim() || !form.phone.trim() || !form.address.trim()) {
+                              if (!form.name.trim() || !form.phone.trim() || !streetAddress.trim() || !selectedWardCode) {
                                 validate();
+                                if (!streetAddress.trim() || !selectedWardCode) {
+                                  alert('Vui lòng chọn đầy đủ Tỉnh/Quận/Phường và điền số nhà tên đường.');
+                                }
                                 return;
                               }
                               setDefaultAddress(form.address);
@@ -464,6 +713,16 @@ export default function CheckoutModal() {
                         </div>
                       </div>
                     )}
+
+                    {/* Always-mounted Map Location Selector */}
+                    <div className={isEditingAddress ? "block animate-in fade-in duration-300" : "hidden"}>
+                      <MapDistance 
+                        customerAddress={form.address} 
+                        onAddressResolved={(dist) => setMapDistance(dist)}
+                        overrideShippingFee={shippingCosts[shippingMethod].price}
+                        visible={isEditingAddress}
+                      />
+                    </div>
 
                     {/* Notes */}
                     <div>
@@ -638,36 +897,29 @@ export default function CheckoutModal() {
 
                         {showPromoSection && (
                           <div className="p-4 space-y-4 border-t border-[#d4c3be]/30 bg-[#faf6f0]/30">
-                            {/* Promo Voucher */}
                             <div>
                               <label className="block text-[10px] uppercase tracking-wider text-[#5d4037] font-extrabold mb-1.5">
-                                Khuyến mãi từ cửa hàng
+                                Chọn mã khuyến mãi
                               </label>
                               <select
-                                value={promoVoucher}
-                                onChange={(e) => setPromoVoucher(e.target.value)}
+                                value={voucherCode}
+                                onChange={(e) => setVoucherCode(e.target.value)}
                                 className="w-full bg-white border border-[#d4c3be] rounded-sm py-2 px-2.5 text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none cursor-pointer"
                               >
-                                <option value="">-- Chọn mã giảm giá --</option>
-                                <option value="TUTAMVIP15">TUTAMVIP15 (Giảm 15% tổng hàng)</option>
-                                <option value="ANNHIEN100">ANNHIEN100 (Giảm 100.000đ)</option>
-                                <option value="GIEOVUI50">GIEOVUI50 (Giảm 50.000đ)</option>
-                              </select>
-                            </div>
-
-                            {/* Shipping Voucher */}
-                            <div>
-                              <label className="block text-[10px] uppercase tracking-wider text-[#5d4037] font-extrabold mb-1.5">
-                                Giảm giá phí vận chuyển (Freeship)
-                              </label>
-                              <select
-                                value={shipVoucher}
-                                onChange={(e) => setShipVoucher(e.target.value)}
-                                className="w-full bg-white border border-[#d4c3be] rounded-sm py-2 px-2.5 text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none cursor-pointer"
-                              >
-                                <option value="">-- Chọn mã vận chuyển --</option>
-                                <option value="FREESHIP">FREESHIP (Giảm tối đa 30.000đ)</option>
-                                <option value="SHIPANNHIEN">SHIPANNHIEN (Giảm tối đa 15.000đ)</option>
+                                <option value="">-- Không sử dụng khuyến mãi --</option>
+                                {activeVouchers.length > 0 ? (
+                                  <optgroup label="Khuyến mãi khả dụng (Giảm 10%)">
+                                    {activeVouchers.map((v) => (
+                                      <option key={v.code} value={v.code}>
+                                        {v.label}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                ) : (
+                                  <optgroup label="Không có khuyến mãi khả dụng">
+                                    <option value="" disabled>Hiện không có mã giảm giá nào phù hợp</option>
+                                  </optgroup>
+                                )}
                               </select>
                             </div>
                           </div>
@@ -682,7 +934,7 @@ export default function CheckoutModal() {
                         </div>
                         {promoDiscount > 0 && (
                           <div className="flex justify-between text-emerald-800">
-                            <span>Chiết khấu cửa hàng ({promoVoucher})</span>
+                            <span>Chiết khấu cửa hàng ({voucherCode})</span>
                             <span className="font-mono">- {formatPrice(promoDiscount)}</span>
                           </div>
                         )}
@@ -692,7 +944,7 @@ export default function CheckoutModal() {
                         </div>
                         {shipDiscount > 0 && (
                           <div className="flex justify-between text-emerald-800">
-                            <span>Giảm giá vận chuyển ({shipVoucher})</span>
+                            <span>Giảm giá vận chuyển ({voucherCode})</span>
                             <span className="font-mono">- {formatPrice(shipDiscount)}</span>
                           </div>
                         )}

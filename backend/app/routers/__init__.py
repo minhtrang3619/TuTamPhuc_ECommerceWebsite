@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.routers import auth, products, categories, cart, orders, wishlist, reviews, blog, uploads, users, customers, addresses, chat, support, analytics, charity
+from app.routers import auth, products, categories, cart, orders, wishlist, reviews, blog, uploads, users, customers, addresses, chat, support, analytics, charity, settings, shipping
 
 api_router = APIRouter()
 
@@ -19,4 +19,6 @@ api_router.include_router(chat.router)
 api_router.include_router(support.router)
 api_router.include_router(analytics.router)
 api_router.include_router(charity.router)
+api_router.include_router(settings.router)
+api_router.include_router(shipping.router)
 
