@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Toast from '../../components/ui/Toast';
 import { Heart } from 'lucide-react';
 import { charityService, CharityCampaign } from '@/services/charityService';
 import CharityDetailView from '@/components/CharityDetailView';
+import { blogService } from '@/services';
+import type { BlogPost } from '@/types';
+import { format } from 'date-fns';
+import { vi } from 'date-fns/locale';
+
 
 const formatPrice = (price: number) => {
   return price.toLocaleString('vi-VN') + ' ₫'
@@ -30,6 +35,22 @@ export default function BlogPage() {
   });
 
   const [campaign, setCampaign] = useState<CharityCampaign | null>(null);
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchBlogs = async () => {
+      try {
+        const res = await blogService.getAllPublic(1, 10);
+        setPosts(res.items || []);
+      } catch (err) {
+        console.error("Lỗi khi tải bài viết", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchBlogs();
+  }, []);
 
   useEffect(() => {
     const fetchCampaign = async () => {
@@ -88,83 +109,59 @@ export default function BlogPage() {
 
             {/* Stories List */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-              {/* Blog item 1 */}
-              <div className="bg-white border border-[#eeeeee] hover:shadow-lg transition-all duration-300 rounded-lg overflow-hidden group flex flex-col justify-between">
-                <div>
-                  <div className="aspect-[16/10] overflow-hidden bg-surface-container relative">
-                    <img 
-                      src="https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80" 
-                      alt="Sự tối giản trong triết lý mặc" 
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
-                    />
-                    <div className="absolute top-4 left-4 bg-primary text-white text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-sm">
-                      Phong Cách Sống
+              {isLoading ? (
+                <div className="col-span-1 md:col-span-2 text-center py-20 text-on-surface-variant text-sm">
+                  Đang tải bài viết...
+                </div>
+              ) : posts.length > 0 ? (
+                posts.map(post => (
+                  <div key={post.id} className="bg-white border border-[#eeeeee] hover:shadow-lg transition-all duration-300 rounded-lg overflow-hidden group flex flex-col justify-between">
+                    <div>
+                      <Link to={`/blog/${post.slug}`} className="block">
+                        <div className="aspect-[16/10] overflow-hidden bg-surface-container relative">
+                          <img 
+                            src={post.thumbnail || 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80'} 
+                            alt={post.title} 
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+                          />
+                          {post.tags && post.tags.length > 0 && (
+                            <div className="absolute top-4 left-4 bg-primary text-white text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-sm shadow-sm">
+                              {post.tags[0]}
+                            </div>
+                          )}
+                        </div>
+                      </Link>
+                      <div className="p-6">
+                        <div className="flex items-center space-x-2 text-[10px] text-on-surface-variant/60 font-semibold uppercase tracking-wider mb-2">
+                          <span>{post.author?.full_name || 'Từ Tâm Phục'}</span>
+                          <span>•</span>
+                          <span>{post.created_at ? format(new Date(post.created_at), 'MMM dd, yyyy', { locale: vi }) : ''}</span>
+                        </div>
+                        <Link to={`/blog/${post.slug}`}>
+                          <h3 className="font-serif text-lg font-bold text-primary group-hover:text-primary-container transition-colors mb-3 line-clamp-2">
+                            {post.title}
+                          </h3>
+                        </Link>
+                        <p className="text-xs text-on-surface-variant/80 leading-relaxed font-semibold line-clamp-3">
+                          {post.excerpt || post.title}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="p-6 pt-0">
+                      <Link 
+                        to={`/blog/${post.slug}`}
+                        className="text-xs font-bold text-primary hover:underline underline-offset-4 flex items-center gap-1 cursor-pointer bg-transparent border-0"
+                      >
+                        Xem chi tiết →
+                      </Link>
                     </div>
                   </div>
-                  <div className="p-6">
-                    <div className="flex items-center space-x-2 text-[10px] text-on-surface-variant/60 font-semibold uppercase tracking-wider mb-2">
-                      <span>Từ Tâm Phục</span>
-                      <span>•</span>
-                      <span>May 30, 2026</span>
-                    </div>
-                    <h3 className="font-serif text-lg font-bold text-primary group-hover:text-primary-container transition-colors mb-3">
-                      Sự tối giản trong phong cách thời trang mộc mạc
-                    </h3>
-                    <p className="text-xs text-on-surface-variant/80 leading-relaxed font-semibold">
-                      Tại Từ Tâm Phục, trang phục không ồn ào mà hướng đến sự tối giản. Đó chính là sự kết hợp giữa chất liệu thô mộc tự nhiên và thiết kế tinh tế giúp người mặc tìm thấy sự thoải mái và tự nhiên nhất.
-                    </p>
-                  </div>
+                ))
+              ) : (
+                <div className="col-span-1 md:col-span-2 text-center py-20 bg-white border border-[#eeeeee] rounded-lg">
+                  <p className="text-on-surface-variant text-sm font-medium">Chưa có bài viết nào.</p>
                 </div>
-                <div className="p-6 pt-0">
-                  <button 
-                    onClick={() => {
-                      showToast('Bài viết đang được hoàn thiện...', 'info');
-                    }}
-                    className="text-xs font-bold text-primary hover:underline underline-offset-4 flex items-center gap-1 cursor-pointer bg-transparent border-0"
-                  >
-                    Xem chi tiết →
-                  </button>
-                </div>
-              </div>
-
-              {/* Blog item 2 */}
-              <div className="bg-white border border-[#eeeeee] hover:shadow-lg transition-all duration-300 rounded-lg overflow-hidden group flex flex-col justify-between">
-                <div>
-                  <div className="aspect-[16/10] overflow-hidden bg-surface-container relative">
-                    <img 
-                      src="https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=600&q=80" 
-                      alt="Hành trình từ thớ gai tự nhiên đến tà áo" 
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
-                    />
-                    <div className="absolute top-4 left-4 bg-primary text-white text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-sm">
-                      Thủ Công Mỹ Nghệ
-                    </div>
-                  </div>
-                  <div className="p-6">
-                    <div className="flex items-center space-x-2 text-[10px] text-on-surface-variant/60 font-semibold uppercase tracking-wider mb-2">
-                      <span>Nghệ nhân Mộc Trạch</span>
-                      <span>•</span>
-                      <span>May 28, 2026</span>
-                    </div>
-                    <h3 className="font-serif text-lg font-bold text-primary group-hover:text-primary-container transition-colors mb-3">
-                      Hành trình nhuộm vỏ củ nâu và tết cúc rơm thủ công
-                    </h3>
-                    <p className="text-xs text-on-surface-variant/80 leading-relaxed font-semibold">
-                      Tìm hiểu thấu đáo quy trình thu hái củ nâu rừng dã địa phương, chưng cất dệt tơ chéo thô sần và may ráp tà tỉ mỉ. Để mỗi tà áo lam bay lên lưu lại nét đong đầy nét quý từ làng nghề Trạch Xá thâm niên...
-                    </p>
-                  </div>
-                </div>
-                <div className="p-6 pt-0">
-                  <button 
-                    onClick={() => {
-                      showToast('Bài viết đang được hoàn thiện...', 'info');
-                    }}
-                    className="text-xs font-bold text-primary hover:underline underline-offset-4 flex items-center gap-1 cursor-pointer bg-transparent border-0"
-                  >
-                    Xem chi tiết →
-                  </button>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Accompanying Charity Campaign Banner */}

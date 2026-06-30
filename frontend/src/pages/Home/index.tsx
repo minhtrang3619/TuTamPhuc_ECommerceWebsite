@@ -44,7 +44,7 @@ export default function HomePage() {
         </div>
         <div className="relative z-10 max-w-3xl mx-auto px-margin-mobile text-center flex flex-col items-center gap-8 bg-surface/60 backdrop-blur-md p-12 rounded-xl ambient-shadow">
           <h1 className="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-primary">Từ Tâm Phục</h1>
-          <p className="font-body-lg text-body-lg text-on-surface-variant tracking-wide">Khởi tâm từ, diện trang nghiêm</p>
+          <p className="font-body-lg text-body-lg text-on-surface-variant tracking-wide">Kinh doanh bằng sự thật, phát triển bằng niềm tin</p>
           <div className="flex flex-col sm:flex-row gap-4 mt-4">
             <button
               onClick={scrollToCollections}

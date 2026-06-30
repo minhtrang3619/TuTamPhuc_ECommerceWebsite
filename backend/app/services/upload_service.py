@@ -9,12 +9,12 @@ from app.core.config import settings
 
 
 class UploadService:
-    ALLOWED_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"}
+    ALLOWED_TYPES = {"image/jpeg", "image/jpg", "image/png"}
     MAX_SIZE = settings.MAX_FILE_SIZE
 
-    ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"}
+    ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/jpg", "image/png"}
     ALLOWED_VIDEO_TYPES = {"video/mp4", "video/webm", "video/ogg", "video/quicktime", "video/3gpp"}
-    MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
+    MAX_IMAGE_SIZE = 50 * 1024 * 1024  # 50MB
     MAX_VIDEO_SIZE = 50 * 1024 * 1024  # 50MB
 
     async def upload_media(self, file: UploadFile, folder: str = "reviews") -> str:

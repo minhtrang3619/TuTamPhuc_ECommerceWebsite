@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
-from app.core.dependencies import get_current_user, require_admin
+from app.core.dependencies import get_current_user, require_admin, require_blog_editor
 from app.models.blog import BlogPost, BlogStatus
 from app.schemas.blog import BlogPostCreate, BlogPostUpdate, BlogPostResponse, PaginatedBlogPosts
 from app.models.user import User
@@ -30,6 +30,40 @@ def list_posts(
     )
 
 
+@router.get("/manage", response_model=PaginatedBlogPosts)
+def list_posts_manage(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(9, ge=1, le=50),
+    status: Optional[str] = None,
+    search: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_blog_editor),
+):
+    query = db.query(BlogPost).order_by(BlogPost.created_at.desc())
+    if status:
+        query = query.filter(BlogPost.status == status)
+    if search:
+        query = query.filter(BlogPost.title.ilike(f"%{search}%"))
+    total = query.count()
+    items = query.offset((page - 1) * page_size).limit(page_size).all()
+    return PaginatedBlogPosts(
+        items=items, total=total, page=page, page_size=page_size,
+        total_pages=math.ceil(total / page_size) if total else 0,
+    )
+
+
+@router.get("/manage/{post_id}", response_model=BlogPostResponse)
+def get_post_manage(
+    post_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_blog_editor),
+):
+    post = db.query(BlogPost).filter(BlogPost.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Bài viết không tìm thấy")
+    return post
+
+
 @router.get("/{slug}", response_model=BlogPostResponse)
 def get_post(slug: str, db: Session = Depends(get_db)):
     post = db.query(BlogPost).filter(BlogPost.slug == slug, BlogPost.status == BlogStatus.PUBLISHED).first()
@@ -44,7 +78,7 @@ def get_post(slug: str, db: Session = Depends(get_db)):
 @router.post("", response_model=BlogPostResponse, status_code=201)
 def create_post(
     data: BlogPostCreate,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_blog_editor),
     db: Session = Depends(get_db),
 ):
     if db.query(BlogPost).filter(BlogPost.slug == data.slug).first():
@@ -61,7 +95,7 @@ def update_post(
     post_id: int,
     data: BlogPostUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_blog_editor),
 ):
     post = db.query(BlogPost).filter(BlogPost.id == post_id).first()
     if not post:
@@ -77,7 +111,7 @@ def update_post(
 def delete_post(
     post_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_blog_editor),
 ):
     post = db.query(BlogPost).filter(BlogPost.id == post_id).first()
     if not post:

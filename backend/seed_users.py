@@ -78,6 +78,25 @@ def seed_users():
         else:
             print(f"Customer account already exists: {customer_email}")
 
+        # 1d. Create Marketing Staff User
+        marketing_email = "marketing@gmail.com"
+        marketing_user = db.query(User).filter(User.email == marketing_email).first()
+        if not marketing_user:
+            marketing_user = User(
+                email=marketing_email,
+                hashed_password=get_password_hash("content123"),
+                full_name="Nhân viên Marketing",
+                role=UserRole.STAFF,
+                is_active=True
+            )
+            db.add(marketing_user)
+            print(f"Created Marketing Staff account: {marketing_email} / content123")
+        else:
+            marketing_user.hashed_password = get_password_hash("content123")
+            marketing_user.role = UserRole.STAFF
+            db.add(marketing_user)
+            print(f"Updated Marketing Staff account: {marketing_email} / content123")
+
         db.flush()
 
         # Seed Customers for existing Users that don't have them

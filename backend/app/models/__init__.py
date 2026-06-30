@@ -16,6 +16,7 @@ from app.models.support_ticket import SupportTicket
 from app.models.charity import CharityCampaign, CharityTransaction
 from app.models.traffic import TrafficChannel
 from app.models.setting import Setting
+from app.models.promotion import Promotion, PromotionType, PromotionStatus
 
 __all__ = [
     "BaseModel",
@@ -36,5 +37,6 @@ __all__ = [
     "CharityTransaction",
     "TrafficChannel",
     "Setting",
+    "Promotion", "PromotionType", "PromotionStatus",
 ]
 

@@ -216,7 +216,7 @@ export function CartDrawer() {
 
                 <div className="mt-3 flex items-center justify-center gap-1 text-[10px] text-on-surface-variant/60">
                   <ShieldCheck size={12} className="text-emerald-700" />
-                  <span>Sản phẩm được bảo đảm đổi size miễn phí trong 15 ngày.</span>
+                  <span>Sản phẩm được bảo đảm đổi size miễn phí trong 7 ngày.</span>
                 </div>
               </div>
             )}

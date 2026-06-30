@@ -36,6 +36,7 @@ export default function AdminDashboard() {
   const [products, setProducts] = useState<any[]>([])
   const [customersCount, setCustomersCount] = useState(0)
   const [forecastData, setForecastData] = useState<any>(null)
+  const [blogPosts, setBlogPosts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -61,11 +62,17 @@ export default function AdminDashboard() {
         setLoading(true)
         setError(null)
 
-        const ordersRes = await apiClient.get('/orders?page_size=1000')
-        setOrders(ordersRes.data?.items || [])
+        if (role === 'admin' || role === 'shop_staff') {
+          try {
+            const ordersRes = await apiClient.get('/orders?page_size=1000')
+            setOrders(ordersRes.data?.items || [])
 
-        const productsRes = await apiClient.get('/products?page_size=1000')
-        setProducts(productsRes.data?.items || [])
+            const productsRes = await apiClient.get('/products?page_size=1000')
+            setProducts(productsRes.data?.items || [])
+          } catch (err) {
+            console.warn('Could not fetch orders/products:', err)
+          }
+        }
 
         if (role === 'admin') {
           try {
@@ -82,6 +89,15 @@ export default function AdminDashboard() {
             setForecastData(forecastRes.data)
           } catch (err) {
             console.warn('Could not fetch forecast data:', err)
+          }
+        }
+
+        if (role === 'staff') {
+          try {
+            const blogRes = await apiClient.get('/blog/manage?page_size=1000')
+            setBlogPosts(blogRes.data?.items || [])
+          } catch (err) {
+            console.warn('Could not fetch blog posts:', err)
           }
         }
       } catch (err: any) {
@@ -487,6 +503,21 @@ export default function AdminDashboard() {
     }
   }
 
+  // ----------------------------------------------------
+  // STAFF (MARKETING) CALCULATIONS
+  // ----------------------------------------------------
+  const totalBlogViews = useMemo(() => {
+    return blogPosts.reduce((sum, p) => sum + (p.view_count || 0), 0)
+  }, [blogPosts])
+
+  const publishedBlogCount = useMemo(() => {
+    return blogPosts.filter(p => p.status === 'published').length
+  }, [blogPosts])
+
+  const topViewedPosts = useMemo(() => {
+    return [...blogPosts].sort((a, b) => (b.view_count || 0) - (a.view_count || 0)).slice(0, 5)
+  }, [blogPosts])
+
   // Removed unused getPaymentStatusLabel
 
   if (loading) {
@@ -505,6 +536,106 @@ export default function AdminDashboard() {
         <button onClick={() => window.location.reload()} className="px-4 py-2 bg-primary text-white text-xs rounded hover:opacity-90">
           Thử lại
         </button>
+      </div>
+    )
+  }
+
+  // ----------------------------------------------------
+  // MARKETING STAFF DASHBOARD RENDER
+  // ----------------------------------------------------
+  if (role === 'staff') {
+    return (
+      <div className="page-transition space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 p-4 md:p-6 font-sans">
+        {/* Welcome Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="font-serif text-2xl font-bold text-primary mb-1">
+              Thống kê chi tiết Blog & Tin Tức
+            </h2>
+            <p className="text-xs text-on-surface-variant font-medium">
+              Chào buổi sáng, hãy xem hiệu suất các bài viết của bạn.
+            </p>
+          </div>
+        </div>
+
+        {/* Bento Grid - Primary Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white rounded-sm p-6 border-t-4 border-[#d4a373] border-x border-b border-outline-variant/30 flex flex-col justify-between flex-1 shadow-xs">
+            <div>
+              <span className="text-[10px] uppercase font-bold tracking-wider text-[#827470]">Tổng lượt xem</span>
+              <h4 className="font-serif text-3xl font-bold text-primary mt-2">{totalBlogViews.toLocaleString()}</h4>
+            </div>
+            <div className="flex items-center gap-1 text-[#596244] mt-2 font-bold text-[10px]">
+              <Eye size={14} />
+              <span>Toàn bộ bài viết</span>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-sm p-6 border-t-4 border-[#dee7c0] border-x border-b border-outline-variant/30 flex flex-col justify-between flex-1 shadow-xs">
+            <div>
+              <span className="text-[10px] uppercase font-bold tracking-wider text-[#827470]">Tổng bài viết</span>
+              <h4 className="font-serif text-3xl font-bold text-primary mt-2">{blogPosts.length}</h4>
+            </div>
+            <div className="flex items-center gap-1 text-[#596244] mt-2 font-bold text-[10px]">
+              <FileText size={14} />
+              <span>Trên hệ thống</span>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-sm p-6 border-t-4 border-[#e1f3d8] border-x border-b border-outline-variant/30 flex flex-col justify-between flex-1 shadow-xs">
+            <div>
+              <span className="text-[10px] uppercase font-bold tracking-wider text-[#827470]">Đã xuất bản</span>
+              <h4 className="font-serif text-3xl font-bold text-primary mt-2">{publishedBlogCount}</h4>
+            </div>
+            <div className="flex items-center gap-1 text-[#67c23a] mt-2 font-bold text-[10px]">
+              <CheckCircle2 size={14} />
+              <span>Sẵn sàng hiển thị</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Top Posts Table */}
+        <div className="bg-white rounded-sm border border-outline-variant/30 overflow-hidden shadow-xs">
+          <div className="p-6 border-b border-outline-variant/30 flex justify-between items-center bg-[#fafaf9]">
+            <div>
+              <h3 className="font-serif text-lg font-bold text-primary">Top bài viết có lượt xem cao nhất</h3>
+              <p className="text-[10px] text-[#827470] font-semibold uppercase tracking-wider mt-0.5">Đo lường mức độ quan tâm của độc giả</p>
+            </div>
+          </div>
+          <div className="overflow-x-auto text-xs">
+            <table className="w-full border-collapse text-left">
+              <thead>
+                <tr className="bg-[#f4f2f0]/60 border-b border-outline-variant/30 text-[10px] uppercase font-bold text-[#827470] tracking-wider">
+                  <th className="px-6 py-4">Tiêu đề bài viết</th>
+                  <th className="px-6 py-4">Tác giả</th>
+                  <th className="px-6 py-4">Lượt xem</th>
+                  <th className="px-6 py-4">Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#e5e1de]/30">
+                {topViewedPosts.map((post) => (
+                  <tr key={post.id} className="hover:bg-[#fafaf9] transition-colors">
+                    <td className="px-6 py-4 font-semibold text-primary max-w-[300px] truncate">{post.title}</td>
+                    <td className="px-6 py-4">{post.author?.full_name || post.author?.username || 'N/A'}</td>
+                    <td className="px-6 py-4 font-mono font-semibold">{post.view_count?.toLocaleString() || 0}</td>
+                    <td className="px-6 py-4">
+                      {post.status === 'published' ? (
+                        <span className="px-3 py-1 rounded-full bg-[#e1f3d8]/60 text-[#67c23a] text-[10px] font-bold uppercase tracking-wider border border-emerald-300">Đã xuất bản</span>
+                      ) : (
+                        <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold uppercase tracking-wider border border-amber-300">Bản nháp</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {topViewedPosts.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-8 text-center text-[#827470]">Chưa có dữ liệu bài viết</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     )
   }

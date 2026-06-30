@@ -44,10 +44,18 @@ def get_current_active_user(current_user: User = Depends(get_current_user)) -> U
 
 
 def require_admin(current_user: User = Depends(get_current_user)) -> User:
-    if current_user.role not in [UserRole.ADMIN, UserRole.STAFF]:
+    if current_user.role != UserRole.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Không đủ quyền truy cập",
+        )
+    return current_user
+
+def require_blog_editor(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role not in [UserRole.ADMIN, UserRole.STAFF]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chỉ ADMIN hoặc nhân viên Marketing mới có quyền truy cập",
         )
     return current_user
 
@@ -62,7 +70,7 @@ def require_admin_or_customer_service(current_user: User = Depends(get_current_u
 
 
 def require_shop_staff_or_admin(current_user: User = Depends(get_current_user)) -> User:
-    if current_user.role not in [UserRole.ADMIN, UserRole.STAFF, UserRole.SHOP_STAFF, UserRole.CUSTOMER_SERVICE]:
+    if current_user.role not in [UserRole.ADMIN, UserRole.SHOP_STAFF, UserRole.CUSTOMER_SERVICE, UserRole.STAFF]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Không đủ quyền truy cập",
@@ -71,7 +79,7 @@ def require_shop_staff_or_admin(current_user: User = Depends(get_current_user)) 
 
 
 def require_shop_staff_or_admin_write(current_user: User = Depends(get_current_user)) -> User:
-    if current_user.role not in [UserRole.ADMIN, UserRole.STAFF, UserRole.SHOP_STAFF]:
+    if current_user.role not in [UserRole.ADMIN, UserRole.SHOP_STAFF]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Không đủ quyền thực hiện hành động này",

@@ -7,7 +7,7 @@ import { useMockCartStore } from '@/store/mockCartStore';
 import { formatPrice } from './ProductCard';
 import MapDistance from './MapDistance';
 import { useAuthStore } from '../../store/authStore';
-import { addressService, orderService, apiClient } from '../../services';
+import { addressService, orderService, apiClient, promotionService } from '../../services';
 import type { UserAddress } from '../../types';
 
 const parseAddressString = (addressStr: string) => {
@@ -243,8 +243,8 @@ export default function CheckoutModal() {
 
   const subTotal = checkoutItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
 
-  const dynamicStandardPrice = mapDistance !== null 
-    ? Math.min(20000 + Math.floor(mapDistance) * 2000, 120000) 
+  const dynamicStandardPrice = mapDistance !== null
+    ? Math.min(20000 + Math.floor(mapDistance) * 2000, 120000)
     : calculatedShippingFee;
   const shippingCosts = {
     standard: { name: 'Giao hàng nhanh (2-3 ngày)', price: dynamicStandardPrice },
@@ -253,9 +253,32 @@ export default function CheckoutModal() {
   };
 
   const [shippingMethod, setShippingMethod] = useState<'standard' | 'express' | 'economy'>('standard');
-  const [voucherCode, setVoucherCode] = useState<string>('');
+  const [voucherCode, setVoucherCode] = useState<string>(() => {
+    return localStorage.getItem('appliedPromoCode') || '';
+  });
+  const [voucherInput, setVoucherInput] = useState(() => {
+    return localStorage.getItem('appliedPromoCode') || '';
+  });
   const [showCharityMsg, setShowCharityMsg] = useState(false);
-  const [showPromoSection, setShowPromoSection] = useState(false);
+  const [showPromoSection, setShowPromoSection] = useState(() => {
+    return !!localStorage.getItem('appliedPromoCode');
+  });
+  const [promotions, setPromotions] = useState<any[]>([]);
+
+  // Fetch real promotions when modal opens
+  useEffect(() => {
+    const fetchPromos = async () => {
+      try {
+        const res = await promotionService.getPromotions(0, 100);
+        setPromotions(res.items || []);
+      } catch (err) {
+        console.error("Lỗi khi tải khuyến mãi:", err);
+      }
+    };
+    if (isCheckoutOpen) {
+      fetchPromos();
+    }
+  }, [isCheckoutOpen]);
 
   const selectedShippingCost = shippingCosts[shippingMethod].price;
 
@@ -279,67 +302,102 @@ export default function CheckoutModal() {
     }
   }, [isAuthenticated, isCheckoutOpen]);
 
-  const activeVouchers = useMemo(() => {
-    const Y = new Date().getFullYear();
+  const validVouchers = useMemo(() => {
     const now = new Date();
+    return promotions.filter(promo => {
+      // 1. Status check
+      if (promo.status !== 'active') return false;
 
-    const isHolidayActive = (startMonth: number, startDay: number, endMonth: number, endDay: number) => {
-      const start = new Date(Y, startMonth - 1, startDay, 0, 0, 0);
-      const end = new Date(Y, endMonth - 1, endDay, 23, 59, 59);
-      return now >= start && now <= end;
-    };
+      // 2. Date check
+      const startDate = new Date(promo.start_date);
+      startDate.setHours(0, 0, 0, 0);
+      if (now < startDate) return false;
 
-    const list = [];
+      if (promo.end_date) {
+        const endDate = new Date(promo.end_date);
+        endDate.setHours(23, 59, 59, 999);
+        if (now > endDate) return false;
+      }
 
-    // First buy
-    if (isAuthenticated && !hasCompletedOrder) {
-      list.push({
-        code: 'CHAOMUNG10',
-        label: 'CHAOMUNG10 (Giảm 10% - Đơn đầu tiên)'
-      });
-    }
+      // 3. Min order check
+      if (subTotal < (promo.min_order || 0)) return false;
 
-    // Tết
-    if (isHolidayActive(1, 1, 2, 15)) {
-      list.push({
-        code: 'TETANNHIEN10',
-        label: 'TETANNHIEN10 (Giảm 10% - Dịp Tết Nguyên Đán)'
-      });
-    }
+      // 4. Applicable products check
+      if (promo.applicable_products) {
+        const appProducts = promo.applicable_products.split(',');
+        const hasAppProduct = checkoutItems.some(item => {
+          const dbId = item.product.dbId || parseInt(item.product.id);
+          return dbId && appProducts.includes(dbId.toString());
+        });
+        if (!hasAppProduct) return false;
+      }
 
-    // Quốc tế Phụ nữ
-    if (isHolidayActive(3, 1, 3, 15)) {
-      list.push({
-        code: 'WOMEN10',
-        label: 'WOMEN10 (Giảm 10% - Quốc Tế Phụ Nữ 8/3)'
-      });
-    }
+      return true;
+    }).map(promo => {
+      let desc = '';
+      if (promo.type === 'percentage') {
+        desc = `Giảm ${promo.value}%`;
+      } else if (promo.type === 'fixed') {
+        desc = `Giảm ${formatPrice(promo.value)}`;
+      } else if (promo.type === 'free_shipping') {
+        desc = `Miễn phí vận chuyển`;
+      }
 
-    // Ngày của Mẹ
-    if (isHolidayActive(5, 1, 5, 15)) {
-      list.push({
-        code: 'MOTHER10',
-        label: 'MOTHER10 (Giảm 10% - Ngày Của Mẹ)'
-      });
-    }
+      if (promo.min_order > 0) {
+        desc += ` - Đơn từ ${formatPrice(promo.min_order)}`;
+      }
 
-    // Vu Lan
-    if (isHolidayActive(8, 1, 8, 31)) {
-      list.push({
-        code: 'VULAN10',
-        label: 'VULAN10 (Giảm 10% - Đại Lễ Vu Lan)'
-      });
-    }
+      return {
+        ...promo,
+        code: promo.code,
+        label: promo.code,
+        desc: desc,
+        isPartner: promo.name.startsWith('Mã đối tác:')
+      };
+    });
+  }, [promotions, subTotal, checkoutItems]);
 
-    return list;
-  }, [isAuthenticated, hasCompletedOrder]);
+  const publicVouchers = useMemo(() => validVouchers.filter(v => !v.isPartner), [validVouchers]);
 
   const isVoucherValid = useMemo(() => {
-    return activeVouchers.some(v => v.code === voucherCode);
-  }, [voucherCode, activeVouchers]);
+    return validVouchers.some(v => v.code === voucherCode);
+  }, [voucherCode, validVouchers]);
 
-  const promoDiscount = isVoucherValid ? Math.round(subTotal * 0.10) : 0;
-  const shipDiscount = 0;
+  const selectedPromo = useMemo(() => {
+    return promotions.find(p => p.code === voucherCode);
+  }, [voucherCode, promotions]);
+
+  const promoDiscount = useMemo(() => {
+    if (!isVoucherValid || !selectedPromo) return 0;
+
+    const appProducts = selectedPromo.applicable_products
+      ? selectedPromo.applicable_products.split(',')
+      : [];
+
+    if (selectedPromo.type === 'percentage') {
+      if (appProducts.length > 0) {
+        const applicableSubTotal = checkoutItems
+          .filter(item => {
+            const dbId = item.product.dbId || parseInt(item.product.id);
+            return dbId && appProducts.includes(dbId.toString());
+          })
+          .reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+        return Math.round(applicableSubTotal * (selectedPromo.value / 100));
+      } else {
+        return Math.round(subTotal * (selectedPromo.value / 100));
+      }
+    } else if (selectedPromo.type === 'fixed') {
+      return Math.min(selectedPromo.value, subTotal);
+    }
+    return 0;
+  }, [isVoucherValid, selectedPromo, subTotal, checkoutItems]);
+
+  const shipDiscount = useMemo(() => {
+    if (isVoucherValid && selectedPromo && selectedPromo.type === 'free_shipping') {
+      return selectedShippingCost;
+    }
+    return 0;
+  }, [isVoucherValid, selectedPromo, selectedShippingCost]);
 
   const actualShippingFee = Math.max(0, selectedShippingCost - shipDiscount);
   const finalTotal = Math.max(0, subTotal - promoDiscount + actualShippingFee);
@@ -410,6 +468,7 @@ export default function CheckoutModal() {
       const createdOrder = await orderService.create(orderData);
 
       // Clear appropriate items and close checkout modal
+      localStorage.removeItem('appliedPromoCode');
       if (buyNowItem) {
         clearBuyNowItem();
       } else {
@@ -716,8 +775,8 @@ export default function CheckoutModal() {
 
                     {/* Always-mounted Map Location Selector */}
                     <div className={isEditingAddress ? "block animate-in fade-in duration-300" : "hidden"}>
-                      <MapDistance 
-                        customerAddress={form.address} 
+                      <MapDistance
+                        customerAddress={form.address}
                         onAddressResolved={(dist) => setMapDistance(dist)}
                         overrideShippingFee={shippingCosts[shippingMethod].price}
                         visible={isEditingAddress}
@@ -899,28 +958,55 @@ export default function CheckoutModal() {
                           <div className="p-4 space-y-4 border-t border-[#d4c3be]/30 bg-[#faf6f0]/30">
                             <div>
                               <label className="block text-[10px] uppercase tracking-wider text-[#5d4037] font-extrabold mb-1.5">
-                                Chọn mã khuyến mãi
+                                Nhập mã khuyến mãi
                               </label>
-                              <select
-                                value={voucherCode}
-                                onChange={(e) => setVoucherCode(e.target.value)}
-                                className="w-full bg-white border border-[#d4c3be] rounded-sm py-2 px-2.5 text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none cursor-pointer"
-                              >
-                                <option value="">-- Không sử dụng khuyến mãi --</option>
-                                {activeVouchers.length > 0 ? (
-                                  <optgroup label="Khuyến mãi khả dụng (Giảm 10%)">
-                                    {activeVouchers.map((v) => (
-                                      <option key={v.code} value={v.code}>
-                                        {v.label}
-                                      </option>
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  value={voucherInput}
+                                  onChange={(e) => setVoucherInput(e.target.value.toUpperCase())}
+                                  placeholder="Mã ưu đãi (nếu có)"
+                                  className="flex-1 bg-white border border-[#d4c3be] rounded-sm py-2 px-3 text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none uppercase font-mono"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setVoucherCode(voucherInput)}
+                                  className="px-4 py-2 bg-[#442a22] text-white text-[10px] uppercase font-bold tracking-wider rounded-sm hover:bg-[#2c160e] transition-colors cursor-pointer"
+                                >
+                                  Áp dụng
+                                </button>
+                              </div>
+
+                              {voucherCode && !isVoucherValid && (
+                                <p className="text-red-500 text-[10px] mt-2">Mã "{voucherCode}" không hợp lệ hoặc chưa đủ điều kiện áp dụng.</p>
+                              )}
+                              {voucherCode && isVoucherValid && (
+                                <p className="text-[#67c23a] text-[10px] mt-2 flex items-center gap-1 font-bold">
+                                  <Check size={12} /> Đã áp dụng mã {voucherCode} thành công!
+                                </p>
+                              )}
+
+                              {publicVouchers.length > 0 && (
+                                <div className="mt-4">
+                                  <p className="text-[10px] text-[#5d4037] mb-2 font-bold uppercase tracking-wider">Hoặc chọn mã khả dụng:</p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {publicVouchers.map(v => (
+                                      <button
+                                        key={v.code}
+                                        type="button"
+                                        onClick={() => {
+                                          setVoucherInput(v.code);
+                                          setVoucherCode(v.code);
+                                        }}
+                                        className={`px-3 py-2 border rounded-sm transition-colors text-left flex flex-col gap-0.5 cursor-pointer ${voucherCode === v.code ? 'border-primary bg-primary/5' : 'border-[#d4c3be] bg-white hover:border-primary/50'}`}
+                                      >
+                                        <span className={`text-[11px] font-bold font-mono ${voucherCode === v.code ? 'text-primary' : 'text-[#5d4037]'}`}>{v.label}</span>
+                                        <span className="text-[9px] text-[#827470]">{v.desc}</span>
+                                      </button>
                                     ))}
-                                  </optgroup>
-                                ) : (
-                                  <optgroup label="Không có khuyến mãi khả dụng">
-                                    <option value="" disabled>Hiện không có mã giảm giá nào phù hợp</option>
-                                  </optgroup>
-                                )}
-                              </select>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                         )}
@@ -976,7 +1062,7 @@ export default function CheckoutModal() {
                       </div>
                       <div className="flex items-center gap-2">
                         <ShieldCheck size={14} className="text-primary shrink-0" />
-                        <span>Hỗ trợ đổi size dễ dàng trong vòng 15 ngày.</span>
+                        <span>Hỗ trợ đổi size dễ dàng trong vòng 7 ngày.</span>
                       </div>
                     </div>
                   </div>

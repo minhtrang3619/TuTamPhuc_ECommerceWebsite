@@ -24,8 +24,8 @@ class Settings(BaseSettings):
 
     # Upload
     UPLOAD_DIR: str = "uploads"
-    MAX_FILE_SIZE: int = 5 * 1024 * 1024  # 5MB
-    ALLOWED_IMAGE_TYPES: List[str] = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"]
+    MAX_FILE_SIZE: int = 50 * 1024 * 1024  # 50MB
+    ALLOWED_IMAGE_TYPES: List[str] = ["image/jpeg", "image/jpg", "image/png"]
 
     # Admin seed
     ADMIN_EMAIL: str = "admin@tutamphuc.vn"

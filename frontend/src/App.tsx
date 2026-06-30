@@ -4,6 +4,12 @@ import apiClient from '@/services/apiClient'
 
 function App() {
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const promo = params.get('promo')
+    if (promo) {
+      localStorage.setItem('appliedPromoCode', promo.toUpperCase())
+    }
+
     // Session-based traffic channel tracking
     if (!sessionStorage.getItem('visited_tracked')) {
       sessionStorage.setItem('visited_tracked', 'true')

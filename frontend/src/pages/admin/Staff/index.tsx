@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   Search, 
   ChevronRight,
@@ -7,81 +7,108 @@ import {
   UserPlus,
   X
 } from 'lucide-react'
-
-interface StaffItem {
-  name: string
-  email: string
-  role: string
-  date: string
-  status: string
-  img: string
-}
+import { userService } from '@/services'
+import type { User, UserRole } from '@/types'
+import { toast } from 'sonner'
 
 export default function AdminStaff() {
   const [searchTerm, setSearchTerm] = useState('')
-  const [staffList, setStaffList] = useState<StaffItem[]>([
-    { name: 'Quản Trị Viên', email: 'admin@gmail.com', role: 'Admin', date: '01/01/2023', status: 'Hoạt động', img: 'https://avatar.vercel.sh/admin' },
-    { name: 'Nhân viên cửa hàng', email: 'shop_staff@gmail.com', role: 'Shop Staff', date: '10/05/2023', status: 'Hoạt động', img: 'https://avatar.vercel.sh/shop' },
-    { name: 'Nhân viên Chăm sóc khách hàng', email: 'customer_service@gmail.com', role: 'Customer Service', date: '15/06/2023', status: 'Hoạt động', img: 'https://avatar.vercel.sh/cs' }
-  ])
+  const [staffList, setStaffList] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
 
   // Modals State
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [selectedStaff, setSelectedStaff] = useState<StaffItem | null>(null)
-  const [tempRole, setTempRole] = useState('')
+  const [selectedStaff, setSelectedStaff] = useState<User | null>(null)
+  const [tempRole, setTempRole] = useState<UserRole>('shop_staff')
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [newName, setNewName] = useState('')
   const [newEmail, setNewEmail] = useState('')
-  const [newRole, setNewRole] = useState('Shop Staff')
+  const [newRole, setNewRole] = useState<UserRole>('shop_staff')
 
-  const toggleStatus = (name: string) => {
-    setStaffList(prev => prev.map(s => {
-      if (s.name === name) {
-        return { ...s, status: s.status === 'Hoạt động' ? 'Ngưng hoạt động' : 'Hoạt động' }
-      }
-      return s
-    }))
+  useEffect(() => {
+    fetchStaff()
+  }, [])
+
+  const fetchStaff = async () => {
+    try {
+      setLoading(true)
+      const data = await userService.getUsers({ is_staff: true })
+      setStaffList(data)
+    } catch (error) {
+      toast.error('Lỗi khi tải danh sách nhân sự')
+      console.error(error)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleOpenEdit = (staff: StaffItem) => {
+  const toggleStatus = async (user: User) => {
+    try {
+      await userService.toggleUserActive(user.id)
+      setStaffList(prev => prev.map(s => {
+        if (s.id === user.id) {
+          return { ...s, is_active: !s.is_active }
+        }
+        return s
+      }))
+      toast.success('Cập nhật trạng thái thành công')
+    } catch (error) {
+      toast.error('Lỗi khi cập nhật trạng thái')
+      console.error(error)
+    }
+  }
+
+  const handleOpenEdit = (staff: User) => {
     setSelectedStaff(staff)
     setTempRole(staff.role)
     setIsModalOpen(true)
   }
 
-  const handleSaveRole = () => {
+  const handleSaveRole = async () => {
     if (selectedStaff) {
-      setStaffList(prev => prev.map(s => {
-        if (s.name === selectedStaff.name) {
-          return { ...s, role: tempRole }
-        }
-        return s
-      }))
-      setIsModalOpen(false)
-      setSelectedStaff(null)
+      try {
+        await userService.updateUserRole(selectedStaff.id, tempRole)
+        setStaffList(prev => prev.map(s => {
+          if (s.id === selectedStaff.id) {
+            return { ...s, role: tempRole }
+          }
+          return s
+        }))
+        toast.success('Cập nhật vai trò thành công')
+        setIsModalOpen(false)
+        setSelectedStaff(null)
+      } catch (error) {
+        toast.error('Lỗi khi cập nhật vai trò')
+        console.error(error)
+      }
     }
   }
 
   const handleAddStaff = () => {
     if (!newName || !newEmail) return
-    const newStaff: StaffItem = {
-      name: newName,
-      email: newEmail,
-      role: newRole,
-      date: 'Hôm nay',
-      status: 'Hoạt động',
-      img: `https://avatar.vercel.sh/${newName.substring(0, 3)}`
-    }
-    setStaffList(prev => [...prev, newStaff])
+    // Wait: backend doesn't have an endpoint for admin to create staff directly yet.
+    // Usually admin uses auth register and then changes role, or there's a create user endpoint.
+    // For now, I'll keep the mock or just show a message.
+    toast.info('Tính năng thêm nhân viên đang được phát triển')
     setIsAddModalOpen(false)
     setNewName('')
     setNewEmail('')
-    setNewRole('Shop Staff')
+    setNewRole('shop_staff')
+  }
+
+  const getRoleName = (role: UserRole) => {
+    switch (role) {
+      case 'admin': return 'Admin'
+      case 'staff': return 'Staff'
+      case 'shop_staff': return 'Shop Staff'
+      case 'customer_service': return 'Customer Service'
+      default: return role
+    }
   }
 
   const filteredStaff = staffList.filter(s => 
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    s.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.role.toLowerCase().includes(searchTerm.toLowerCase())
   )
@@ -133,34 +160,40 @@ export default function AdminStaff() {
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/10">
-              {filteredStaff.map((user, idx) => {
-                const isAct = user.status === 'Hoạt động'
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="px-8 py-12 text-center text-on-surface-variant/60 font-body-md">
+                    Đang tải dữ liệu...
+                  </td>
+                </tr>
+              ) : filteredStaff.map((user, idx) => {
+                const isAct = user.is_active
                 return (
                   <tr key={idx} className="hover:bg-surface-container-low/30 transition-colors group">
                     <td className="px-8 py-4">
                       <div className="flex items-center gap-3">
                         <img 
-                          src={user.img} 
-                          alt={user.name} 
+                          src={user.avatar || `https://avatar.vercel.sh/${user.full_name.substring(0, 3)}`} 
+                          alt={user.full_name} 
                           className="w-10 h-10 rounded-full bg-secondary-container"
                         />
                         <div>
-                          <p className="font-body-md text-on-surface font-medium group-hover:text-primary transition-colors">{user.name}</p>
+                          <p className="font-body-md text-on-surface font-medium group-hover:text-primary transition-colors">{user.full_name}</p>
                           <p className="font-caption text-on-surface-variant opacity-70 text-xs">{user.email}</p>
                         </div>
                       </div>
                     </td>
                     <td className="px-8 py-4">
-                      <span className="font-label-md text-on-surface-variant text-sm">{user.role}</span>
+                      <span className="font-label-md text-on-surface-variant text-sm">{getRoleName(user.role)}</span>
                     </td>
                     <td className="px-8 py-4">
-                      <span className="font-caption text-on-surface-variant text-xs">{user.date}</span>
+                      <span className="font-caption text-on-surface-variant text-xs">{new Date(user.created_at).toLocaleDateString('vi-VN')}</span>
                     </td>
                     <td className="px-8 py-4">
                       <span className={`px-3 py-1 rounded-full font-label-md text-[11px] ${
                         isAct ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                       }`}>
-                        {user.status}
+                        {isAct ? 'Hoạt động' : 'Ngưng hoạt động'}
                       </span>
                     </td>
                     <td className="px-8 py-4 text-right">
@@ -171,9 +204,9 @@ export default function AdminStaff() {
                         >
                           Phân quyền
                         </button>
-                        {user.role !== 'Admin' && (
+                        {user.role !== 'admin' && (
                           <button 
-                            onClick={() => toggleStatus(user.name)}
+                            onClick={() => toggleStatus(user)}
                             className="font-label-md text-label-md text-on-surface-variant hover:text-red-600 transition-all p-1"
                             title={isAct ? "Chặn nhân sự" : "Mở chặn nhân sự"}
                           >
@@ -185,7 +218,7 @@ export default function AdminStaff() {
                   </tr>
                 )
               })}
-              {filteredStaff.length === 0 && (
+              {!loading && filteredStaff.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-8 py-12 text-center text-on-surface-variant/60 font-body-md">
                     Không tìm thấy nhân sự phù hợp.
@@ -212,12 +245,12 @@ export default function AdminStaff() {
             {/* Simple UI Info Card */}
             <div className="bg-surface-container-low p-4 rounded-lg mb-6 flex items-center gap-3 border border-outline-variant/10">
               <img 
-                src={selectedStaff.img} 
-                alt={selectedStaff.name} 
+                src={selectedStaff.avatar || `https://avatar.vercel.sh/${selectedStaff.full_name.substring(0, 3)}`} 
+                alt={selectedStaff.full_name} 
                 className="w-12 h-12 rounded-full"
               />
               <div>
-                <p className="font-body-md text-on-surface font-semibold">{selectedStaff.name}</p>
+                <p className="font-body-md text-on-surface font-semibold">{selectedStaff.full_name}</p>
                 <p className="font-caption text-on-surface-variant text-xs">{selectedStaff.email}</p>
               </div>
             </div>
@@ -228,12 +261,13 @@ export default function AdminStaff() {
                 <label className="text-[11px] uppercase tracking-wider text-on-surface-variant opacity-75 font-semibold block mb-1">Vai trò nhân sự</label>
                 <select 
                   value={tempRole}
-                  onChange={(e) => setTempRole(e.target.value)}
+                  onChange={(e) => setTempRole(e.target.value as UserRole)}
                   className="w-full bg-surface-container-low border border-outline-variant/30 rounded px-3 py-2 text-sm text-primary focus:ring-1 focus:ring-primary/20 cursor-pointer"
                 >
-                  <option value="Admin">Admin</option>
-                  <option value="Shop Staff">Shop Staff</option>
-                  <option value="Customer Service">Customer Service</option>
+                  <option value="admin">Admin</option>
+                  <option value="staff">Staff</option>
+                  <option value="shop_staff">Shop Staff</option>
+                  <option value="customer_service">Customer Service</option>
                 </select>
               </div>
             </div>
@@ -294,12 +328,13 @@ export default function AdminStaff() {
                 <label className="text-[11px] uppercase tracking-wider text-on-surface-variant opacity-75 font-semibold block mb-1">Vai trò</label>
                 <select 
                   value={newRole}
-                  onChange={(e) => setNewRole(e.target.value)}
+                  onChange={(e) => setNewRole(e.target.value as UserRole)}
                   className="w-full bg-surface-container-low border border-outline-variant/30 rounded px-3 py-2 text-sm text-primary focus:ring-1 focus:ring-primary/20 cursor-pointer"
                 >
-                  <option value="Admin">Admin</option>
-                  <option value="Shop Staff">Shop Staff</option>
-                  <option value="Customer Service">Customer Service</option>
+                  <option value="admin">Admin</option>
+                  <option value="staff">Staff</option>
+                  <option value="shop_staff">Shop Staff</option>
+                  <option value="customer_service">Customer Service</option>
                 </select>
               </div>
             </div>

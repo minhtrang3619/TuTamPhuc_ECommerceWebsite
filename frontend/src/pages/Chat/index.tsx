@@ -224,14 +224,6 @@ export default function CustomerChatPage() {
 
             {/* Chat History Area */}
             <div className="flex-1 relative overflow-hidden flex flex-col">
-              {/* Lotus Background Overlay */}
-              <div className="absolute inset-0 z-0 opacity-15 pointer-events-none">
-                <img 
-                  alt="Lotus" 
-                  className="w-full h-full object-cover" 
-                  src="https://lh3.googleusercontent.com/aida/AP1WRLsnw0F-XzOGofrZk5PGcf_jxBbjfhW6aK-OzK2L51g5o5A1hUY3e8MVb3khRbhFPn2kWrq1rV7d2nTq8KOTqji_8esI53WkOdmhWySFvnamX860rGloMjKd-YAPQiTc1UGD5P2ePyGy1xwtS2bXTe0kLA3y-IvnWQNRjiCOQzBeiZri5ACaTfSAHtywz6-yXRQC0gAw4ngtOJ_XraOLKa_3gqTuCuqhtuVeCkQsYQvyYRxYC6xOFNTE8pGK"
-                />
-              </div>
 
               {/* Message scroll viewport */}
               <div ref={chatMessagesRef} className="absolute inset-0 z-10 p-6 overflow-y-auto space-y-6 custom-scrollbar" id="chat-messages">

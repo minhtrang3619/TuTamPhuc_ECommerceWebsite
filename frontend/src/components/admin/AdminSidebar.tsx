@@ -17,7 +17,8 @@ import {
   Heart,
   Layers,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Gift
 } from 'lucide-react'
 
 interface AdminSidebarProps {
@@ -81,16 +82,22 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
       roles: ['admin']
     },
     {
+      title: 'Thống kê chi tiết',
+      path: '/admin/dashboard',
+      icon: LayoutDashboard,
+      roles: ['staff']
+    },
+    {
       title: 'Báo cáo chuyên sâu',
       path: '/admin/bao-cao',
       icon: FileText,
       roles: ['admin']
     },
     {
-      title: 'Quỹ thiện nguyện',
+      title: 'Báo cáo thiện nguyện',
       path: '/admin/tu-thien',
       icon: Heart,
-      roles: ['admin']
+      roles: ['admin', 'staff']
     },
     {
       title: 'Thống kê chuyên sâu',
@@ -102,19 +109,31 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
       title: 'Quản lý Đơn hàng',
       path: '/admin/don-hang',
       icon: ShoppingBag,
-      roles: ['admin', 'staff', 'shop_staff']
+      roles: ['admin', 'shop_staff']
     },
     {
       title: 'Quản lý Sản phẩm',
       path: '/admin/san-pham',
       icon: Package,
-      roles: ['admin', 'staff', 'shop_staff']
+      roles: ['admin', 'shop_staff']
     },
     {
       title: 'Quản lý Kho',
       path: '/admin/kho',
       icon: Layers,
-      roles: ['admin', 'staff', 'shop_staff']
+      roles: ['admin', 'shop_staff']
+    },
+    {
+      title: 'Quản lý Blog',
+      path: '/admin/blog',
+      icon: FileText,
+      roles: ['admin', 'staff']
+    },
+    {
+      title: 'Quản lý Khuyến mãi',
+      path: '/admin/khuyen-mai',
+      icon: Gift,
+      roles: ['admin', 'staff']
     },
     {
       title: 'Quản lý Khách hàng',
@@ -142,7 +161,9 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
       ? 'Xin chào nhân viên cửa hàng'
       : role === 'customer_service'
         ? 'Xin chào nhân viên chăm sóc khách hàng'
-        : 'Xin chào nhân viên'
+        : role === 'staff'
+          ? 'Xin chào nhân viên Marketing'
+          : 'Xin chào nhân viên'
 
   const menuItems = isCSKH
     ? cskhMenuItems
@@ -189,8 +210,8 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                 key={item.path}
                 to={item.path}
                 className={`flex items-center gap-4 py-2 text-sm font-sans tracking-wide transition-all ${isActive
-                    ? 'text-[#442a22] font-semibold border-b border-[#442a22]/20 pb-3 mb-1'
-                    : 'text-[#827470] hover:text-[#442a22] font-normal'
+                  ? 'text-[#442a22] font-semibold border-b border-[#442a22]/20 pb-3 mb-1'
+                  : 'text-[#827470] hover:text-[#442a22] font-normal'
                   } ${isCollapsed ? 'md:justify-center md:px-0 md:border-none md:pb-2' : ''}`}
                 title={isCollapsed ? item.title : undefined}
               >

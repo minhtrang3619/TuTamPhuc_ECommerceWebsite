@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.orm import Session
 from app.models.customer import Customer
@@ -72,11 +72,24 @@ def change_password(
 def list_users(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    role: Optional[UserRole] = Query(None),
+    is_staff: Optional[bool] = Query(None),
     db: Session = Depends(get_db),
     _: User = Depends(require_admin),
 ):
     """Admin: Lấy danh sách người dùng."""
-    return db.query(User).offset((page - 1) * page_size).limit(page_size).all()
+    query = db.query(User)
+    
+    if role:
+        query = query.filter(User.role == role)
+        
+    if is_staff is not None:
+        if is_staff:
+            query = query.filter(User.role.in_([UserRole.ADMIN, UserRole.STAFF, UserRole.SHOP_STAFF, UserRole.CUSTOMER_SERVICE]))
+        else:
+            query = query.filter(User.role.in_([UserRole.CUSTOMER, UserRole.GUEST]))
+            
+    return query.offset((page - 1) * page_size).limit(page_size).all()
 
 
 @router.patch("/{user_id}/role", response_model=UserPublic)

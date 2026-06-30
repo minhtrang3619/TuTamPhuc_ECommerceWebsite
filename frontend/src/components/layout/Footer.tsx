@@ -25,10 +25,6 @@ export function Footer({ onOpenAssistant }: FooterProps) {
             "Trang phục trang nhã, thiết kế tinh tế."<br/>
             Mang lại cảm giác an yên, nhẹ nhàng và thoải mái trong cuộc sống thường nhật.
           </p>
-          <div className="flex items-center gap-2 mt-2 font-caption text-caption text-outline">
-            <MapPin size={14} className="text-primary" />
-            Trụ sở: 2026 Từ Tâm Phục, Việt Nam
-          </div>
         </div>
 
         {/* Core educational quick links */}
@@ -37,33 +33,28 @@ export function Footer({ onOpenAssistant }: FooterProps) {
             Khám Phá Từ Tâm
           </h4>
           <div className="flex flex-col gap-2">
-            <button onClick={() => alert("Chương trình ‘Nghệ thuật Phục trang’ tôn vinh chất liệu tự nhiên thô mộc, hướng tới thiết kế tối giản, trang nhã và an bình.")} className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-300 text-left bg-transparent border-none p-0 cursor-pointer">
-              Nghệ thuật Phục trang
+            <button onClick={() => toast.info("Hỗ trợ đổi trả miễn phí trong vòng 7 ngày đối với sản phẩm lỗi hoặc không vừa size, yêu cầu còn nguyên tem mác.")} className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-300 text-left bg-transparent border-none p-0 cursor-pointer">
+              Chính sách đổi trả
             </button>
-            <button onClick={() => alert("Bảo dưỡng vải linen dệt tơ: Giặt bằng tay với nước lạnh xà phòng dịu mát, không vặn xoắn cơ học, treo râm mát.")} className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-300 text-left bg-transparent border-none p-0 cursor-pointer">
-              Hướng dẫn giặt là
+            <button onClick={() => toast.info("Từ Tâm Phục nhận may đo theo số đo riêng, đảm bảo trang phục vừa vặn hoàn hảo và mang lại cảm giác thoải mái nhất.")} className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-300 text-left bg-transparent border-none p-0 cursor-pointer">
+              Dịch vụ may đo
             </button>
-            <button onClick={() => alert("Quy tắc trang phục: Khuyên dùng trang phục lịch sự, che vai và đầu gối khi đến những nơi trang nghiêm như đền, chùa.")} className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-300 text-left bg-transparent border-none p-0 cursor-pointer">
-              Quy tắc trang phục
+            <button onClick={() => toast.info("Dịch vụ thêu tên hoặc pháp danh thủ công tinh tế lên trang phục, tạo dấu ấn cá nhân mang đậm chất thiền.")} className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-300 text-left bg-transparent border-none p-0 cursor-pointer">
+              Thêu tên riêng
             </button>
           </div>
         </div>
 
-        {/* Help queries support topics */}
+        {/* Contact Info */}
         <div className="flex flex-col gap-4">
           <h4 className="font-label-md text-label-md text-primary uppercase tracking-wider">
-            Hỗ Trợ Khách Hàng
+            Liên Hệ
           </h4>
-          <div className="flex flex-col gap-2">
-            <button onClick={onOpenAssistant} className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-300 text-left flex items-start gap-1 bg-transparent border-none p-0 cursor-pointer">
-              <Sparkles size={14} className="text-amber-800 self-center" /> AI đo size tự động
-            </button>
-            <button onClick={() => alert("Từ Tâm Phục cam kết phát triển bền vững, sử dụng chất liệu thiên nhiên và quy trình sản xuất thân thiện với môi trường.")} className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-300 text-left bg-transparent border-none p-0 cursor-pointer">
-              Phát triển bền vững
-            </button>
-            <button onClick={() => alert("Thông tin cá nhân của quý khách được bảo mật an toàn tuyệt đối.")} className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-300 text-left bg-transparent border-none p-0 cursor-pointer">
-              Chính sách bảo mật
-            </button>
+          <div className="flex flex-col gap-3 font-body-md text-body-md text-on-surface-variant">
+            <p><strong>Hotline:</strong> 083889344</p>
+            <p><strong>Zalo hỗ trợ:</strong> 0838893442</p>
+            <p><strong>Email:</strong> tutamphuc2026@gmail.com</p>
+            <p className="leading-relaxed"><strong>Địa chỉ:</strong> số 1 Lê Văn Việt, Tăng Nhơn Phú, TP Hồ Chí Minh</p>
           </div>
         </div>
 

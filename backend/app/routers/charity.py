@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.database.session import get_db
-from app.core.dependencies import require_super_admin
+from app.core.dependencies import require_super_admin, require_blog_editor
 from app.models.charity import CharityCampaign, CharityTransaction
 from app.models.user import User
 from app.schemas.charity import (
@@ -57,7 +57,7 @@ def get_campaigns(db: Session = Depends(get_db)):
 def create_campaign(
     data: CharityCampaignCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_super_admin)
+    _: User = Depends(require_blog_editor)
 ):
     """Tạo chiến dịch thiện nguyện mới (Chỉ Admin)."""
     db_campaign = CharityCampaign(**data.model_dump())
@@ -71,7 +71,7 @@ def update_campaign(
     campaign_id: int,
     data: CharityCampaignUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_super_admin)
+    _: User = Depends(require_blog_editor)
 ):
     """Cập nhật thông tin chiến dịch (Chỉ Admin)."""
     db_campaign = db.query(CharityCampaign).filter(CharityCampaign.id == campaign_id).first()
@@ -95,7 +95,7 @@ def update_campaign(
 def delete_campaign(
     campaign_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_super_admin)
+    _: User = Depends(require_blog_editor)
 ):
     """Xoá chiến dịch thiện nguyện (Chỉ Admin)."""
     db_campaign = db.query(CharityCampaign).filter(CharityCampaign.id == campaign_id).first()
@@ -135,7 +135,7 @@ def get_transactions(
 def create_transaction(
     data: CharityTransactionCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_super_admin)
+    _: User = Depends(require_blog_editor)
 ):
     """Thêm giao dịch thủ công (đóng góp hoặc chi phí) (Chỉ Admin)."""
     amount = data.amount
@@ -172,7 +172,7 @@ def create_transaction(
 def export_campaign_transactions_csv(
     campaign_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_super_admin)
+    _: User = Depends(require_blog_editor)
 ):
     from fastapi.responses import StreamingResponse
     import io

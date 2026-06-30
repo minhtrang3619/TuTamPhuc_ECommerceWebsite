@@ -67,6 +67,13 @@ class OrderService:
                 )
                 self.db.add(order_item)
 
+            # Increment promotion usage if applicable
+            if data.coupon_code:
+                from app.models.promotion import Promotion
+                promo = self.db.query(Promotion).filter(Promotion.code == data.coupon_code).first()
+                if promo:
+                    promo.uses += 1
+
             self.db.commit()
             self.db.refresh(order)
             return order
@@ -116,6 +123,13 @@ class OrderService:
         # Clear cart
         for item in cart.items:
             self.db.delete(item)
+
+        # Increment promotion usage if applicable
+        if data.coupon_code:
+            from app.models.promotion import Promotion
+            promo = self.db.query(Promotion).filter(Promotion.code == data.coupon_code).first()
+            if promo:
+                promo.uses += 1
 
         self.db.commit()
         self.db.refresh(order)

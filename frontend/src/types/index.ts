@@ -237,6 +237,7 @@ export interface BlogPost {
   status: BlogStatus
   tags?: string[]
   view_count: number
+  is_featured: boolean
   created_at: string
   updated_at: string
 }
