@@ -15,7 +15,7 @@ from app.models import *  # noqa: F401, F403 - import all models
 from app.core.config import settings
 
 # Override sqlalchemy.url from env
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace('%', '%%'))
 
 target_metadata = Base.metadata
 
