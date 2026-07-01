@@ -355,9 +355,53 @@ export default function AdminCharity() {
       <section className="space-y-6">
         <div className="flex items-end justify-between border-b border-[#e5e1de]/60 pb-3">
           <h2 className="text-lg font-serif font-bold text-primary">Chiến dịch thiện nguyện hiện tại</h2>
+          <button
+            onClick={() => {
+              setEditingCampaign(null);
+              setCampaignForm({
+                name: '',
+                slogan: '',
+                description: '',
+                target_amount: 0,
+                start_date: new Date().toISOString().split('T')[0],
+                end_date: '',
+                image_url: ''
+              });
+              setIsCampaignModalOpen(true);
+            }}
+            className="text-[12px] font-bold text-white bg-primary hover:bg-[#442a22] px-4 py-2 rounded flex items-center gap-2 cursor-pointer transition-colors"
+          >
+            <Heart size={14} /> Khởi tạo chiến dịch
+          </button>
         </div>
         <div className="w-full">
-          {campaigns.length > 0 && (() => {
+          {campaigns.length === 0 ? (
+            <div className="bg-surface rounded-xl border border-outline-variant/30 min-h-[300px] flex flex-col items-center justify-center p-8 text-center text-on-surface-variant">
+              <div className="w-16 h-16 bg-[#ece0dc] rounded-full flex items-center justify-center text-primary mb-4">
+                <Heart size={28} />
+              </div>
+              <h3 className="font-serif font-bold text-xl text-primary mb-2">Chưa có chiến dịch nào</h3>
+              <p className="text-sm max-w-md opacity-80 mb-6">Bạn chưa có chiến dịch thiện nguyện nào đang hoạt động. Hãy tạo chiến dịch mới để bắt đầu trích quỹ từ các đơn hàng.</p>
+              <button
+                onClick={() => {
+                  setEditingCampaign(null);
+                  setCampaignForm({
+                    name: '',
+                    slogan: '',
+                    description: '',
+                    target_amount: 0,
+                    start_date: new Date().toISOString().split('T')[0],
+                    end_date: '',
+                    image_url: ''
+                  });
+                  setIsCampaignModalOpen(true);
+                }}
+                className="text-[14px] font-bold text-white bg-primary hover:bg-[#442a22] px-6 py-2.5 rounded-full flex items-center gap-2 cursor-pointer transition-colors shadow-sm"
+              >
+                Tạo chiến dịch đầu tiên
+              </button>
+            </div>
+          ) : (() => {
             const project = campaigns[0]
             const rawPercent = project.target_amount > 0 ? (project.raised_amount / project.target_amount) * 100 : 0
             const percent = rawPercent > 0 && rawPercent < 1 
