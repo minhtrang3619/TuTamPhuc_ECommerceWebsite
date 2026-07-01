@@ -363,9 +363,8 @@ export default function AdminCharity() {
                 slogan: '',
                 description: '',
                 target_amount: 0,
-                start_date: new Date().toISOString().split('T')[0],
-                end_date: '',
-                image_url: ''
+                image_url: '',
+                status: 'active'
               });
               setIsCampaignModalOpen(true);
             }}
@@ -390,9 +389,8 @@ export default function AdminCharity() {
                     slogan: '',
                     description: '',
                     target_amount: 0,
-                    start_date: new Date().toISOString().split('T')[0],
-                    end_date: '',
-                    image_url: ''
+                    image_url: '',
+                    status: 'active'
                   });
                   setIsCampaignModalOpen(true);
                 }}
