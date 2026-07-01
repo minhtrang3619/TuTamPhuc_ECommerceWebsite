@@ -6,6 +6,7 @@ import { blogService } from '@/services';
 import type { BlogPost } from '@/types';
 import { format } from 'date-fns';
 import { getImageUrl } from '@/utils/productMapper';
+import { vi } from 'date-fns/locale';
 
 
 export default function BlogDetailPage() {
