@@ -21,6 +21,10 @@ export default function BlogPage() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const location = useLocation();
 
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    e.currentTarget.src = 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80';
+  };
+
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     if (searchParams.get('charity') === 'true') {
@@ -124,6 +128,7 @@ export default function BlogPage() {
                             src={post.thumbnail ? getImageUrl(post.thumbnail) : 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80'} 
                             alt={post.title} 
                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+                            onError={handleImageError}
                           />
                           {post.tags && post.tags.length > 0 && (
                             <div className="absolute top-4 left-4 bg-primary text-white text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-sm shadow-sm">

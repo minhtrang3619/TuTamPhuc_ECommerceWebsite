@@ -14,6 +14,10 @@ export default function BlogDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    e.currentTarget.src = 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80';
+  };
+
   useEffect(() => {
     const fetchPost = async () => {
       if (!slug) return;
@@ -105,7 +109,7 @@ export default function BlogDetailPage() {
 
         {post.thumbnail && (
           <div className="aspect-video w-full rounded-lg overflow-hidden mb-12 shadow-sm border border-[#eeeeee]">
-            <img src={getImageUrl(post.thumbnail)} alt={post.title} className="w-full h-full object-cover" />
+            <img src={getImageUrl(post.thumbnail)} alt={post.title} className="w-full h-full object-cover" onError={handleImageError} />
           </div>
         )}
 

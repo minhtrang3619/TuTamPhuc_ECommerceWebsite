@@ -148,6 +148,10 @@ export default function AdminBlog() {
     setTimeout(() => setSuccess(null), 3000)
   }
 
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    e.currentTarget.src = 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=150&q=80';
+  }
+
   // Handle Open Create Modal
   const handleOpenCreate = () => {
     setModalMode('create')
@@ -415,6 +419,7 @@ export default function AdminBlog() {
                           alt={post.title}
                           className="w-12 h-12 object-cover rounded-xs border border-neutral-200 shrink-0"
                           referrerPolicy="no-referrer"
+                          onError={handleImageError}
                         />
                         <div className="min-w-0">
                           <h4 className="font-serif font-bold text-primary truncate" title={post.title}>{post.title}</h4>
@@ -623,7 +628,7 @@ export default function AdminBlog() {
                   {/* Preview image */}
                   {formThumbnail && (
                     <div className="relative w-36 aspect-[16/10] border border-[#e5e1de] rounded-xs overflow-hidden mt-2 group shadow-xs">
-                      <img src={getImageUrl(formThumbnail)} alt="Thumbnail preview" className="w-full h-full object-cover" />
+                      <img src={getImageUrl(formThumbnail)} alt="Thumbnail preview" className="w-full h-full object-cover" onError={handleImageError} />
                       <button
                         type="button"
                         onClick={() => setFormThumbnail('')}
