@@ -4,6 +4,7 @@ import { ArrowRight, Leaf, Heart } from 'lucide-react'
 import { Marquee } from '@/components/ui/Marquee'
 import { charityService, CharityCampaign } from '@/services/charityService'
 import { settingService } from '@/services'
+import { getImageUrl } from '@/utils/productMapper'
 
 const formatPrice = (price: number) => {
   return price.toLocaleString('vi-VN') + ' ₫'
@@ -164,7 +165,7 @@ export default function HomePage() {
             >
               <div className="w-full md:w-2/5 aspect-[4/3] rounded-lg overflow-hidden bg-surface-container flex-shrink-0">
                 {campaign.image_url ? (
-                  <img src={campaign.image_url} alt={campaign.name} className="w-full h-full object-cover" />
+                  <img src={getImageUrl(campaign.image_url)} alt={campaign.name} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-primary/30">
                     <Heart size={48} />

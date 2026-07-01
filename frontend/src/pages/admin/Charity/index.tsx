@@ -16,6 +16,7 @@ import { charityService, CharityCampaign, CharityTransaction, CharityOverview } 
 import apiClient from '../../../services/apiClient'
 import CharityDetailModal from '../../../components/CharityDetailModal'
 import AdminCharityDetail from './AdminCharityDetail'
+import { getImageUrl } from '../../../utils/productMapper'
 
 const formatPrice = (price: number) => {
   return price.toLocaleString('vi-VN') + ' ₫'
@@ -377,7 +378,7 @@ export default function AdminCharity() {
                 {/* Image panel */}
                 <div className="md:w-2/5 h-64 md:h-auto overflow-hidden relative bg-[#ece0dc]/20 flex items-center justify-center">
                   {project.image_url ? (
-                    <img className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src={project.image_url} alt={project.name} />
+                    <img className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src={getImageUrl(project.image_url)} alt={project.name} />
                   ) : (
                     <div className="text-primary/30">
                       <Heart size={64} />
@@ -664,7 +665,7 @@ export default function AdminCharity() {
                   <div className="flex items-center gap-4">
                     {campaignForm.image_url && (
                       <div className="w-16 h-16 rounded-lg overflow-hidden border border-[#eeeeee] flex-shrink-0 bg-neutral-100 flex items-center justify-center">
-                        <img src={campaignForm.image_url} alt="Preview" className="w-full h-full object-cover" />
+                        <img src={getImageUrl(campaignForm.image_url)} alt="Preview" className="w-full h-full object-cover" />
                       </div>
                     )}
                     <div className="flex-1">

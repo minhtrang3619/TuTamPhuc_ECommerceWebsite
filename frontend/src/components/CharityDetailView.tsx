@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, Heart, ShieldCheck, MapPin } from 'lucide-react'
 import { charityService, CharityCampaign, CharityTransaction } from '../services/charityService'
+import { getImageUrl } from '../utils/productMapper'
 
 const formatPrice = (price: number) => {
   return price.toLocaleString('vi-VN') + ' ₫'
@@ -81,13 +82,13 @@ export default function CharityDetailView({ campaign, onBack }: CharityDetailVie
       : 'Đang thực hiện'
 
   const gallery = campaign.gallery_images
-    ? campaign.gallery_images.split(',')
+    ? campaign.gallery_images.split(',').map(url => getImageUrl(url.trim()))
     : [
       "https://lh3.googleusercontent.com/aida-public/AB6AXuDmgTqvtGLayp5gynaX-THb1e5lQCU-ZIevABluGx5vzuDAcXQSH0e8Hk-4HAPjXopP16YUrknTBl9UFHb93IwUaxBEsbWe7GS4JLj4l-yzWmSL9i9plsi3AZ5Qz79o5EYZf_TjfMwZRYYHxXuR5XvQUzd-HcXvqgiRCFF9M3kYdmHlNVoUQNKd-QxaO9I_is9LxlaQcwfebp02gZtmx7AJHfXcMCSbQ-N8YwHf-EIm_5roLb4irAF4xXiWH1VFJt9TKe1jVpxhuar4",
       "https://lh3.googleusercontent.com/aida-public/AB6AXuDl38GVlNn6eUEho54DpTApF1S5eqqPcqJM0DyqiOJ0XKhcKZulIWjsWD_Fo-bD0bsUMu8vJNOIH4VyJf_qc85cWFC5pKraW97G17sKf_YdNCbkw5WTeCRujCCbk2pE9SYpGY7WaXaVYQuxrJebNFoRAJW6eAgukT0mQ0nE_cckm8VpkRElnwUhHUz6mPQ5YVwcBOSft91YsGouai6TnH13zShqMomeIIgcZMva5SlB43lcnEsb2SzEUUC_r2cIFG03DyJ5nU9lsQKs"
     ];
 
-  const coverImage = campaign.image_url || "https://lh3.googleusercontent.com/aida-public/AB6AXuBdeKbecYkznlSBSLLz09GVshQ9CPCluO1Wy19JmAxxQKtjEmUDthQHmEVWz0F2TnrSdhW2KYw82Vd8-5DEuv-2tSbj6A_AtRIn2nsT4-kfwRkZ9CPyHxic9Z9RD7HXyHGlgPSN33UTcZt0-rESfcrDk0mzpJoN5ontiUV3MuQ0DHA9PFb4qfAN0B4LW07f1paigeabyR-jDhhkI-p_P61lhq4rjXvMjW-gGcH65x0Hk2nM1PyWXYnamfS7anaN_YgepRupgF2OBUbD";
+  const coverImage = campaign.image_url ? getImageUrl(campaign.image_url) : "https://lh3.googleusercontent.com/aida-public/AB6AXuBdeKbecYkznlSBSLLz09GVshQ9CPCluO1Wy19JmAxxQKtjEmUDthQHmEVWz0F2TnrSdhW2KYw82Vd8-5DEuv-2tSbj6A_AtRIn2nsT4-kfwRkZ9CPyHxic9Z9RD7HXyHGlgPSN33UTcZt0-rESfcrDk0mzpJoN5ontiUV3MuQ0DHA9PFb4qfAN0B4LW07f1paigeabyR-jDhhkI-p_P61lhq4rjXvMjW-gGcH65x0Hk2nM1PyWXYnamfS7anaN_YgepRupgF2OBUbD";
 
   const contentParagraphs = campaign.content
     ? campaign.content.split('\n')
@@ -153,7 +154,7 @@ export default function CharityDetailView({ campaign, onBack }: CharityDetailVie
                 <div key={idx} className="aspect-square rounded-xl overflow-hidden shadow-xs border border-[#eeeeee]">
                   <img
                     className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
-                    src={imgUrl.trim()}
+                    src={imgUrl}
                     alt={`Hình ảnh hoạt động ${idx + 1}`}
                   />
                 </div>

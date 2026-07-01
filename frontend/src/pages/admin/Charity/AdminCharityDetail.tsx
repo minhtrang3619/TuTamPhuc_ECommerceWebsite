@@ -3,6 +3,7 @@ import { ArrowLeft, Info, Image as ImageIcon, Download, TrendingUp, ShoppingBag,
 import { charityService, CharityCampaign, CharityTransaction } from '../../../services/charityService'
 import apiClient from '../../../services/apiClient'
 import Toast from '../../../components/ui/Toast'
+import { getImageUrl } from '../../../utils/productMapper'
 
 interface AdminCharityDetailProps {
   campaign: CharityCampaign
@@ -307,7 +308,7 @@ export default function AdminCharityDetail({ campaign, onBack }: AdminCharityDet
                 <div className="flex items-center gap-4 mt-2">
                   {formData.image_url && (
                     <div className="w-14 h-14 rounded-lg overflow-hidden border border-[#eeeeee] flex-shrink-0 bg-neutral-100">
-                      <img src={formData.image_url} alt="Cover Preview" className="w-full h-full object-cover" />
+                      <img src={getImageUrl(formData.image_url)} alt="Cover Preview" className="w-full h-full object-cover" />
                     </div>
                   )}
                   <div className="flex-1">
@@ -338,7 +339,7 @@ export default function AdminCharityDetail({ campaign, onBack }: AdminCharityDet
                 <div className="grid grid-cols-3 gap-3">
                   {galleryList.map((url, idx) => (
                     <div key={idx} className="relative aspect-square rounded-lg overflow-hidden group border border-[#eeeeee]">
-                      <img src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
+                      <img src={getImageUrl(url)} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
                       <button
                         type="button"
                         onClick={() => handleDeleteGalleryImg(idx)}

@@ -9,6 +9,7 @@ import { blogService } from '@/services';
 import type { BlogPost } from '@/types';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { getImageUrl } from '@/utils/productMapper';
 
 
 const formatPrice = (price: number) => {
@@ -177,7 +178,7 @@ export default function BlogPage() {
               >
                 <div className="w-full md:w-1/3 aspect-[4/3] rounded-lg overflow-hidden bg-[#faf6f0] flex items-center justify-center flex-shrink-0">
                   {campaign.image_url ? (
-                    <img src={campaign.image_url} alt={campaign.name} className="w-full h-full object-cover" />
+                    <img src={getImageUrl(campaign.image_url)} alt={campaign.name} className="w-full h-full object-cover" />
                   ) : (
                     <div className="text-primary/30">
                       <Heart size={48} />

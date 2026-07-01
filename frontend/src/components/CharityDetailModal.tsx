@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Calendar, Wallet, ArrowUpRight, ArrowDownRight, Award } from 'lucide-react'
 import { charityService, CharityCampaign, CharityTransaction } from '../services/charityService'
+import { getImageUrl } from '../utils/productMapper'
 
 const formatPrice = (price: number) => {
   return price.toLocaleString('vi-VN') + ' ₫'
@@ -125,7 +126,7 @@ export default function CharityDetailModal({ isOpen, onClose, campaign }: Charit
               <div className="flex flex-col md:flex-row gap-6 items-start">
                 {campaign.image_url && (
                   <div className="w-full md:w-1/3 aspect-[4/3] md:aspect-square rounded-xl overflow-hidden bg-[#faf6f0] border border-[#eeeeee] flex-shrink-0">
-                    <img src={campaign.image_url} alt={campaign.name} className="w-full h-full object-cover" />
+                    <img src={getImageUrl(campaign.image_url)} alt={campaign.name} className="w-full h-full object-cover" />
                   </div>
                 )}
                 <div className="flex-1 space-y-3">
