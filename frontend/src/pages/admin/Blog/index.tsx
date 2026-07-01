@@ -5,6 +5,7 @@ import {
   Bold, Italic, Underline, Heading1, Heading2, List, ListOrdered, Link, Image as ImageIcon
 } from 'lucide-react'
 import { blogService } from '@/services'
+import { getImageUrl } from '@/utils/productMapper'
 import type { BlogPost, BlogStatus } from '@/types'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
@@ -410,7 +411,7 @@ export default function AdminBlog() {
                     <td className="px-6 py-4 max-w-sm">
                       <div className="flex gap-4 items-center">
                         <img
-                          src={post.thumbnail || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=150&q=80'}
+                          src={post.thumbnail ? getImageUrl(post.thumbnail) : 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=150&q=80'}
                           alt={post.title}
                           className="w-12 h-12 object-cover rounded-xs border border-neutral-200 shrink-0"
                           referrerPolicy="no-referrer"
@@ -622,7 +623,7 @@ export default function AdminBlog() {
                   {/* Preview image */}
                   {formThumbnail && (
                     <div className="relative w-36 aspect-[16/10] border border-[#e5e1de] rounded-xs overflow-hidden mt-2 group shadow-xs">
-                      <img src={formThumbnail} alt="Thumbnail preview" className="w-full h-full object-cover" />
+                      <img src={getImageUrl(formThumbnail)} alt="Thumbnail preview" className="w-full h-full object-cover" />
                       <button
                         type="button"
                         onClick={() => setFormThumbnail('')}

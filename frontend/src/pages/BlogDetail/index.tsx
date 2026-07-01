@@ -5,7 +5,8 @@ import { ChevronLeft, Calendar, User, Eye, Tag } from 'lucide-react';
 import { blogService } from '@/services';
 import type { BlogPost } from '@/types';
 import { format } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { getImageUrl } from '@/utils/productMapper';
+
 
 export default function BlogDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -104,7 +105,7 @@ export default function BlogDetailPage() {
 
         {post.thumbnail && (
           <div className="aspect-video w-full rounded-lg overflow-hidden mb-12 shadow-sm border border-[#eeeeee]">
-            <img src={post.thumbnail} alt={post.title} className="w-full h-full object-cover" />
+            <img src={getImageUrl(post.thumbnail)} alt={post.title} className="w-full h-full object-cover" />
           </div>
         )}
 
