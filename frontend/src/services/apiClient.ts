@@ -8,7 +8,7 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 15000,
+  timeout: 60000, // 60s - Render free tier needs up to 50s to wake up from sleep
 })
 
 // Request interceptor - attach access token
