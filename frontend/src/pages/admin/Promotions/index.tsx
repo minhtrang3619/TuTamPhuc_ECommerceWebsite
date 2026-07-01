@@ -42,6 +42,7 @@ export default function AdminPromotions() {
   const [endDate, setEndDate] = useState('')
   const [applicableProducts, setApplicableProducts] = useState<string[]>([])
   const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false)
+  const [targetCustomerTier, setTargetCustomerTier] = useState<string>('')
 
   const [products, setProducts] = useState<any[]>([])
 
@@ -163,7 +164,8 @@ export default function AdminPromotions() {
           min_order: minOrder,
           start_date: startDate || new Date().toISOString().split('T')[0],
           end_date: endDate || null,
-          applicable_products: applicableProducts.length > 0 ? applicableProducts.join(',') : null
+          applicable_products: applicableProducts.length > 0 ? applicableProducts.join(',') : null,
+          target_customer_tier: targetCustomerTier || null
         })
       } else {
         await promotionService.createPromotion({
@@ -174,7 +176,8 @@ export default function AdminPromotions() {
           min_order: minOrder,
           start_date: startDate || new Date().toISOString().split('T')[0],
           end_date: endDate || null,
-          applicable_products: applicableProducts.length > 0 ? applicableProducts.join(',') : null
+          applicable_products: applicableProducts.length > 0 ? applicableProducts.join(',') : null,
+          target_customer_tier: targetCustomerTier || null
         })
       }
 
@@ -194,6 +197,7 @@ export default function AdminPromotions() {
       setStartDate('')
       setEndDate('')
       setApplicableProducts([])
+      setTargetCustomerTier('')
     } catch (err: any) {
       setPromoErrorMsg(err?.response?.data?.detail || 'Lỗi khi lưu mã giảm giá')
       setPromoSuccessMsg(null)
@@ -211,6 +215,7 @@ export default function AdminPromotions() {
     setStartDate(promo.start_date)
     setEndDate(promo.end_date || '')
     setApplicableProducts(promo.applicable_products ? promo.applicable_products.split(',') : [])
+    setTargetCustomerTier(promo.target_customer_tier || '')
   }
 
   // Toggle status (Active / Paused)
@@ -466,6 +471,20 @@ export default function AdminPromotions() {
               )}
             </div>
 
+            <div>
+              <label className="block text-[10px] uppercase tracking-wider text-[#5d4037] font-extrabold mb-1.5">Đối tượng khách hàng áp dụng</label>
+              <select
+                value={targetCustomerTier}
+                onChange={(e) => setTargetCustomerTier(e.target.value)}
+                className="w-full bg-white border border-[#d4c3be] rounded-xs py-2 px-3 text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none cursor-pointer"
+              >
+                <option value="">Tất cả khách hàng</option>
+                <option value="Khách hàng Bạc">Khách hàng Bạc</option>
+                <option value="Khách hàng Vàng">Khách hàng Vàng</option>
+                <option value="Khách hàng Kim Cương">Khách hàng Kim Cương</option>
+              </select>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] uppercase tracking-wider text-[#5d4037] font-extrabold mb-1.5">Ngày bắt đầu</label>
@@ -501,6 +520,7 @@ export default function AdminPromotions() {
                     setStartDate('')
                     setEndDate('')
                     setApplicableProducts([])
+                    setTargetCustomerTier('')
                   }}
                   className="px-4 py-2 border border-[#d4c3be] text-[#5d4037] text-[10px] uppercase font-bold tracking-wider rounded-xs hover:bg-[#eeeeee]/50 cursor-pointer"
                 >
@@ -662,6 +682,7 @@ export default function AdminPromotions() {
               <tr className="bg-[#f4f2f0]/60 border-b border-outline-variant/30 text-[10px] uppercase font-bold text-[#827470] tracking-wider">
                 <th className="px-6 py-4">Mã / Tên</th>
                 <th className="px-6 py-4">Loại giảm</th>
+                <th className="px-6 py-4">Đối tượng</th>
                 <th className="px-6 py-4 text-center">Lượt dùng</th>
                 <th className="px-6 py-4">Thời hạn</th>
                 <th className="px-6 py-4 text-center">Trạng thái</th>
@@ -671,13 +692,13 @@ export default function AdminPromotions() {
             <tbody className="divide-y divide-[#e5e1de]/30">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-[#827470] font-medium">
+                  <td colSpan={7} className="px-6 py-12 text-center text-[#827470] font-medium">
                     Đang tải dữ liệu...
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-red-500 font-medium">
+                  <td colSpan={7} className="px-6 py-12 text-center text-red-500 font-medium">
                     {error}
                   </td>
                 </tr>
@@ -698,6 +719,15 @@ export default function AdminPromotions() {
                     <span className="px-2.5 py-0.5 bg-[#dee7c0] text-[#5f6849] rounded-xs text-[10px] font-bold uppercase tracking-wider border border-[#dee7c0]">
                       {formatValue(promo)}
                     </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    {promo.target_customer_tier ? (
+                      <span className="inline-block px-2.5 py-0.5 rounded-sm font-label-md text-[10px] font-semibold bg-purple-100 text-purple-800 border border-purple-200 whitespace-nowrap">
+                        {promo.target_customer_tier}
+                      </span>
+                    ) : (
+                      <span className="text-[#827470] text-[10px] italic">Tất cả khách hàng</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 text-center">
                     <div className="flex flex-col items-center">

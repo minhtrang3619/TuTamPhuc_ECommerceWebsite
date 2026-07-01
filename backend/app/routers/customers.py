@@ -6,6 +6,7 @@ from app.database.session import get_db
 from app.core.dependencies import get_current_user, require_admin_or_customer_service
 from app.models.customer import Customer
 from app.schemas.customer import CustomerCreate, CustomerUpdate, CustomerRead
+from app.services import update_customer_tier
 
 router = APIRouter(prefix="/customers", tags=["Customers"])
 
@@ -33,12 +34,15 @@ def list_customers(
     db: Session = Depends(get_db),
     _: None = Depends(require_admin_or_customer_service),
 ):
-    return (
+    customers = (
         db.query(Customer)
         .offset((page - 1) * page_size)
         .limit(page_size)
         .all()
     )
+    for customer in customers:
+        update_customer_tier(db, customer.id)
+    return customers
 
 # Get a single customer by ID
 @router.get("/{customer_id}", response_model=CustomerRead)
@@ -50,6 +54,8 @@ def get_customer(
     customer = db.query(Customer).filter(Customer.id == customer_id).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
+    update_customer_tier(db, customer.id)
+    db.refresh(customer)
     return customer
 
 # Update a customer (admin or customer_service)

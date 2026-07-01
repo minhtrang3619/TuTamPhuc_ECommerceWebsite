@@ -1,5 +1,5 @@
 import apiClient from './apiClient'
-import type { User, PaginatedResponse, UserRole } from '@/types'
+import type { User, UserRole } from '@/types'
 
 export interface GetUsersParams {
   page?: number

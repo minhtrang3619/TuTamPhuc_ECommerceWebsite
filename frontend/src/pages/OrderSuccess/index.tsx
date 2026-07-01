@@ -174,7 +174,7 @@ export default function OrderSuccessPage() {
 
   const adminBankName = sysSettings?.['bank_name'] || 'MB Bank'
   const accountNo = sysSettings?.['bank_account_number'] || '000000000000'
-  const accountName = sysSettings?.['bank_account_holder'] || 'TU TAM PHUC'
+  const accountName = sysSettings?.['bank_account_holder'] || 'CONG TY TNHH TU TAM PHUC'
   const bankId = BANK_NAME_TO_ID[adminBankName] || 'MB'
   const qrUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-compact2.png?amount=${currentOrder.total}&addInfo=${currentOrder.order_code}&accountName=${encodeURIComponent(accountName)}`;
 

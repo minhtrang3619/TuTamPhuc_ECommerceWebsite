@@ -22,6 +22,33 @@ class OrderService:
         discount = data.discount or 0.0
         shipping_fee = data.shipping_fee if data.shipping_fee is not None else 30000.0
 
+        # Validate customer tier for coupon code if applicable
+        if data.coupon_code:
+            from app.models.promotion import Promotion
+            from app.models.user import User
+            
+            promo = self.db.query(Promotion).filter(Promotion.code == data.coupon_code).first()
+            if promo and promo.target_customer_tier:
+                user = self.db.query(User).filter(User.id == user_id).first()
+                user_tier = user.customer.tier if (user and user.customer) else None
+                
+                tier_ranks = {
+                    None: 0,
+                    "": 0,
+                    "Khách hàng Bạc": 1,
+                    "Khách hàng Vàng": 2,
+                    "Khách hàng Kim Cương": 3
+                }
+                
+                user_rank = tier_ranks.get(user_tier, 0)
+                required_rank = tier_ranks.get(promo.target_customer_tier, 0)
+                
+                if user_rank < required_rank:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Mã giảm giá này chỉ áp dụng cho {promo.target_customer_tier} trở lên",
+                    )
+
         if data.items:
             # Create order from explicit items list
             subtotal = sum(item.price * item.quantity for item in data.items)
@@ -258,6 +285,10 @@ class OrderService:
             self.db.add(db_tx)
             campaign.raised_amount += donation_amount
 
+        if order.user and order.user.customer_id:
+            from app.services.customer_service import update_customer_tier
+            update_customer_tier(self.db, order.user.customer_id)
+
         self.db.commit()
         self.db.refresh(order)
         return order
@@ -322,6 +353,10 @@ class OrderService:
             for item in db_request.order.items:
                 if item.product:
                     item.product.stock += item.quantity
+        if db_request.order.user and db_request.order.user.customer_id:
+            from app.services.customer_service import update_customer_tier
+            update_customer_tier(self.db, db_request.order.user.customer_id)
+
         self.db.commit()
         self.db.refresh(db_request)
         return db_request

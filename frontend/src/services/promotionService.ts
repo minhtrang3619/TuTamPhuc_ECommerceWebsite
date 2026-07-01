@@ -12,6 +12,7 @@ export interface PromotionItem {
   applicable_products: string | null
   status: 'active' | 'paused'
   uses: number
+  target_customer_tier?: string | null
 }
 
 export interface PromotionCreate {
@@ -23,6 +24,7 @@ export interface PromotionCreate {
   start_date: string
   end_date?: string | null
   applicable_products?: string | null
+  target_customer_tier?: string | null
 }
 
 export interface PromotionUpdate {
@@ -35,6 +37,7 @@ export interface PromotionUpdate {
   end_date?: string | null
   applicable_products?: string | null
   status?: 'active' | 'paused'
+  target_customer_tier?: string | null
 }
 
 export interface PromotionListResponse {

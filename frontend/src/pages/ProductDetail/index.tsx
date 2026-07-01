@@ -46,6 +46,10 @@ export default function ProductDetailPage() {
   const [reviews, setReviews] = useState<any[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
 
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    e.currentTarget.src = "https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?auto=format&fit=crop&w=600&q=80";
+  };
+
   // Lightbox & Video Player modal states
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
@@ -282,6 +286,7 @@ export default function ProductDetailPage() {
                   src={product.images[activeImageIndex] || product.images[0]}
                   className="w-full h-full object-cover transition-transform duration-[2200ms] hover:scale-105"
                   referrerPolicy="no-referrer"
+                  onError={handleImageError}
                 />
               )}
               {product.badge && (
@@ -336,6 +341,7 @@ export default function ProductDetailPage() {
                         src={imgUrl}
                         className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
                         referrerPolicy="no-referrer"
+                        onError={handleImageError}
                       />
                     </button>
                   );
@@ -750,6 +756,7 @@ export default function ProductDetailPage() {
                       src={prod.images[0]}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-102"
                       referrerPolicy="no-referrer"
+                      onError={handleImageError}
                     />
                     <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                       <span className="bg-white/90 backdrop-blur-md px-3 py-1.5 font-bold text-[10px] tracking-widest text-[#5d4037] border border-[#d4c3be]/40 uppercase">

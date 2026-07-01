@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { MapPin, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface FooterProps {
@@ -8,6 +7,11 @@ interface FooterProps {
 
 export function Footer({ onOpenAssistant }: FooterProps) {
   const [newsletterEmail, setNewsletterEmail] = useState('')
+  
+  // Prevent TS unused parameter error
+  if (onOpenAssistant) {
+    onOpenAssistant;
+  }
 
   const handleNewsletterSubmit = (e: React.FormEvent) => {
     e.preventDefault()

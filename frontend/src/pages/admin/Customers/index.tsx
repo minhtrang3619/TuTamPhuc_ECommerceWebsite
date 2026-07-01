@@ -11,6 +11,19 @@ import {
 import { customerService } from '@/services'
 import type { Customer } from '@/types'
 
+const getTierBadgeStyle = (tier?: string) => {
+  switch (tier) {
+    case 'Khách hàng Kim Cương':
+      return 'bg-purple-100 text-purple-800 border border-purple-200';
+    case 'Khách hàng Vàng':
+      return 'bg-amber-100 text-amber-800 border border-amber-200';
+    case 'Khách hàng Bạc':
+      return 'bg-slate-100 text-slate-800 border border-slate-200';
+    default:
+      return 'bg-[#f4ebe6] text-[#8a726b] border border-[#e5d4cb]';
+  }
+};
+
 export default function AdminCustomers() {
   const [searchTerm, setSearchTerm] = useState('')
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -51,7 +64,7 @@ export default function AdminCustomers() {
 
   const handleOpenEdit = (customer: Customer) => {
     setSelectedCustomer(customer)
-    setTempTier(customer.tier || 'Tiêu chuẩn')
+    setTempTier(customer.tier || '')
     setIsModalOpen(true)
   }
 
@@ -144,7 +157,13 @@ export default function AdminCustomers() {
                         </div>
                       </td>
                       <td className="px-8 py-4">
-                        <span className="font-label-md text-on-surface-variant text-sm">{user.tier || 'Tiêu chuẩn'}</span>
+                        {user.tier ? (
+                          <span className={`inline-block px-2.5 py-0.5 rounded-sm font-label-md text-xs font-semibold ${getTierBadgeStyle(user.tier)}`}>
+                            {user.tier}
+                          </span>
+                        ) : (
+                          <span className="text-on-surface-variant/40 text-xs italic">Chưa phân hạng</span>
+                        )}
                       </td>
                       <td className="px-8 py-4">
                         <span className="font-caption text-on-surface-variant text-xs">{displayDate}</span>
@@ -238,9 +257,10 @@ export default function AdminCustomers() {
                   onChange={(e) => setTempTier(e.target.value)}
                   className="w-full bg-surface-container-low border border-outline-variant/30 rounded px-3 py-2 text-sm text-primary focus:ring-1 focus:ring-primary/20 cursor-pointer"
                 >
-                  <option value="Thành viên Vàng">Thành viên Vàng</option>
-                  <option value="Cao cấp">Cao cấp</option>
-                  <option value="Tiêu chuẩn">Tiêu chuẩn</option>
+                  <option value="Khách hàng Kim Cương">Khách hàng Kim Cương</option>
+                  <option value="Khách hàng Vàng">Khách hàng Vàng</option>
+                  <option value="Khách hàng Bạc">Khách hàng Bạc</option>
+                  <option value="">Chưa phân hạng</option>
                 </select>
               </div>
             </div>

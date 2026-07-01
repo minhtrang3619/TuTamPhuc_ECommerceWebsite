@@ -21,6 +21,9 @@ interface MockCartState {
   setPromo: (promo: string, discount: number) => void;
   setBuyNowItem: (product: Product, color: { name: string; hex: string }, size: string, quantity: number) => void;
   clearBuyNowItem: () => void;
+  toggleSelectItem: (id: string) => void;
+  toggleAllItems: (selected: boolean) => void;
+  removeSelectedItems: () => void;
 }
 
 export const useMockCartStore = create<MockCartState>()(
@@ -56,6 +59,7 @@ export const useMockCartStore = create<MockCartState>()(
               color,
               size,
               quantity,
+              selected: true,
             });
           }
           return { cart: newCart };
@@ -89,6 +93,25 @@ export const useMockCartStore = create<MockCartState>()(
           };
         }),
       clearBuyNowItem: () => set({ buyNowItem: null }),
+      toggleSelectItem: (id) =>
+        set((state) => ({
+          cart: state.cart.map((item) =>
+            item.id === id ? { ...item, selected: item.selected === false ? true : false } : item
+          ),
+        })),
+      toggleAllItems: (selected) =>
+        set((state) => ({
+          cart: state.cart.map((item) => ({ ...item, selected })),
+        })),
+      removeSelectedItems: () =>
+        set((state) => {
+          const remainingCart = state.cart.filter((item) => item.selected === false);
+          return {
+            cart: remainingCart,
+            appliedPromo: remainingCart.length === 0 ? '' : state.appliedPromo,
+            discountValue: remainingCart.length === 0 ? 0 : state.discountValue,
+          };
+        }),
     }),
     {
       name: 'tutamphuc-mock-cart',

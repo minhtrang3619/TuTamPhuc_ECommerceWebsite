@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, Leaf, Heart } from 'lucide-react'
 import { Marquee } from '@/components/ui/Marquee'
 import { charityService, CharityCampaign } from '@/services/charityService'
+import { settingService } from '@/services'
 
 const formatPrice = (price: number) => {
   return price.toLocaleString('vi-VN') + ' ₫'
@@ -10,6 +11,7 @@ const formatPrice = (price: number) => {
 
 export default function HomePage() {
   const [campaign, setCampaign] = useState<CharityCampaign | null>(null)
+  const [slogan, setSlogan] = useState<string>('Kinh doanh bằng sự thật, phát triển bằng niềm tin')
   
   useEffect(() => {
     const fetchCampaign = async () => {
@@ -22,7 +24,18 @@ export default function HomePage() {
         console.error("Failed to load charity campaign on homepage:", err)
       }
     }
+    const fetchSlogan = async () => {
+      try {
+        const settings = await settingService.getMap()
+        if (settings && settings['slogan']) {
+          setSlogan(settings['slogan'])
+        }
+      } catch (err) {
+        console.error("Failed to load slogan setting on homepage:", err)
+      }
+    }
     fetchCampaign()
+    fetchSlogan()
   }, [])
   const scrollToCollections = () => {
     const collectionsEl = document.getElementById("collections")
@@ -44,7 +57,7 @@ export default function HomePage() {
         </div>
         <div className="relative z-10 max-w-3xl mx-auto px-margin-mobile text-center flex flex-col items-center gap-8 bg-surface/60 backdrop-blur-md p-12 rounded-xl ambient-shadow">
           <h1 className="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-primary">Từ Tâm Phục</h1>
-          <p className="font-body-lg text-body-lg text-on-surface-variant tracking-wide">Kinh doanh bằng sự thật, phát triển bằng niềm tin</p>
+          <p className="font-body-lg text-body-lg text-on-surface-variant tracking-wide">{slogan}</p>
           <div className="flex flex-col sm:flex-row gap-4 mt-4">
             <button
               onClick={scrollToCollections}

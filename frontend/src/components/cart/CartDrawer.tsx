@@ -15,13 +15,16 @@ export function CartDrawer() {
     appliedPromo,
     setPromo,
     discountValue,
+    toggleSelectItem,
+    toggleAllItems,
   } = useMockCartStore();
 
   const [promoInput, setPromoInput] = useState('');
   const [promoError, setPromoError] = useState('');
   const [promoSuccess, setPromoSuccess] = useState('');
 
-  const subTotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const selectedItems = cart.filter((item) => item.selected !== false);
+  const subTotal = selectedItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
 
   const handleApplyPromo = () => {
     setPromoError('');
@@ -75,7 +78,7 @@ export function CartDrawer() {
                 <div className="flex items-center gap-2">
                   <span className="font-serif text-lg font-semibold uppercase text-primary tracking-wider">Giỏ Hàng</span>
                   <span className="text-[10px] py-0.5 px-2 bg-primary/10 text-primary font-bold rounded-full font-mono">
-                    {cart.reduce((s, i) => s + i.quantity, 0)} sản phẩm
+                    Đã chọn {selectedItems.length}/{cart.length} sản phẩm
                   </span>
                 </div>
                 <button
@@ -86,8 +89,24 @@ export function CartDrawer() {
                 </button>
               </div>
 
+              {/* Select All Section */}
+              {cart.length > 0 && (
+                <div className="px-6 py-2.5 bg-white border-b border-[#eeeeee] flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={cart.every((item) => item.selected !== false)}
+                    onChange={(e) => toggleAllItems(e.target.checked)}
+                    className="accent-primary w-4 h-4 cursor-pointer rounded border-[#d4c3be]"
+                    id="select-all-cart-items"
+                  />
+                  <label htmlFor="select-all-cart-items" className="text-xs text-on-surface-variant font-medium cursor-pointer select-none">
+                    Chọn tất cả ({cart.length})
+                  </label>
+                </div>
+              )}
+
               {/* Items List */}
-              <div className="px-6 py-4 overflow-y-auto max-h-[calc(100vh-340px)] divide-y divide-[#eeeeee]">
+              <div className="px-6 py-4 overflow-y-auto max-h-[calc(100vh-380px)] divide-y divide-[#eeeeee]">
                 {cart.length === 0 ? (
                   <div className="py-20 text-center flex flex-col items-center justify-center">
                     <span className="material-symbols-outlined text-gray-300 text-5xl mb-4">shopping_bag</span>
@@ -104,11 +123,17 @@ export function CartDrawer() {
                   </div>
                 ) : (
                   cart.map((item) => (
-                    <div key={item.id} className="py-4 flex gap-4 items-start">
+                    <div key={item.id} className="py-4 flex gap-3 items-start">
+                      <input
+                        type="checkbox"
+                        checked={item.selected !== false}
+                        onChange={() => toggleSelectItem(item.id)}
+                        className="accent-primary w-4 h-4 cursor-pointer rounded border-[#d4c3be] self-center flex-shrink-0"
+                      />
                       <img
                         alt={item.product.name}
                         src={item.product.images[0]}
-                        className="w-16 aspect-[3/4] object-cover bg-surface-container rounded-xs"
+                        className="w-16 aspect-[3/4] object-cover bg-surface-container rounded-xs flex-shrink-0"
                         referrerPolicy="no-referrer"
                       />
                       <div className="flex-1">
@@ -204,11 +229,16 @@ export function CartDrawer() {
 
                 {/* Complete Button action */}
                 <button
+                  disabled={selectedItems.length === 0}
                   onClick={() => {
                     closeCart();
                     openCheckout();
                   }}
-                  className="w-full py-4 bg-primary hover:bg-[#2c160e] text-white text-xs tracking-widest uppercase font-bold transition-all duration-300 flex justify-center items-center gap-2 rounded-xs shadow-md cursor-pointer group"
+                  className={`w-full py-4 text-xs tracking-widest uppercase font-bold transition-all duration-300 flex justify-center items-center gap-2 rounded-xs shadow-md cursor-pointer group ${
+                    selectedItems.length === 0 
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none' 
+                      : 'bg-primary hover:bg-[#2c160e] text-white'
+                  }`}
                 >
                   Tiến hành thanh toán
                   <ArrowRight size={14} className="group-hover:translate-x-1.5 transition-transform" />

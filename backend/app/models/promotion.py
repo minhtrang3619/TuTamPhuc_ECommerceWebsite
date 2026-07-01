@@ -27,3 +27,4 @@ class Promotion(BaseModel):
     applicable_products = Column(String(500), nullable=True)
     status = Column(Enum(PromotionStatus), nullable=False, default=PromotionStatus.active)
     uses = Column(Integer, nullable=False, default=0)
+    target_customer_tier = Column(String(50), nullable=True, default=None)

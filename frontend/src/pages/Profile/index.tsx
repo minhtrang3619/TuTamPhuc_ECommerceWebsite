@@ -48,6 +48,19 @@ interface Voucher {
   status: 'active' | 'used' | 'expired' | 'upcoming';
 }
 
+const getTierBadgeStyle = (tier?: string) => {
+  switch (tier) {
+    case 'Khách hàng Kim Cương':
+      return 'bg-purple-100 text-purple-800 border border-purple-200';
+    case 'Khách hàng Vàng':
+      return 'bg-amber-100 text-amber-800 border border-amber-200';
+    case 'Khách hàng Bạc':
+      return 'bg-slate-100 text-slate-800 border border-slate-200';
+    default:
+      return 'bg-[#f4ebe6] text-[#8a726b] border border-[#e5d4cb]';
+  }
+};
+
 export default function ProfilePage() {
 
   const { user, isAuthenticated, updateUser, logout } = useAuthStore();
@@ -786,7 +799,13 @@ export default function ProfilePage() {
               </div>
               <div>
                 <p className="font-headline-sm text-headline-sm text-primary leading-tight">{user?.full_name}</p>
-                <p className="font-caption text-caption text-on-secondary-fixed-variant">Khách hàng thành viên</p>
+                {user?.customer?.tier ? (
+                  <span className={`inline-block mt-1 px-2.5 py-0.5 rounded-sm font-label-md text-[10px] font-semibold ${getTierBadgeStyle(user.customer.tier)}`}>
+                    {user.customer.tier}
+                  </span>
+                ) : (
+                  <p className="font-caption text-caption text-on-secondary-fixed-variant">Khách hàng thành viên</p>
+                )}
               </div>
             </div>
 

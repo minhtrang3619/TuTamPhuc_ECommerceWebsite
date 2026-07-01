@@ -24,6 +24,18 @@ async def lifespan(app: FastAPI):
     import app.models
     Base.metadata.create_all(bind=engine)
     
+    # Run ALTER TABLE to ensure target_customer_tier column exists in promotions
+    from sqlalchemy import text
+    from app.database.session import SessionLocal
+    db = SessionLocal()
+    try:
+        db.execute(text("ALTER TABLE promotions ADD COLUMN IF NOT EXISTS target_customer_tier VARCHAR(50)"))
+        db.commit()
+    except Exception as e:
+        print("Error altering promotions table:", e)
+    finally:
+        db.close()
+    
     yield
     # Shutdown
 

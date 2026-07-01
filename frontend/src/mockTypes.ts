@@ -24,6 +24,7 @@ export interface CartItem {
   color: { name: string; hex: string };
   size: string;
   quantity: number;
+  selected?: boolean;
 }
 
 export interface ActiveFilters {

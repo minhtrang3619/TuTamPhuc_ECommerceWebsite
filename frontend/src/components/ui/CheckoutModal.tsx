@@ -40,11 +40,11 @@ export default function CheckoutModal() {
     buyNowItem,
     isCheckoutOpen,
     closeCheckout,
-    clearCart,
     clearBuyNowItem,
+    removeSelectedItems,
   } = useMockCartStore();
 
-  const checkoutItems = buyNowItem ? [buyNowItem] : cart;
+  const checkoutItems = buyNowItem ? [buyNowItem] : cart.filter(item => item.selected !== false);
 
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuthStore();
@@ -269,7 +269,7 @@ export default function CheckoutModal() {
   useEffect(() => {
     const fetchPromos = async () => {
       try {
-        const res = await promotionService.getPromotions(0, 100);
+        const res = await promotionService.getPromotions({ skip: 0, limit: 100 });
         setPromotions(res.items || []);
       } catch (err) {
         console.error("Lỗi khi tải khuyến mãi:", err);
@@ -281,26 +281,6 @@ export default function CheckoutModal() {
   }, [isCheckoutOpen]);
 
   const selectedShippingCost = shippingCosts[shippingMethod].price;
-
-  const [hasCompletedOrder, setHasCompletedOrder] = useState<boolean>(false);
-
-  useEffect(() => {
-    const checkOrderHistory = async () => {
-      if (isAuthenticated) {
-        try {
-          const res = await orderService.getMyOrders();
-          const orders = res.items || [];
-          const hasOrder = orders.some((o: any) => o.status !== 'cancelled');
-          setHasCompletedOrder(hasOrder);
-        } catch (err) {
-          console.error("Lỗi khi kiểm tra lịch sử đơn hàng:", err);
-        }
-      }
-    };
-    if (isCheckoutOpen) {
-      checkOrderHistory();
-    }
-  }, [isAuthenticated, isCheckoutOpen]);
 
   const validVouchers = useMemo(() => {
     const now = new Date();
@@ -322,7 +302,23 @@ export default function CheckoutModal() {
       // 3. Min order check
       if (subTotal < (promo.min_order || 0)) return false;
 
-      // 4. Applicable products check
+      // 4. Customer tier check
+      if (promo.target_customer_tier) {
+        if (!isAuthenticated || !user) return false;
+        const userTier = user?.customer?.tier || '';
+        const tierRanks: Record<string, number> = {
+          '': 0,
+          'Tiêu chuẩn': 0,
+          'Khách hàng Bạc': 1,
+          'Khách hàng Vàng': 2,
+          'Khách hàng Kim Cương': 3
+        };
+        const userRank = tierRanks[userTier] || 0;
+        const requiredRank = tierRanks[promo.target_customer_tier] || 0;
+        if (userRank < requiredRank) return false;
+      }
+
+      // 5. Applicable products check
       if (promo.applicable_products) {
         const appProducts = promo.applicable_products.split(',');
         const hasAppProduct = checkoutItems.some(item => {
@@ -347,6 +343,10 @@ export default function CheckoutModal() {
         desc += ` - Đơn từ ${formatPrice(promo.min_order)}`;
       }
 
+      if (promo.target_customer_tier) {
+        desc += ` (Dành riêng cho ${promo.target_customer_tier})`;
+      }
+
       return {
         ...promo,
         code: promo.code,
@@ -355,13 +355,67 @@ export default function CheckoutModal() {
         isPartner: promo.name.startsWith('Mã đối tác:')
       };
     });
-  }, [promotions, subTotal, checkoutItems]);
+  }, [promotions, subTotal, checkoutItems, user, isAuthenticated]);
 
   const publicVouchers = useMemo(() => validVouchers.filter(v => !v.isPartner), [validVouchers]);
 
+  const voucherValidationError = useMemo(() => {
+    if (!voucherCode) return '';
+    const promo = promotions.find(p => p.code === voucherCode);
+    if (!promo) return `Mã "${voucherCode}" không tồn tại trong hệ thống.`;
+    
+    if (promo.status !== 'active') return `Mã "${voucherCode}" đã tạm dừng hoạt động.`;
+
+    const now = new Date();
+    const startDate = new Date(promo.start_date);
+    startDate.setHours(0, 0, 0, 0);
+    if (now < startDate) return `Mã "${voucherCode}" chưa đến thời gian áp dụng.`;
+
+    if (promo.end_date) {
+      const endDate = new Date(promo.end_date);
+      endDate.setHours(23, 59, 59, 999);
+      if (now > endDate) return `Mã "${voucherCode}" đã hết hạn sử dụng.`;
+    }
+
+    if (subTotal < (promo.min_order || 0)) {
+      return `Mã "${voucherCode}" yêu cầu đơn hàng tối thiểu từ ${formatPrice(promo.min_order)}.`;
+    }
+
+    if (promo.target_customer_tier) {
+      if (!isAuthenticated || !user) {
+        return `Mã "${voucherCode}" chỉ áp dụng cho ${promo.target_customer_tier}. Vui lòng đăng nhập để sử dụng.`;
+      }
+      const userTier = user?.customer?.tier || '';
+      const tierRanks: Record<string, number> = {
+        '': 0,
+        'Tiêu chuẩn': 0,
+        'Khách hàng Bạc': 1,
+        'Khách hàng Vàng': 2,
+        'Khách hàng Kim Cương': 3
+      };
+      const userRank = tierRanks[userTier] || 0;
+      const requiredRank = tierRanks[promo.target_customer_tier] || 0;
+      if (userRank < requiredRank) {
+        return `Mã "${voucherCode}" chỉ áp dụng cho ${promo.target_customer_tier} trở lên. Hạng hiện tại của bạn là ${userTier || 'Tiêu chuẩn'}.`;
+      }
+    }
+
+    if (promo.applicable_products) {
+      const appProducts = promo.applicable_products.split(',');
+      const hasAppProduct = checkoutItems.some(item => {
+        const dbId = item.product.dbId || parseInt(item.product.id);
+        return dbId && appProducts.includes(dbId.toString());
+      });
+      if (!hasAppProduct) return `Mã "${voucherCode}" không áp dụng cho các sản phẩm trong giỏ hàng hiện tại.`;
+    }
+
+    return '';
+  }, [voucherCode, promotions, subTotal, checkoutItems, user, isAuthenticated]);
+
   const isVoucherValid = useMemo(() => {
-    return validVouchers.some(v => v.code === voucherCode);
-  }, [voucherCode, validVouchers]);
+    if (!voucherCode) return false;
+    return voucherValidationError === '';
+  }, [voucherCode, voucherValidationError]);
 
   const selectedPromo = useMemo(() => {
     return promotions.find(p => p.code === voucherCode);
@@ -472,7 +526,7 @@ export default function CheckoutModal() {
       if (buyNowItem) {
         clearBuyNowItem();
       } else {
-        clearCart();
+        removeSelectedItems();
       }
       closeCheckout();
 
@@ -491,7 +545,7 @@ export default function CheckoutModal() {
     if (buyNowItem) {
       clearBuyNowItem();
     } else {
-      clearCart();
+      removeSelectedItems();
     }
     setIsSuccess(false);
     closeCheckout();
@@ -978,7 +1032,7 @@ export default function CheckoutModal() {
                               </div>
 
                               {voucherCode && !isVoucherValid && (
-                                <p className="text-red-500 text-[10px] mt-2">Mã "{voucherCode}" không hợp lệ hoặc chưa đủ điều kiện áp dụng.</p>
+                                <p className="text-red-500 text-[10px] mt-2 font-semibold">{voucherValidationError}</p>
                               )}
                               {voucherCode && isVoucherValid && (
                                 <p className="text-[#67c23a] text-[10px] mt-2 flex items-center gap-1 font-bold">
@@ -1137,7 +1191,7 @@ export default function CheckoutModal() {
                           <span>Số tài khoản:</span> <span>1903 507 6432 026</span>
                         </div>
                         <div className="flex justify-between font-mono">
-                          <span>Chủ tài khoản:</span> <span>TU TAM PHUC CO. LTD</span>
+                          <span>Chủ tài khoản:</span> <span>CONG TY TNHH TU TAM PHUC</span>
                         </div>
                         <div className="flex justify-between font-mono">
                           <span>Số tiền:</span> <span className="font-bold text-[#ffdbd0]">{formatPrice(finalTotal)}</span>

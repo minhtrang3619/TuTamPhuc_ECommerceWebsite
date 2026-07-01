@@ -19,6 +19,7 @@ export interface User {
     address?: string
     avatar?: string
     is_active?: boolean
+    tier?: string
   }
   created_at: string
   updated_at: string

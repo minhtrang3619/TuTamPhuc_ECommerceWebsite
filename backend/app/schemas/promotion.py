@@ -13,6 +13,7 @@ class PromotionBase(BaseModel):
     start_date: date
     end_date: Optional[date] = None
     applicable_products: Optional[str] = None
+    target_customer_tier: Optional[str] = None
 
 
 class PromotionCreate(PromotionBase):
@@ -29,6 +30,7 @@ class PromotionUpdate(BaseModel):
     end_date: Optional[date] = None
     applicable_products: Optional[str] = None
     status: Optional[PromotionStatus] = None
+    target_customer_tier: Optional[str] = None
 
 
 class PromotionResponse(PromotionBase):
