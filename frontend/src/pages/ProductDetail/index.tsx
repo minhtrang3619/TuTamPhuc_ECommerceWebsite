@@ -298,7 +298,7 @@ export default function ProductDetailPage() {
 
             {/* Sub-thumbnails */}
             {((product.images && product.images.length > 1) || product.videoUrl) && (
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-5 gap-3">
                 {product.videoUrl && (
                   <button
                     onClick={() => setIsVideoActive(true)}

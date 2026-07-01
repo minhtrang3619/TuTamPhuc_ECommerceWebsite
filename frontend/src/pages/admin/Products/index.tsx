@@ -1194,8 +1194,8 @@ export default function AdminProducts() {
 
                       {/* Sub-thumbnails / Gallery */}
                       {formData.galleryImages && formData.galleryImages.length > 0 && (
-                        <div className="grid grid-cols-2 gap-6">
-                          {formData.galleryImages.slice(0, 2).map((img, idx) => (
+                        <div className="grid grid-cols-4 gap-4">
+                          {formData.galleryImages.map((img, idx) => (
                             <div key={idx} className="aspect-[9/16] bg-surface-container overflow-hidden rounded-xs border border-[#d4c3be]/20 relative group">
                               <img
                                 alt={`Fabric Detail ${idx + 1}`}
