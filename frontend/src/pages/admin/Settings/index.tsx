@@ -193,7 +193,7 @@ export default function AdminSettings() {
                   </div>
 
                   <div className="space-y-3">
-                    <h3 className="font-semibold text-sm text-on-surface">1. Chuyển khoản ngân hàng (QR Pay)</h3>
+                    <h3 className="font-semibold text-sm text-on-surface">1. Chuyển khoản ngân hàng</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-4 border-l-2 border-primary/20">
                       <div className="space-y-1">
                         <label className="text-xs font-semibold text-on-surface-variant block">Ngân hàng thụ hưởng</label>
@@ -226,7 +226,7 @@ export default function AdminSettings() {
                   </div>
 
                   <div className="space-y-3 pt-4">
-                    <h3 className="font-semibold text-sm text-on-surface">2. Thanh toán khi nhận hàng (COD)</h3>
+                    <h3 className="font-semibold text-sm text-on-surface">2. Thanh toán khi nhận hàng</h3>
                     <div className="flex items-center gap-3 pl-4 border-l-2 border-primary/20">
                       <input 
                         type="checkbox" 

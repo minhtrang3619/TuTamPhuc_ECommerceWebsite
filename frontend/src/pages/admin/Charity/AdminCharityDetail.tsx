@@ -337,7 +337,7 @@ export default function AdminCharityDetail({ campaign, onBack }: AdminCharityDet
 
             <div className="space-y-5">
               <div className="space-y-2">
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Ảnh thực tế dự án (Album)</label>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Ảnh thực tế dự án</label>
                 <div className="grid grid-cols-3 gap-3">
                   {galleryList.map((url, idx) => (
                     <div key={idx} className="relative aspect-square rounded-lg overflow-hidden group border border-[#eeeeee]">

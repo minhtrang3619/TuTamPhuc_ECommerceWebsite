@@ -829,9 +829,9 @@ export default function ProductDetailPage() {
               <table className="w-full text-left border-collapse border border-[#d4c3be]/40 font-mono text-[11px]">
                 <thead>
                   <tr className="bg-[#ece0dc]/30 text-primary">
-                    <th className="p-2 border border-[#d4c3be]/40">Kích thước (Size)</th>
-                    <th className="p-2 border border-[#d4c3be]/40">Chiều cao (cm)</th>
-                    <th className="p-2 border border-[#d4c3be]/40">Cân nặng (kg)</th>
+                    <th className="p-2 border border-[#d4c3be]/40">Kích thước</th>
+                    <th className="p-2 border border-[#d4c3be]/40">Chiều cao</th>
+                    <th className="p-2 border border-[#d4c3be]/40">Cân nặng</th>
                   </tr>
                 </thead>
                 <tbody>

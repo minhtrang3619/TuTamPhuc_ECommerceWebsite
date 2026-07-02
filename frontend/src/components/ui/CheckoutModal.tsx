@@ -1185,7 +1185,7 @@ export default function CheckoutModal() {
                         <p className="font-semibold text-center uppercase tracking-wider text-[#d4ada1]">Thông tin chuyển khoản</p>
                         <p className="text-center text-[10px] opacity-80">Quý khách vui lòng chuyển khoản thanh toán theo thông tin sau:</p>
                         <div className="flex justify-between font-mono pt-1 text-white border-t border-white/10">
-                          <span>Ngân hàng:</span> <span>Techcombank (Techcombank)</span>
+                          <span>Ngân hàng:</span> <span>Techcombank</span>
                         </div>
                         <div className="flex justify-between font-mono">
                           <span>Số tài khoản:</span> <span>1903 507 6432 026</span>

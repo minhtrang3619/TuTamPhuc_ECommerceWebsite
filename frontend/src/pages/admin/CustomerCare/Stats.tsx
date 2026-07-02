@@ -153,7 +153,7 @@ export default function AdminCustomerStats() {
             <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white mb-6">
               <Smile size={24} />
             </div>
-            <p className="text-xs font-semibold opacity-85 mb-1 uppercase tracking-wider">Điểm hài lòng (CSAT)</p>
+            <p className="text-xs font-semibold opacity-85 mb-1 uppercase tracking-wider">Điểm hài lòng</p>
             <h4 className="text-3xl font-serif font-bold text-on-primary-container">{stats.csat}%</h4>
           </div>
           <div className="mt-8 flex items-center gap-2 text-xs opacity-85">
@@ -270,7 +270,7 @@ export default function AdminCustomerStats() {
           <div className="mb-6 flex justify-between items-start">
             <div>
               <h5 className="text-lg font-serif font-semibold text-on-surface">Tình trạng xử lý yêu cầu</h5>
-              <p className="text-xs text-on-surface-variant mt-1">Tình trạng giải quyết yêu cầu hỗ trợ (Support Ticket)</p>
+              <p className="text-xs text-on-surface-variant mt-1">Tình trạng giải quyết yêu cầu hỗ trợ</p>
             </div>
             <div className="text-right">
               <span className="text-xs font-bold text-primary bg-[#ece0dc]/60 px-2.5 py-1 rounded-full uppercase tracking-wider">

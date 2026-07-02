@@ -390,7 +390,7 @@ export default function AdminPromotions() {
                   className="w-full bg-white border border-[#d4c3be] rounded-xs py-2 px-3 text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none cursor-pointer"
                 >
                   <option value="percentage">Phần trăm (%)</option>
-                  <option value="fixed">Số tiền cố định (VND)</option>
+                  <option value="fixed">Số tiền cố định</option>
                   <option value="free_shipping">Miễn phí vận chuyển</option>
                 </select>
               </div>

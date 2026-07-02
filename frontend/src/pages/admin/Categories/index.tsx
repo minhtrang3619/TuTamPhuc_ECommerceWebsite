@@ -415,7 +415,7 @@ export default function AdminCategories() {
               </div>
 
               <div className="bg-white p-8 rounded-xl shadow-[0_32px_64px_-12px_rgba(93,64,55,0.06)] border border-outline-variant/10 group hover:border-primary/20 transition-all duration-500">
-                <p className="font-label-md text-xs text-on-surface-variant uppercase tracking-widest mb-4">Tốc độ bán (STR)</p>
+                <p className="font-label-md text-xs text-on-surface-variant uppercase tracking-widest mb-4">Tốc độ bán</p>
                 <h3 className="font-display-lg text-4xl font-semibold text-primary">{sellThroughRate}%</h3>
                 <div className="w-full bg-surface-container-high h-1.5 mt-6 rounded-full overflow-hidden">
                   <div className="bg-primary h-full transition-all duration-1000" style={{ width: `${sellThroughRate}%` }}></div>
