@@ -90,13 +90,11 @@ export default function CharityDetailView({ campaign, onBack }: CharityDetailVie
 
   const coverImage = campaign.image_url ? getImageUrl(campaign.image_url) : "https://lh3.googleusercontent.com/aida-public/AB6AXuBdeKbecYkznlSBSLLz09GVshQ9CPCluO1Wy19JmAxxQKtjEmUDthQHmEVWz0F2TnrSdhW2KYw82Vd8-5DEuv-2tSbj6A_AtRIn2nsT4-kfwRkZ9CPyHxic9Z9RD7HXyHGlgPSN33UTcZt0-rESfcrDk0mzpJoN5ontiUV3MuQ0DHA9PFb4qfAN0B4LW07f1paigeabyR-jDhhkI-p_P61lhq4rjXvMjW-gGcH65x0Hk2nM1PyWXYnamfS7anaN_YgepRupgF2OBUbD";
 
-  const contentParagraphs = campaign.content
-    ? campaign.content.split('\n')
-    : [
-      "Nằm sâu trong một con hẻm nhỏ tại huyện Nhà Bè, Chùa Lá Huyền Trang không chỉ là nơi tu tập, mà còn là mái nhà chung của hơn 100 cụ già không nơi nương tựa và trẻ em mồ côi. Mỗi sáng sớm, tiếng chuông chùa ngân vang như lời nhắc nhở về sự kết nối giữa những trái tim đồng điệu.",
-      "Tụi mình ghé thăm chùa vào một buổi chiều nắng nhạt. Chứng kiến đôi mắt trong veo của các em nhỏ khi nhận lấy chiếc bánh, hay nụ cười hiền hậu của các cụ khi có người trò chuyện, Từ Tâm Phục hiểu rằng: Sứ mệnh của chúng mình không chỉ là mang đến những bộ trang phục đẹp, mà còn là nhịp cầu gieo những hạt mầm thiện lành.",
-      "Dự án 'Hạt Lành Từ Tâm' ra đời với mong muốn cải thiện bữa ăn, cung cấp thuốc men và hỗ trợ chi phí sinh hoạt cho các cư dân tại mái ấm. Đây là một hành trình dài hơi, và mỗi bước chân của bạn đều có sự góp mặt của niềm tin và hy vọng."
-    ];
+  const mockContentParagraphs = [
+    "Nằm sâu trong một con hẻm nhỏ tại huyện Nhà Bè, Chùa Lá Huyền Trang không chỉ là nơi tu tập, mà còn là mái nhà chung của hơn 100 cụ già không nơi nương tựa và trẻ em mồ côi. Mỗi sáng sớm, tiếng chuông chùa ngân vang như lời nhắc nhở về sự kết nối giữa những trái tim đồng điệu.",
+    "Tụi mình ghé thăm chùa vào một buổi chiều nắng nhạt. Chứng kiến đôi mắt trong veo của các em nhỏ khi nhận lấy chiếc bánh, hay nụ cười hiền hậu của các cụ khi có người trò chuyện, Từ Tâm Phục hiểu rằng: Sứ mệnh của chúng mình không chỉ là mang đến những bộ trang phục đẹp, mà còn là nhịp cầu gieo những hạt mầm thiện lành.",
+    "Dự án 'Hạt Lành Từ Tâm' ra đời với mong muốn cải thiện bữa ăn, cung cấp thuốc men và hỗ trợ chi phí sinh hoạt cho các cư dân tại mái ấm. Đây là một hành trình dài hơi, và mỗi bước chân của bạn đều có sự góp mặt của niềm tin và hy vọng."
+  ];
 
   const quoteText = campaign.quote || "Hạnh phúc không phải là khi chúng ta nhận được nhiều, mà là khi chúng ta biết trao đi một phần nhỏ những gì mình có để sưởi ấm một cuộc đời khác.";
 
@@ -164,10 +162,6 @@ export default function CharityDetailView({ campaign, onBack }: CharityDetailVie
 
           {/* Detailed Story Content */}
           <article className="space-y-6 text-[#5d4037] font-body-lg text-sm md:text-base leading-relaxed">
-            {contentParagraphs.length > 0 && (
-              <p>{contentParagraphs[0]}</p>
-            )}
-
             {quoteText && (
               <blockquote className="border-l-4 border-primary pl-6 md:pl-8 my-8 py-1">
                 <p className="font-serif text-lg md:text-xl text-primary italic leading-relaxed">
@@ -176,9 +170,18 @@ export default function CharityDetailView({ campaign, onBack }: CharityDetailVie
               </blockquote>
             )}
 
-            {contentParagraphs.slice(1).map((paragraph, index) => (
-              <p key={index}>{paragraph}</p>
-            ))}
+            {campaign.content ? (
+              <div 
+                className="max-w-none text-[#5d4037] leading-relaxed [&>p]:mb-4 [&>h1]:text-2xl [&>h1]:font-serif [&>h1]:mb-4 [&>h2]:text-xl [&>h2]:font-serif [&>h2]:mb-3 [&>h3]:text-lg [&>h3]:font-serif [&>h3]:mb-3 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:mb-4 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:mb-4 [&_img]:rounded-lg [&_img]:shadow-sm [&_img]:my-4 [&_a]:text-primary [&_a]:underline" 
+                dangerouslySetInnerHTML={{ __html: campaign.content }} 
+              />
+            ) : (
+              <>
+                {mockContentParagraphs.map((paragraph, index) => (
+                  <p key={index}>{paragraph}</p>
+                ))}
+              </>
+            )}
           </article>
 
           {/* Component 2: Transparency & Disbursement Log */}
