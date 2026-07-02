@@ -18,6 +18,11 @@ class AuthService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email đã được sử dụng",
             )
+        if data.phone and self.user_repo.phone_exists(data.phone):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Số điện thoại đã được sử dụng",
+            )
         user = User(
             email=data.email,
             hashed_password=get_password_hash(data.password),

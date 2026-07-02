@@ -16,3 +16,6 @@ class UserRepository(BaseRepository[User]):
 
     def email_exists(self, email: str) -> bool:
         return self.db.query(User).filter(User.email == email).first() is not None
+
+    def phone_exists(self, phone: str) -> bool:
+        return self.db.query(User).filter(User.phone == phone).first() is not None
