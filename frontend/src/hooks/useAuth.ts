@@ -35,8 +35,16 @@ export function useAuth() {
       navigate('/login')
     },
     onError: (error: any) => {
-      if (error?.response?.status === 400 || error?.response?.status === 409 || error?.response?.data?.detail?.toLowerCase()?.includes('exist')) {
-        toast.error('Email đã tồn tại. Vui lòng sử dụng email khác hoặc đăng nhập.')
+      const detail = error?.response?.data?.detail?.toLowerCase() || '';
+      
+      if (error?.response?.status === 400 || error?.response?.status === 409 || detail.includes('exist')) {
+        if (detail.includes('phone') || detail.includes('điện thoại')) {
+          toast.error('Số điện thoại đã tồn tại. Vui lòng sử dụng số điện thoại khác hoặc đăng nhập.')
+        } else if (detail.includes('email')) {
+          toast.error('Email đã tồn tại. Vui lòng sử dụng email khác hoặc đăng nhập.')
+        } else {
+          toast.error('Email hoặc Số điện thoại đã tồn tại. Vui lòng đăng nhập.')
+        }
       } else {
         toast.error(error?.response?.data?.detail || 'Đăng ký thất bại. Vui lòng thử lại.')
       }
