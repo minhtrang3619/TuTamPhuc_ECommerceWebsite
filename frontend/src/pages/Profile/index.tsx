@@ -21,7 +21,8 @@ import {
   Ticket,
   Heart,
   Star,
-  ArrowLeft
+  ArrowLeft,
+  ChevronDown
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useWishlistStore } from '../../store/wishlistStore';
@@ -460,6 +461,10 @@ export default function ProfilePage() {
   const [selectedDistrictId, setSelectedDistrictId] = useState<number | ''>('');
   const [selectedWardCode, setSelectedWardCode] = useState<string>('');
 
+  const provinceName = provinces.find(p => p.ProvinceID === selectedProvinceId)?.ProvinceName || '';
+  const districtName = districts.find(d => d.DistrictID === selectedDistrictId)?.DistrictName || '';
+  const wardName = wards.find(w => w.WardCode === selectedWardCode)?.WardName || '';
+
   useEffect(() => {
     const fetchProvinces = async () => {
       try {
@@ -695,10 +700,6 @@ export default function ProfilePage() {
       showToast('Vui lòng điền đầy đủ thông tin địa chỉ.', 'info');
       return;
     }
-
-    const provinceName = provinces.find(p => p.ProvinceID === selectedProvinceId)?.ProvinceName || '';
-    const districtName = districts.find(d => d.DistrictID === selectedDistrictId)?.DistrictName || '';
-    const wardName = wards.find(w => w.WardCode === selectedWardCode)?.WardName || '';
 
     try {
       const isDefault = addresses.length === 0;
@@ -1915,10 +1916,10 @@ export default function ProfilePage() {
                             </label>
                             <div className="border border-[#d4c3be]/60 overflow-hidden bg-white shadow-xs">
                               <div className="relative aspect-video w-full h-[180px] bg-[#e5e3df]">
-                                {[newAddrStreet, newAddrWard, newAddrDistrict, newAddrProvince].some(Boolean) ? (
+                                {[newAddrStreet, wardName, districtName, provinceName].some(Boolean) ? (
                                   <iframe
                                     title="Google Map Address Book Preview"
-                                    src={`https://maps.google.com/maps?q=${encodeURIComponent([newAddrStreet, newAddrWard, newAddrDistrict, newAddrProvince].filter(Boolean).join(', '))}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                                    src={`https://maps.google.com/maps?q=${encodeURIComponent([newAddrStreet, wardName, districtName, provinceName].filter(Boolean).join(', '))}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
                                     className="w-full h-full border-none"
                                     allowFullScreen
                                     loading="lazy"
