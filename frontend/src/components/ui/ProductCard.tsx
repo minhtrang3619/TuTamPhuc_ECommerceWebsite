@@ -35,7 +35,6 @@ export default function ProductCard({
           src={product.images[0]}
           className="w-full h-full object-cover object-center hover:scale-[1.03] transition-transform duration-700"
           referrerPolicy="no-referrer"
-          loading="lazy"
         />
 
         {/* Badge "Mới" left-top overlay if exists */}
