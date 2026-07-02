@@ -13,9 +13,9 @@ import {
   Calendar
 } from 'lucide-react'
 import { charityService, CharityCampaign, CharityTransaction, CharityOverview } from '../../../services/charityService'
-import apiClient from '../../../services/apiClient'
 import CharityDetailModal from '../../../components/CharityDetailModal'
 import AdminCharityDetail from './AdminCharityDetail'
+import AdminCharityEditor from './AdminCharityEditor'
 import { getImageUrl } from '../../../utils/productMapper'
 
 const formatPrice = (price: number) => {
@@ -48,21 +48,9 @@ export default function AdminCharity() {
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [selectedCampaign, setSelectedCampaign] = useState<CharityCampaign | null>(null)
 
-  // Modals state
   const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false)
   const [editingCampaign, setEditingCampaign] = useState<CharityCampaign | null>(null)
   const [isTxModalOpen, setIsTxModalOpen] = useState(false)
-  const [uploading, setUploading] = useState(false)
-
-  // Form states
-  const [campaignForm, setCampaignForm] = useState({
-    name: '',
-    slogan: '',
-    description: '',
-    target_amount: 0,
-    image_url: '',
-    status: 'active'
-  })
 
   const [txForm, setTxForm] = useState({
     campaign_id: '',
@@ -129,73 +117,6 @@ export default function AdminCharity() {
       setLoadingTx(false)
     }
   }
-
-  // Handle image upload to server
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    if (!file.type.startsWith('image/')) {
-      alert('Vui lòng chọn tệp hình ảnh hợp lệ.')
-      return
-    }
-
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('folder', 'charity')
-
-    setUploading(true)
-    try {
-      const response = await apiClient.post<{ url: string }>('/uploads/image', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      })
-      setCampaignForm(prev => ({ ...prev, image_url: response.data.url }))
-    } catch (err) {
-      console.error("Upload error:", err)
-      alert('Tải ảnh lên thất bại. Vui lòng thử lại.')
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  // Handle campaign form submission (Create or Edit)
-  const handleCampaignSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!campaignForm.name || campaignForm.target_amount <= 0) {
-      alert('Vui lòng điền tên chiến dịch và số tiền mục tiêu hợp lệ.')
-      return
-    }
-
-    try {
-      if (editingCampaign) {
-        await charityService.updateCampaign(editingCampaign.id, {
-          name: campaignForm.name,
-          slogan: campaignForm.slogan,
-          description: campaignForm.description,
-          target_amount: campaignForm.target_amount,
-          image_url: campaignForm.image_url || undefined,
-          status: campaignForm.status
-        })
-      } else {
-        await charityService.createCampaign({
-          name: campaignForm.name,
-          slogan: campaignForm.slogan,
-          description: campaignForm.description,
-          target_amount: campaignForm.target_amount,
-          image_url: campaignForm.image_url || undefined,
-          status: campaignForm.status
-        })
-      }
-      setIsCampaignModalOpen(false)
-      setEditingCampaign(null)
-      loadData()
-    } catch (err: any) {
-      alert(err.response?.data?.detail || 'Đã xảy ra lỗi khi lưu chiến dịch.')
-    }
-  }
-
   // Handle transaction form submission (Disbursement / Manual Donation)
   const handleTxSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -267,6 +188,19 @@ export default function AdminCharity() {
       <AdminCharityDetail
         campaign={selectedCampaign}
         onBack={() => { setSelectedCampaign(null); loadData(); }}
+      />
+    )
+  }
+
+  if (isCampaignModalOpen) {
+    return (
+      <AdminCharityEditor
+        campaign={editingCampaign}
+        onBack={() => {
+          setIsCampaignModalOpen(false)
+          setEditingCampaign(null)
+          loadData()
+        }}
       />
     )
   }
@@ -358,14 +292,6 @@ export default function AdminCharity() {
           <button
             onClick={() => {
               setEditingCampaign(null);
-              setCampaignForm({
-                name: '',
-                slogan: '',
-                description: '',
-                target_amount: 0,
-                image_url: '',
-                status: 'active'
-              });
               setIsCampaignModalOpen(true);
             }}
             className="text-[12px] font-bold text-white bg-primary hover:bg-[#442a22] px-4 py-2 rounded flex items-center gap-2 cursor-pointer transition-colors"
@@ -383,17 +309,9 @@ export default function AdminCharity() {
               <p className="text-sm max-w-md opacity-80 mb-6">Bạn chưa có chiến dịch thiện nguyện nào đang hoạt động. Hãy tạo chiến dịch mới để bắt đầu trích quỹ từ các đơn hàng.</p>
               <button
                 onClick={() => {
-                  setEditingCampaign(null);
-                  setCampaignForm({
-                    name: '',
-                    slogan: '',
-                    description: '',
-                    target_amount: 0,
-                    image_url: '',
-                    status: 'active'
-                  });
-                  setIsCampaignModalOpen(true);
-                }}
+              setEditingCampaign(null);
+              setIsCampaignModalOpen(true);
+            }}
                 className="text-[14px] font-bold text-white bg-primary hover:bg-[#442a22] px-6 py-2.5 rounded-full flex items-center gap-2 cursor-pointer transition-colors shadow-sm"
               >
                 Tạo chiến dịch đầu tiên
@@ -608,148 +526,6 @@ export default function AdminCharity() {
           </button>
         </div>
       </section>
-
-      {/* CAMPAIGN MODAL (CREATE OR EDIT) */}
-      <AnimatePresence>
-        {isCampaignModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center">
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsCampaignModalOpen(false)}
-              className="absolute inset-0 bg-[#2f3131]/60 backdrop-blur-xs"
-            />
-            {/* Dialog */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="relative w-full max-w-md bg-surface p-8 rounded-xl shadow-xl border border-outline-variant/30 max-h-[90vh] overflow-y-auto"
-            >
-              <div className="flex items-center justify-between border-b border-[#eeeeee] pb-4 mb-6">
-                <h3 className="font-serif text-lg font-bold text-primary">
-                  {editingCampaign ? 'Cập Nhật Chiến Dịch' : 'Khởi Tạo Chiến Dịch'}
-                </h3>
-                <button
-                  onClick={() => setIsCampaignModalOpen(false)}
-                  className="p-1 hover:bg-[#eeeeee] rounded-full text-on-surface-variant bg-transparent border-none cursor-pointer"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <form onSubmit={handleCampaignSubmit} className="space-y-5">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant block">Tên chiến dịch *</label>
-                  <input
-                    type="text"
-                    required
-                    value={campaignForm.name}
-                    onChange={(e) => setCampaignForm(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-primary/20"
-                    placeholder="e.g. Xây trường học Hà Giang"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant block">Slogan chiến dịch *</label>
-                  <input
-                    type="text"
-                    required
-                    value={campaignForm.slogan}
-                    onChange={(e) => setCampaignForm(prev => ({ ...prev, slogan: e.target.value }))}
-                    className="w-full bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-primary/20"
-                    placeholder="e.g. Gieo hạt từ bi – Lan tỏa phúc lành."
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant block">Mô tả dự án</label>
-                  <textarea
-                    rows={3}
-                    value={campaignForm.description}
-                    onChange={(e) => setCampaignForm(prev => ({ ...prev, description: e.target.value }))}
-                    className="w-full bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-primary/20 resize-none"
-                    placeholder="Mô tả mục tiêu và kế hoạch của chiến dịch thiện nguyện..."
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant block">Mục tiêu (VNĐ) *</label>
-                    <input
-                      type="number"
-                      required
-                      min={1000}
-                      value={campaignForm.target_amount}
-                      onChange={(e) => setCampaignForm(prev => ({ ...prev, target_amount: parseFloat(e.target.value) || 0 }))}
-                      className="w-full bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-primary/20"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant block">Trạng thái</label>
-                    <select
-                      value={campaignForm.status}
-                      onChange={(e) => setCampaignForm(prev => ({ ...prev, status: e.target.value }))}
-                      className="w-full bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-primary/20"
-                    >
-                      <option value="active">Đang thực hiện</option>
-                      <option value="closing">Sắp hoàn thành</option>
-                      <option value="completed">Đã hoàn thành</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant block">Hình ảnh đại diện *</label>
-                  <div className="flex items-center gap-4">
-                    {campaignForm.image_url && (
-                      <div className="w-16 h-16 rounded-lg overflow-hidden border border-[#eeeeee] flex-shrink-0 bg-neutral-100 flex items-center justify-center">
-                        <img src={getImageUrl(campaignForm.image_url)} alt="Preview" className="w-full h-full object-cover" />
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        disabled={uploading}
-                        className="block w-full text-xs text-on-surface-variant file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer file:cursor-pointer"
-                      />
-                      {uploading && <p className="text-[10px] text-primary mt-1 animate-pulse">Đang tải ảnh lên...</p>}
-                    </div>
-                  </div>
-                  <input
-                    type="text"
-                    value={campaignForm.image_url}
-                    onChange={(e) => setCampaignForm(prev => ({ ...prev, image_url: e.target.value }))}
-                    className="w-full bg-surface-container border border-outline-variant/30 rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-primary/20 mt-2"
-                    placeholder="Hoặc nhập URL hình ảnh tại đây..."
-                  />
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4 border-t border-[#eeeeee]">
-                  <button
-                    type="button"
-                    onClick={() => setIsCampaignModalOpen(false)}
-                    className="px-4 py-2 border border-[#d4c3be] text-on-surface-variant rounded-lg text-xs font-semibold bg-transparent cursor-pointer"
-                  >
-                    Huỷ
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 bg-primary text-white hover:bg-primary/95 rounded-lg text-xs font-bold uppercase tracking-wider cursor-pointer border-none"
-                  >
-                    {editingCampaign ? 'Cập Nhật' : 'Tạo mới'}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* DISBURSE / ADD TRANSACTION MODAL */}
       <AnimatePresence>

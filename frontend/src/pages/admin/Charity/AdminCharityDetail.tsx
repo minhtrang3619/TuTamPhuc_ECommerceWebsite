@@ -4,6 +4,8 @@ import { charityService, CharityCampaign, CharityTransaction } from '../../../se
 import apiClient from '../../../services/apiClient'
 import Toast from '../../../components/ui/Toast'
 import { getImageUrl } from '../../../utils/productMapper'
+import ReactQuill from 'react-quill'
+import 'react-quill/dist/quill.snow.css'
 
 interface AdminCharityDetailProps {
   campaign: CharityCampaign
@@ -382,14 +384,24 @@ export default function AdminCharityDetail({ campaign, onBack }: AdminCharityDet
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Mô tả câu chuyện chi tiết</label>
-                <textarea
-                  name="content"
-                  rows={5}
-                  value={formData.content}
-                  onChange={handleInputChange}
-                  className="w-full bg-surface-container-low border border-outline-variant/30 rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-primary/20 text-on-surface"
-                />
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-on-surface-variant mb-2">Mô tả câu chuyện chi tiết</label>
+                <div className="bg-white rounded-lg overflow-hidden border border-outline-variant/30">
+                  <ReactQuill 
+                    theme="snow" 
+                    value={formData.content} 
+                    onChange={(value) => setFormData(prev => ({ ...prev, content: value }))}
+                    modules={{
+                      toolbar: [
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike', 'blockquote'],
+                        [{'list': 'ordered'}, {'list': 'bullet'}],
+                        ['link', 'image'],
+                        ['clean']
+                      ],
+                    }}
+                    className="h-64 mb-12"
+                  />
+                </div>
               </div>
             </div>
           </section>
