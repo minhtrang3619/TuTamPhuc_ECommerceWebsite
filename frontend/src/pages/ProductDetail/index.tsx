@@ -46,6 +46,10 @@ export default function ProductDetailPage() {
   const [reviews, setReviews] = useState<any[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
 
+  // Related products states
+  const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
+
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     e.currentTarget.src = "https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?auto=format&fit=crop&w=600&q=80";
   };
@@ -94,7 +98,32 @@ export default function ProductDetailPage() {
       .finally(() => {
         setReviewsLoading(false);
       });
-  }, [product?.dbId]);
+
+    // Fetch related products
+    if (product.categorySlug) {
+      setRelatedLoading(true);
+      apiClient.get(`/products?category_slug=${product.categorySlug}&page_size=10`)
+        .then(res => {
+          const items = res.data?.items || [];
+          const mapped = items.map((p: any) => mapApiProductToMockProduct(p));
+          setRelatedProducts(mapped.filter((p: any) => p.id !== product.id));
+        })
+        .catch(err => {
+          console.error("Lỗi khi tải sản phẩm liên quan:", err);
+          // Fallback to fetch all and filter
+          apiClient.get('/products?page_size=50')
+            .then(res2 => {
+              const items2 = res2.data?.items || [];
+              const mapped2 = items2.map((p: any) => mapApiProductToMockProduct(p));
+              setRelatedProducts(mapped2.filter((p: any) => p.id !== product.id && (p.categorySlug === product.categorySlug || p.category === product.category)));
+            })
+            .catch(console.error);
+        })
+        .finally(() => {
+          setRelatedLoading(false);
+        });
+    }
+  }, [product?.dbId, product?.categorySlug, product?.category, product?.id]);
 
   const [activeDetailColor, setActiveDetailColor] = useState<{ name: string; hex: string } | null>(null);
   const [activeDetailSize, setActiveDetailSize] = useState<string>('M');
@@ -739,10 +768,13 @@ export default function ProductDetailPage() {
           <h2 className="font-serif text-2xl font-bold text-primary mb-10 tracking-wide">
             Sản phẩm quý khách quan tâm
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 font-sans">
-            {PRODUCTS.filter((p) => p.id !== product.id)
-              .slice(0, 3)
-              .map((prod) => (
+          {relatedLoading ? (
+            <div className="py-8 flex justify-center">
+              <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+            </div>
+          ) : relatedProducts.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 font-sans">
+              {relatedProducts.slice(0, 3).map((prod) => (
                 <div
                   key={prod.id}
                   onClick={() => {
@@ -772,7 +804,10 @@ export default function ProductDetailPage() {
                   </p>
                 </div>
               ))}
-          </div>
+            </div>
+          ) : (
+            <p className="text-sm text-on-surface-variant italic">Không có sản phẩm nào cùng danh mục.</p>
+          )}
         </section>
       </div>
 
