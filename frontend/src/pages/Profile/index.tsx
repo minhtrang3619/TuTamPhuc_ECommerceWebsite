@@ -850,17 +850,7 @@ export default function ProfilePage() {
             </div>
           </div>
           <div className="text-xs text-on-surface-variant flex flex-col md:flex-row items-start md:items-center gap-4">
-            {searchParams.get('returnTo') === 'checkout' && (
-              <button 
-                onClick={() => {
-                  openCheckout();
-                  navigate(-1);
-                }}
-                className="px-6 py-2 bg-primary text-white text-[11px] font-bold uppercase tracking-widest rounded-xs hover:bg-[#2c160e] transition-colors cursor-pointer border-none shadow-sm"
-              >
-                Tiếp tục đặt hàng
-              </button>
-            )}
+
             <div className="flex items-center gap-1">
               <span>Chào mừng quay trở lại,</span>
               <span className="text-primary font-bold">{user?.full_name}</span>
