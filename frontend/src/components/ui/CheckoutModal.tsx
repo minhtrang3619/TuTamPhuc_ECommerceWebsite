@@ -659,7 +659,7 @@ export default function CheckoutModal() {
                           type="button"
                           onClick={() => {
                             closeCheckout();
-                            navigate('/ca-nhan?tab=addresses&returnTo=checkout');
+                            navigate('/tai-khoan?tab=addresses&returnTo=checkout');
                           }}
                           className="px-6 py-2.5 bg-primary text-white text-[11px] uppercase tracking-widest font-bold rounded-xs cursor-pointer hover:bg-[#2c160e] transition-colors"
                         >
