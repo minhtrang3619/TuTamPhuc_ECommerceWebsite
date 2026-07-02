@@ -57,11 +57,11 @@ export default function ProductListPage() {
   const categoryParam = searchParams.get('category');
   const activeCategorySlug = slug || categoryParam;
 
-  // Map parent slug → danh sách tên con (hiển thị cả nam lẫn nữ)
+  // Map parent slug → danh sách slug con
   const parentCategoryMap: Record<string, string[]> = {
-    'do-lam':   ['Đồ Lam Nam', 'Đồ Lam Nữ'],
-    'phap-phuc': ['Pháp Phục Nam', 'Pháp Phục Nữ'],
-    'ao-trang': ['Áo Tràng', 'Áo Tràng Nam', 'Áo Tràng Nữ'],
+    'do-lam':   ['do-lam-nam', 'do-lam-nu'],
+    'phap-phuc': ['phap-phuc-nam', 'phap-phuc-nu'],
+    'ao-trang': ['ao-trang', 'ao-trang-nam', 'ao-trang-nu'],
   };
 
 
@@ -73,9 +73,9 @@ export default function ProductListPage() {
       } else {
         const match = categories.find(c => c.slug === activeCategorySlug);
         if (match) {
-          setSelectedCategories([match.name]);
+          setSelectedCategories([match.slug]);
         } else {
-          setSelectedCategories([]);
+          setSelectedCategories([activeCategorySlug]);
         }
       }
       setCurrentPage(1);
@@ -136,7 +136,9 @@ export default function ProductListPage() {
 
       // 2. Categories filter
       if (selectedCategories.length > 0) {
-        if (!selectedCategories.includes(product.category)) return false;
+        const slugMatch = product.categorySlug && selectedCategories.includes(product.categorySlug);
+        const nameMatch = selectedCategories.includes(product.category);
+        if (!slugMatch && !nameMatch) return false;
       }
 
       // 3. Colors filter — theo nhóm màu (color family)

@@ -16,6 +16,7 @@ export interface MockProduct {
   price: number
   oldPrice?: number
   category: string
+  categorySlug?: string
   badge?: string
   colors: { name: string; hex: string }[]
   sizes: string[]
@@ -69,6 +70,7 @@ export function mapApiProductToMockProduct(p: ApiProduct): MockProduct {
     price: p.price,
     oldPrice: p.sale_price || undefined,
     category: p.category?.name || "Pháp Phục",
+    categorySlug: p.category?.slug || "phap-phuc",
     colors: uniqueColors.length > 0 ? uniqueColors : [{ name: "Nâu đất", hex: "#5D4037" }],
     sizes: uniqueSizes.length > 0 ? Array.from(new Set([...["S", "M", "L", "XL"], ...uniqueSizes])) : ["S", "M", "L", "XL"],
     images: images.length > 0 ? images : ["https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?auto=format&fit=crop&w=600&q=80"],

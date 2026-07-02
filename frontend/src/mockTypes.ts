@@ -5,6 +5,7 @@ export interface Product {
   price: number;
   oldPrice?: number;
   category: string;
+  categorySlug?: string;
   colors: { name: string; hex: string }[];
   sizes: string[];
   images: string[];
