@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     GHN_TOKEN: str = "dca1e03c-8302-11eb-82c3-eb6c9d2c1604"
     GHN_SHOP_ID: int = 80000
 
+    # Cloudinary Config
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
+
     class Config:
         env_file = ".env"
         case_sensitive = True

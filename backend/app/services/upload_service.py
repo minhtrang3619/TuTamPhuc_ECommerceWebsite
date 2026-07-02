@@ -1,12 +1,21 @@
 import os
 import uuid
+import asyncio
 from pathlib import Path
 from fastapi import UploadFile, HTTPException, status
-from PIL import Image
-import aiofiles
+
+import cloudinary
+import cloudinary.uploader
 
 from app.core.config import settings
 
+# Initialize cloudinary
+cloudinary.config(
+    cloud_name=settings.CLOUDINARY_CLOUD_NAME,
+    api_key=settings.CLOUDINARY_API_KEY,
+    api_secret=settings.CLOUDINARY_API_SECRET,
+    secure=True
+)
 
 class UploadService:
     ALLOWED_TYPES = {"image/jpeg", "image/jpg", "image/png"}
@@ -18,12 +27,14 @@ class UploadService:
     MAX_VIDEO_SIZE = 50 * 1024 * 1024  # 50MB
 
     async def upload_media(self, file: UploadFile, folder: str = "reviews") -> str:
-        """Upload image or video, return relative URL path."""
+        """Upload image or video to Cloudinary, return secure URL."""
         content_type = file.content_type or ""
         if content_type in self.ALLOWED_IMAGE_TYPES:
             max_size = self.MAX_IMAGE_SIZE
+            resource_type = "image"
         elif content_type in self.ALLOWED_VIDEO_TYPES:
             max_size = self.MAX_VIDEO_SIZE
+            resource_type = "video"
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -38,25 +49,22 @@ class UploadService:
                 detail=f"File quá lớn. Tối đa {size_mb}MB",
             )
 
-        ext = Path(file.filename or "file.jpg").suffix.lower()
-        if not ext:
-            if content_type.startswith("image/"):
-                ext = ".jpg"
-            else:
-                ext = ".mp4"
-
-        filename = f"{uuid.uuid4().hex}{ext}"
-        save_dir = Path(settings.UPLOAD_DIR) / folder
-        save_dir.mkdir(parents=True, exist_ok=True)
-        save_path = save_dir / filename
-
-        async with aiofiles.open(save_path, "wb") as f:
-            await f.write(contents)
-
-        return f"/uploads/{folder}/{filename}"
+        try:
+            response = await asyncio.to_thread(
+                cloudinary.uploader.upload,
+                contents,
+                folder=f"tutamphuc/{folder}",
+                resource_type=resource_type
+            )
+            return response.get("secure_url")
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Lỗi khi upload lên Cloudinary: {str(e)}",
+            )
 
     async def upload_image(self, file: UploadFile, folder: str = "products") -> str:
-        """Upload image, return relative URL path."""
+        """Upload image to Cloudinary, return secure URL."""
         if file.content_type not in self.ALLOWED_TYPES:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -70,16 +78,19 @@ class UploadService:
                 detail=f"File quá lớn. Tối đa {self.MAX_SIZE // 1024 // 1024}MB",
             )
 
-        ext = Path(file.filename or "img.jpg").suffix.lower() or ".jpg"
-        filename = f"{uuid.uuid4().hex}{ext}"
-        save_dir = Path(settings.UPLOAD_DIR) / folder
-        save_dir.mkdir(parents=True, exist_ok=True)
-        save_path = save_dir / filename
-
-        async with aiofiles.open(save_path, "wb") as f:
-            await f.write(contents)
-
-        return f"/uploads/{folder}/{filename}"
+        try:
+            response = await asyncio.to_thread(
+                cloudinary.uploader.upload,
+                contents,
+                folder=f"tutamphuc/{folder}",
+                resource_type="image"
+            )
+            return response.get("secure_url")
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Lỗi khi upload ảnh lên Cloudinary: {str(e)}",
+            )
 
     async def upload_multiple(self, files: list[UploadFile], folder: str = "products") -> list[str]:
         urls = []
@@ -89,9 +100,30 @@ class UploadService:
         return urls
 
     def delete_file(self, url: str) -> None:
-        """Delete file by relative URL."""
+        """Delete file by URL from Cloudinary or local disk."""
         if not url:
             return
-        file_path = Path(url.lstrip("/"))
-        if file_path.exists():
-            file_path.unlink()
+        
+        if "cloudinary.com" in url:
+            try:
+                parts = url.split("/upload/")
+                if len(parts) == 2:
+                    path_part = parts[1]
+                    path_segments = path_part.split("/")
+                    if path_segments[0].startswith("v") and path_segments[0][1:].isdigit():
+                        path_segments = path_segments[1:]
+                    
+                    public_id_with_ext = "/".join(path_segments)
+                    public_id = public_id_with_ext.rsplit(".", 1)[0]
+                    
+                    resource_type = "image"
+                    if url.endswith((".mp4", ".webm", ".ogg")):
+                        resource_type = "video"
+                        
+                    cloudinary.uploader.destroy(public_id, resource_type=resource_type)
+            except Exception as e:
+                print(f"Failed to delete {url} from Cloudinary: {e}")
+        else:
+            file_path = Path(url.lstrip("/"))
+            if file_path.exists():
+                file_path.unlink()
