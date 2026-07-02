@@ -448,11 +448,68 @@ export default function ProfilePage() {
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [newAddrName, setNewAddrName] = useState('');
   const [newAddrPhone, setNewAddrPhone] = useState('');
-  const [newAddrProvince, setNewAddrProvince] = useState('');
-  const [newAddrDistrict, setNewAddrDistrict] = useState('');
-  const [newAddrWard, setNewAddrWard] = useState('');
   const [newAddrStreet, setNewAddrStreet] = useState('');
   const [visibleMapId, setVisibleMapId] = useState<number | null>(null);
+
+  // States for Address dropdowns
+  const [provinces, setProvinces] = useState<any[]>([]);
+  const [districts, setDistricts] = useState<any[]>([]);
+  const [wards, setWards] = useState<any[]>([]);
+
+  const [selectedProvinceId, setSelectedProvinceId] = useState<number | ''>('');
+  const [selectedDistrictId, setSelectedDistrictId] = useState<number | ''>('');
+  const [selectedWardCode, setSelectedWardCode] = useState<string>('');
+
+  useEffect(() => {
+    const fetchProvinces = async () => {
+      try {
+        const res = await apiClient.get('/shipping/provinces');
+        setProvinces(res.data || []);
+      } catch (err) {
+        console.error("Lỗi khi tải tỉnh/thành phố:", err);
+      }
+    };
+    if (showAddressForm) {
+      fetchProvinces();
+    }
+  }, [showAddressForm]);
+
+  useEffect(() => {
+    const fetchDistricts = async () => {
+      if (selectedProvinceId) {
+        try {
+          const res = await apiClient.get(`/shipping/districts?province_id=${selectedProvinceId}`);
+          setDistricts(res.data || []);
+          setWards([]);
+          setSelectedDistrictId('');
+          setSelectedWardCode('');
+        } catch (err) {
+          console.error("Lỗi khi tải quận/huyện:", err);
+        }
+      } else {
+        setDistricts([]);
+        setWards([]);
+      }
+    };
+    fetchDistricts();
+  }, [selectedProvinceId]);
+
+  useEffect(() => {
+    const fetchWards = async () => {
+      if (selectedDistrictId) {
+        try {
+          const res = await apiClient.get(`/shipping/wards?district_id=${selectedDistrictId}`);
+          setWards(res.data || []);
+          setSelectedWardCode('');
+        } catch (err) {
+          console.error("Lỗi khi tải phường/xã:", err);
+        }
+      } else {
+        setWards([]);
+      }
+    };
+    fetchWards();
+  }, [selectedDistrictId]);
 
   // Fetch addresses on mount/auth
   useEffect(() => {
@@ -634,18 +691,23 @@ export default function ProfilePage() {
 
   const handleAddAddress = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAddrName || !newAddrPhone || !newAddrProvince || !newAddrDistrict || !newAddrWard || !newAddrStreet) {
+    if (!newAddrName || !newAddrPhone || !selectedProvinceId || !selectedDistrictId || !selectedWardCode || !newAddrStreet) {
       showToast('Vui lòng điền đầy đủ thông tin địa chỉ.', 'info');
       return;
     }
+
+    const provinceName = provinces.find(p => p.ProvinceID === selectedProvinceId)?.ProvinceName || '';
+    const districtName = districts.find(d => d.DistrictID === selectedDistrictId)?.DistrictName || '';
+    const wardName = wards.find(w => w.WardCode === selectedWardCode)?.WardName || '';
+
     try {
       const isDefault = addresses.length === 0;
       const newAddress = await addressService.createAddress({
         name: newAddrName,
         phone: newAddrPhone,
-        province: newAddrProvince,
-        district: newAddrDistrict,
-        ward: newAddrWard,
+        province: provinceName,
+        district: districtName,
+        ward: wardName,
         street: newAddrStreet,
         isDefault: isDefault
       });
@@ -654,9 +716,9 @@ export default function ProfilePage() {
       // Reset forms
       setNewAddrName('');
       setNewAddrPhone('');
-      setNewAddrProvince('');
-      setNewAddrDistrict('');
-      setNewAddrWard('');
+      setSelectedProvinceId('');
+      setSelectedDistrictId('');
+      setSelectedWardCode('');
       setNewAddrStreet('');
       showToast('Đã thêm địa chỉ giao hàng mới.');
     } catch (err: any) {
@@ -1779,38 +1841,58 @@ export default function ProfilePage() {
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div>
+                            <div className="relative">
                               <label className="block font-caption text-caption text-on-secondary-fixed-variant uppercase tracking-widest mb-1.5">Tỉnh / Thành phố</label>
-                              <input
-                                type="text"
-                                value={newAddrProvince}
-                                onChange={(e) => setNewAddrProvince(e.target.value)}
-                                className="input-line text-xs font-body-md text-body-md py-1.5"
-                                placeholder="Ví dụ: TP. Hồ Chí Minh"
+                              <select
+                                value={selectedProvinceId}
+                                onChange={(e) => setSelectedProvinceId(e.target.value ? Number(e.target.value) : '')}
+                                className="input-line text-xs font-body-md text-body-md py-1.5 w-full appearance-none cursor-pointer pr-6 bg-transparent"
                                 required
-                              />
+                              >
+                                <option value="">-- Chọn Tỉnh / Thành --</option>
+                                {provinces.map((p) => (
+                                  <option key={p.ProvinceID} value={p.ProvinceID}>
+                                    {p.ProvinceName}
+                                  </option>
+                                ))}
+                              </select>
+                              <ChevronDown className="absolute right-0 bottom-2 text-on-secondary-fixed-variant pointer-events-none" size={14} />
                             </div>
-                            <div>
+                            <div className="relative">
                               <label className="block font-caption text-caption text-on-secondary-fixed-variant uppercase tracking-widest mb-1.5">Quận / Huyện</label>
-                              <input
-                                type="text"
-                                value={newAddrDistrict}
-                                onChange={(e) => setNewAddrDistrict(e.target.value)}
-                                className="input-line text-xs font-body-md text-body-md py-1.5"
-                                placeholder="Ví dụ: Quận 1"
+                              <select
+                                value={selectedDistrictId}
+                                disabled={!selectedProvinceId}
+                                onChange={(e) => setSelectedDistrictId(e.target.value ? Number(e.target.value) : '')}
+                                className="input-line text-xs font-body-md text-body-md py-1.5 w-full appearance-none cursor-pointer pr-6 bg-transparent disabled:opacity-50"
                                 required
-                              />
+                              >
+                                <option value="">-- Chọn Quận / Huyện --</option>
+                                {districts.map((d) => (
+                                  <option key={d.DistrictID} value={d.DistrictID}>
+                                    {d.DistrictName}
+                                  </option>
+                                ))}
+                              </select>
+                              <ChevronDown className="absolute right-0 bottom-2 text-on-secondary-fixed-variant pointer-events-none" size={14} />
                             </div>
-                            <div>
+                            <div className="relative">
                               <label className="block font-caption text-caption text-on-secondary-fixed-variant uppercase tracking-widest mb-1.5">Phường / Xã</label>
-                              <input
-                                type="text"
-                                value={newAddrWard}
-                                onChange={(e) => setNewAddrWard(e.target.value)}
-                                className="input-line text-xs font-body-md text-body-md py-1.5"
-                                placeholder="Ví dụ: Phường Bến Nghé"
+                              <select
+                                value={selectedWardCode}
+                                disabled={!selectedDistrictId}
+                                onChange={(e) => setSelectedWardCode(e.target.value)}
+                                className="input-line text-xs font-body-md text-body-md py-1.5 w-full appearance-none cursor-pointer pr-6 bg-transparent disabled:opacity-50"
                                 required
-                              />
+                              >
+                                <option value="">-- Chọn Phường / Xã --</option>
+                                {wards.map((w) => (
+                                  <option key={w.WardCode} value={w.WardCode}>
+                                    {w.WardName}
+                                  </option>
+                                ))}
+                              </select>
+                              <ChevronDown className="absolute right-0 bottom-2 text-on-secondary-fixed-variant pointer-events-none" size={14} />
                             </div>
                           </div>
 
