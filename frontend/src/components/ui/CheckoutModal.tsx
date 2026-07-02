@@ -59,6 +59,7 @@ export default function CheckoutModal() {
   const [selectedDistrictId, setSelectedDistrictId] = useState<number | ''>('');
   const [selectedWardCode, setSelectedWardCode] = useState<string>('');
   const [streetAddress, setStreetAddress] = useState<string>('');
+  const [hasSavedAddress, setHasSavedAddress] = useState<boolean>(true);
 
   const [isLoadingShipping, setIsLoadingShipping] = useState<boolean>(false);
   const [calculatedShippingFee, setCalculatedShippingFee] = useState<number>(30000);
@@ -96,7 +97,8 @@ export default function CheckoutModal() {
               email: prev.email || user?.email || 'customer@gmail.com',
               address: prev.address || formatted,
             }));
-          } else if (data.length > 0) {
+          } else if (data && data.length > 0) {
+            setHasSavedAddress(true);
             const firstAddrObj = data[0];
             const formatted = [
               firstAddrObj.street,
@@ -113,6 +115,7 @@ export default function CheckoutModal() {
               address: prev.address || formatted,
             }));
           } else {
+            setHasSavedAddress(false);
             // No addresses in book, fall back to user profile info
             setForm(prev => ({
               ...prev,
@@ -484,6 +487,10 @@ export default function CheckoutModal() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hasSavedAddress) {
+      alert("Vui lòng thêm địa chỉ giao hàng trước khi đặt hàng!");
+      return;
+    }
     if (!validate()) return;
 
     setIsSubmitting(true);
@@ -645,7 +652,21 @@ export default function CheckoutModal() {
                     </span>
 
                     {/* Conditional address summary or editing fields */}
-                    {!isEditingAddress ? (
+                    {!hasSavedAddress ? (
+                      <div className="bg-[#faf6f0] border border-[#ece0dc] p-6 rounded-md text-center shadow-sm animate-in fade-in duration-300">
+                        <p className="text-sm font-semibold text-[#5d4037] mb-4">Bạn chưa có địa chỉ giao hàng nào.</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            closeCheckout();
+                            navigate('/ca-nhan?tab=addresses&returnTo=checkout');
+                          }}
+                          className="px-6 py-2.5 bg-primary text-white text-[11px] uppercase tracking-widest font-bold rounded-xs cursor-pointer hover:bg-[#2c160e] transition-colors"
+                        >
+                          Thêm địa chỉ giao hàng
+                        </button>
+                      </div>
+                    ) : !isEditingAddress ? (
                       /* Simplified view displaying default address */
                       <div className="bg-[#faf6f0] border border-[#ece0dc] p-5 rounded-md relative font-sans space-y-3 shadow-sm animate-in fade-in duration-300">
                         <div className="flex justify-between items-center border-b border-[#ece0dc] pb-2.5">

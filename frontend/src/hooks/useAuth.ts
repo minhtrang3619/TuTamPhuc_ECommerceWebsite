@@ -34,8 +34,12 @@ export function useAuth() {
       toast.success('Đăng ký thành công! Vui lòng đăng nhập.')
       navigate('/login')
     },
-    onError: () => {
-      toast.error('Đăng ký thất bại. Vui lòng thử lại.')
+    onError: (error: any) => {
+      if (error?.response?.status === 400 || error?.response?.status === 409 || error?.response?.data?.detail?.toLowerCase()?.includes('exist')) {
+        toast.error('Email đã tồn tại. Vui lòng sử dụng email khác hoặc đăng nhập.')
+      } else {
+        toast.error(error?.response?.data?.detail || 'Đăng ký thất bại. Vui lòng thử lại.')
+      }
     },
   })
 
