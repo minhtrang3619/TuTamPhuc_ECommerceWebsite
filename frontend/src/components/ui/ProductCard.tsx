@@ -35,6 +35,9 @@ export default function ProductCard({
           src={product.images[0]}
           className="w-full h-full object-cover object-center hover:scale-[1.03] transition-transform duration-700"
           referrerPolicy="no-referrer"
+          onError={(e) => {
+            e.currentTarget.src = "https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?auto=format&fit=crop&w=600&q=80";
+          }}
         />
 
         {/* Badge "Mới" left-top overlay if exists */}
